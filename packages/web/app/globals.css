@@ -1,0 +1,843 @@
+@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wdth,wght@75,400;75,500;100,400;100,500&display=swap');
+
+:root {
+  --bg: #f4f7f8;
+  --bg-top: #e7f4f2;
+  --card: #ffffff;
+  --text: #1f2a30;
+  --muted: #50616b;
+  --line: #d7e0e4;
+  --accent: #0f766e;
+  --accent-strong: #0b5a54;
+  --success: #169b52;
+  --success-strong: #128043;
+  --error: #b42318;
+  --chip: #f7fbfa;
+  --col-separator: color-mix(in srgb, var(--muted) 10%, transparent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top right, var(--bg-top) 0%, var(--bg) 55%);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.appShell {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr) 30px;
+}
+
+.topMenuBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+}
+
+.menuLeft,
+.menuRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menuTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.menuItem {
+  border: 1px solid var(--line);
+  background: var(--chip);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+}
+
+.menuButton {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.menuButton:hover:enabled {
+  background: var(--accent-strong);
+}
+
+.menuButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.workspace {
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.leftPanel,
+.rightPanel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+}
+
+.leftPanel {
+  border-right: 1px solid var(--line);
+}
+
+.rightPanel {
+  flex: 1;
+}
+
+.panelHeader {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.panelHeader p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.panelTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panelTab {
+  border: 1px solid var(--line);
+  background: var(--chip);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.panelTab.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+
+.projectTableWrap {
+  min-height: 0;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--col-separator);
+  text-align: left;
+  padding: 9px 10px;
+  vertical-align: top;
+  font-size: 0.86rem;
+}
+
+th:last-child,
+td:last-child {
+  border-right: 0;
+}
+
+.projectTableWrap th:first-child,
+.projectTableWrap td:first-child {
+  border-right: 0;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.iconsHeader {
+  text-align: center;
+}
+
+.iconsHeader.servicesCol {
+  text-align: right;
+}
+
+col.nameCol {
+  width: auto;
+}
+
+col.typesCol {
+  width: 96px;
+}
+
+col.servicesCol {
+  width: 156px;
+}
+
+.projectRow {
+  cursor: pointer;
+}
+
+.projectRow:hover {
+  background: color-mix(in srgb, var(--chip) 80%, transparent);
+}
+
+.projectRow.selected {
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+
+.appNameCell.stopped {
+  filter: brightness(0.5);
+}
+
+.typeIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconsCell {
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.iconsCell.servicesCol {
+  text-align: right;
+}
+
+.typeIcon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.typeIcon.node {
+  color: #5fa04e;
+}
+
+.typeIcon.go {
+  color: #00add8;
+}
+
+.typeIcon.mono {
+  color: var(--accent);
+}
+
+.typeIcon.active {
+  opacity: 0.5;
+  filter: saturate(1);
+}
+
+.typeIcon.inactive {
+  opacity: 0.5;
+  filter: grayscale(1) saturate(0);
+}
+
+.serviceIcons {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.serviceIcon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  transition: opacity 0.15s ease, filter 0.15s ease;
+}
+
+.serviceIcon.clickable {
+  cursor: pointer;
+}
+
+.serviceIcon.control .controlGlyph {
+  font-size: 0.86rem;
+  line-height: 1;
+}
+
+.serviceIcon.unmanaged {
+  opacity: 0.55;
+  filter: grayscale(0.2) saturate(0.7);
+}
+
+.serviceFallbackGlyph {
+  font-size: 0.68rem;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.serviceIcon.disabled {
+  opacity: 0.25;
+  filter: grayscale(1) saturate(0);
+}
+
+.serviceIcon.unused {
+  opacity: 0.12;
+  filter: grayscale(1) saturate(0) brightness(0.8);
+}
+
+.serviceIcon.online {
+  color: var(--success);
+  opacity: 1;
+  filter: none;
+}
+
+.serviceIcon.starting {
+  color: var(--success);
+  opacity: 1;
+  filter: none;
+  animation: serviceStartingBlink 0.85s ease-in-out infinite;
+}
+
+.serviceIcon.offline {
+  color: var(--error);
+  opacity: 1;
+  filter: none;
+  animation: serviceOfflineBlink 1s ease-in-out infinite;
+}
+
+.serviceIcon.controlStopped {
+  color: var(--muted);
+  opacity: 1;
+  filter: none;
+}
+
+@keyframes serviceStartingBlink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes serviceOfflineBlink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.divider {
+  width: 8px;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+}
+
+.divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: var(--line);
+  transition: background-color 0.15s ease;
+}
+
+.divider:hover::after,
+.divider.active::after {
+  background: var(--accent);
+}
+
+.logStream {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  --log-mono-family: "Inconsolata", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: var(--log-mono-family);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.logFollowBtn {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logFollowBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.logPanel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.logFilters {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.logFilterBtn {
+  border: 1px solid var(--line);
+  background: var(--chip);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.logFilterBtn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+}
+
+.logTable {
+  display: table;
+  width: 100%;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0 3px;
+}
+
+.logLine {
+  display: table-row;
+  font-family: var(--log-mono-family);
+}
+
+.logTimestampCol,
+.logServiceCol {
+  display: table-cell;
+  vertical-align: top;
+  padding-right: 4px;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.logMessageCol {
+  display: table-cell;
+  width: 100%;
+  vertical-align: top;
+}
+
+.logTimestamp {
+  opacity: 0.5;
+}
+
+.logTimestamp,
+.logServiceTag {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.06rem 0.4rem;
+  border-radius: 6px;
+  box-sizing: border-box;
+  line-height: 1.2;
+  font-family: var(--log-mono-family);
+  font-stretch: condensed;
+  font-variation-settings: "wdth" 75, "wght" 500;
+  letter-spacing: -0.02em;
+}
+
+.logTimestamp {
+  width: 100%;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--muted) 32%, transparent);
+  background: color-mix(in srgb, var(--chip) 88%, transparent);
+}
+
+.logServiceChipRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.logServiceTag {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.logServiceTagIcon {
+  flex: 0 0 auto;
+  width: 0.8rem;
+  height: 0.8rem;
+  opacity: 0.95;
+}
+
+.logMessage {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  font-family: var(--log-mono-family);
+  font-stretch: normal;
+  font-variation-settings: "wdth" 100, "wght" 400;
+  letter-spacing: normal;
+}
+
+.logJsonPayload {
+  display: block;
+  white-space: pre-wrap;
+}
+
+.logLine.stderr {
+  color: var(--error);
+}
+
+.logLine.system {
+  color: var(--muted);
+}
+
+.debugPanel {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.environmentPanel {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.topPanel {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.topTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.78rem;
+}
+
+.topTable th,
+.topTable td {
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.topTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--card) 95%, transparent);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.72rem;
+}
+
+.topCommandCell {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+.environmentTable {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.environmentRow {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  padding-bottom: 4px;
+}
+
+.environmentKey {
+  color: var(--muted);
+}
+
+.environmentValue {
+  color: var(--text);
+  word-break: break-word;
+}
+
+.environmentPortRangeRow {
+  align-items: start;
+}
+
+.environmentPortRangeControls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.portRangeModeToggle {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.portRangeModeBtn {
+  border: 0;
+  background: var(--chip);
+  color: var(--muted);
+  padding: 5px 10px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.portRangeModeBtn + .portRangeModeBtn {
+  border-left: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+}
+
+.portRangeModeBtn.active {
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  color: var(--text);
+}
+
+.portRangeModeBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.portRangeManualRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portRangeInput {
+  width: 120px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--text);
+  padding: 5px 8px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+.portRangeInput:disabled {
+  opacity: 0.75;
+}
+
+.portRangeAcceptBtn {
+  min-width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 6px;
+  background: var(--chip);
+  color: var(--text);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.portRangeAcceptBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.debugTree {
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.debugNode {
+  margin: 0;
+}
+
+.debugNodeRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+}
+
+.debugChildren {
+  margin-left: 16px;
+  border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  padding-left: 8px;
+}
+
+.debugToggle {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.debugSpacer {
+  width: 14px;
+  display: inline-block;
+}
+
+.debugKey {
+  color: var(--text);
+}
+
+.debugColon {
+  color: var(--muted);
+}
+
+.debugMeta {
+  color: var(--muted);
+}
+
+.debugValue {
+  color: var(--text);
+}
+
+.emptyState {
+  margin: 10px 0;
+  padding: 0 4px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  padding: 0 10px;
+  overflow: hidden;
+}
+
+.statusItem {
+  font-size: 0.75rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusItem.error {
+  color: var(--error);
+}
+
+.statusRightGroup {
+  margin-left: auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.statusItem.selectedProjectStatus {
+  min-width: 0;
+  text-align: right;
+}
+
+.statusItem.portRangeStatus {
+  min-width: 0;
+  text-align: right;
+}
+
+@media (max-width: 980px) {
+  .menuItem {
+    display: none;
+  }
+}

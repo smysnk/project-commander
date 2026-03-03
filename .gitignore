@@ -1,0 +1,10 @@
+node_modules
+.yarn
+.pnp.*
+.next
+.DS_Store
+.env
+coverage
+runtime-logs
+test-results
+*.sqlite
