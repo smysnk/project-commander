@@ -155,7 +155,11 @@ test("shows 'Scroll to bottom' near the lower middle when logs are scrolled upwa
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
-  await expect(page.locator(".logLine")).toHaveCount(MOCK_LOGS.length);
+  const initialRows = page.locator(".infiniteLogTagRow");
+  await expect(initialRows.first()).toBeVisible();
+  const initialRowCount = await initialRows.count();
+  expect(initialRowCount).toBeGreaterThan(80);
+  expect(initialRowCount).toBeLessThan(MOCK_LOGS.length);
 
   const jumpButton = page.getByTestId("scroll-to-bottom");
   await expect(jumpButton).toHaveCount(0);
@@ -198,7 +202,11 @@ test("shows 'Scroll to bottom' while away from bottom and hides it when scrolled
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
-  await expect(page.locator(".logLine")).toHaveCount(MOCK_LOGS.length);
+  const initialRows = page.locator(".infiniteLogTagRow");
+  await expect(initialRows.first()).toBeVisible();
+  const initialRowCount = await initialRows.count();
+  expect(initialRowCount).toBeGreaterThan(80);
+  expect(initialRowCount).toBeLessThan(MOCK_LOGS.length);
 
   const scrollButton = page.getByTestId("scroll-to-bottom");
   await expect(scrollButton).toHaveCount(0);
@@ -242,7 +250,11 @@ test("'Scroll to bottom' button is absolutely positioned", async ({ page, baseUR
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
-  await expect(page.locator(".logLine")).toHaveCount(MOCK_LOGS.length);
+  const initialRows = page.locator(".infiniteLogTagRow");
+  await expect(initialRows.first()).toBeVisible();
+  const initialRowCount = await initialRows.count();
+  expect(initialRowCount).toBeGreaterThan(80);
+  expect(initialRowCount).toBeLessThan(MOCK_LOGS.length);
 
   await logStream.evaluate((node) => {
     node.scrollTop = 0;

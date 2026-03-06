@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package projectcommander.slave.v1;
+
+option go_package = "github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/slave/v1;slavev1";
+
+message DiscoveredProject {
+  string name = 1;
+  string path = 2;
+  string relative_path = 3;
+  repeated string types = 4;
+  repeated string services = 5;
+  bool has_makefile = 6;
+}
+
+message RegisterSlaveRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string host_name = 3;
+  repeated string capabilities = 4;
+  int32 port = 5;
+  repeated DiscoveredProject discovered_projects = 6;
+  string version = 7;
+  string protocol_version = 8;
+}
+
+message RegisterSlaveResponse {
+  string request_id = 1;
+  string status = 2;
+  string assigned_cluster = 3;
+}
+
+message HeartbeatRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  int32 running_services = 3;
+  double cpu_percent = 4;
+  double memory_percent = 5;
+  string timestamp = 6;
+  repeated DiscoveredProject discovered_projects = 7;
+  string version = 8;
+  string protocol_version = 9;
+}
+
+message HeartbeatResponse {
+  string request_id = 1;
+  string status = 2;
+  repeated SlaveCommand commands = 3;
+}
+
+message SlaveCommand {
+  string command_id = 1;
+  string command_type = 2;
+  string repository_url = 3;
+  string base_directory = 4;
+  string destination_folder = 5;
+  string target_path = 6;
+  string requested_at = 7;
+}
+
+message ReportCommandResultRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string command_id = 3;
+  string command_type = 4;
+  string status = 5;
+  string message = 6;
+  repeated string output_lines = 7;
+  string completed_at = 8;
+}
+
+message ReportCommandResultResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+message AssignWorkloadRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string workload_id = 3;
+  string project_path = 4;
+  string service_key = 5;
+}
+
+message AssignWorkloadResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+message DrainRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string reason = 3;
+}
+
+message DrainResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+service SlaveControl {
+  rpc RegisterSlave(RegisterSlaveRequest) returns (RegisterSlaveResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc ReportCommandResult(ReportCommandResultRequest) returns (ReportCommandResultResponse);
+  rpc AssignWorkload(AssignWorkloadRequest) returns (AssignWorkloadResponse);
+  rpc Drain(DrainRequest) returns (DrainResponse);
+}

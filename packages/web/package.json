@@ -4,7 +4,12 @@
   "scripts": {
     "dev": "node ./scripts/next-with-env.js dev",
     "build": "next build",
-    "start": "node ./scripts/next-with-env.js start"
+    "start": "node ./scripts/next-with-env.js start",
+    "test:unit": "node --test src/components/infinite-log/windowing.test.js src/lib/logQueryProtocol.test.js src/features/home/lib/logViewer.test.js src/features/home/hooks/hostActionUtils.test.js src/features/home/hooks/terminalActionUtils.test.js",
+    "test:ui": "playwright test -c playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

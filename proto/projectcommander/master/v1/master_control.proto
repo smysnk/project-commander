@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package projectcommander.master.v1;
+
+import "projectcommander/slave/v1/slave_control.proto";
+
+option go_package = "github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/master/v1;masterv1";
+
+message HealthRequest {
+  string request_id = 1;
+}
+
+message HealthResponse {
+  string request_id = 1;
+  string service = 2;
+  string status = 3;
+  string version = 4;
+  string started_at = 5;
+}
+
+message VersionRequest {
+  string request_id = 1;
+}
+
+message VersionResponse {
+  string request_id = 1;
+  string service = 2;
+  string version = 3;
+  string protocol_version = 4;
+  repeated string capabilities = 5;
+  string started_at = 6;
+}
+
+message HandshakeRequest {
+  string request_id = 1;
+  string client_name = 2;
+  string client_version = 3;
+  repeated string requested_capabilities = 4;
+}
+
+message HandshakeResponse {
+  string request_id = 1;
+  string server_name = 2;
+  string server_version = 3;
+  string protocol_version = 4;
+  repeated string granted_capabilities = 5;
+  string socket_path = 6;
+}
+
+message ListRegisteredSlavesRequest {
+  string request_id = 1;
+}
+
+message RegisteredSlave {
+  string slave_id = 1;
+  string host_name = 2;
+  string ip = 3;
+  int32 port = 4;
+  repeated string capabilities = 5;
+  string status = 6;
+  string registered_at = 7;
+  string last_seen_at = 8;
+  string health = 9;
+  string error = 10;
+  repeated projectcommander.slave.v1.DiscoveredProject discovered_projects = 11;
+  string version = 12;
+  string protocol_version = 13;
+}
+
+message ListRegisteredSlavesResponse {
+  string request_id = 1;
+  repeated RegisteredSlave slaves = 2;
+}
+
+message CheckoutProjectOnSlaveRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string repository_url = 3;
+  string base_directory = 4;
+  string destination_folder = 5;
+}
+
+message CheckoutProjectOnSlaveResponse {
+  string request_id = 1;
+  string command_id = 2;
+  string status = 3;
+  string message = 4;
+}
+
+message RuntimeServiceState {
+  string service_key = 1;
+  string service_name = 2;
+  int64 pid = 3;
+  int32 port = 4;
+  string state = 5;
+  string run_id = 6;
+}
+
+message RuntimeSnapshot {
+  string project_path = 1;
+  string status = 2;
+  int64 pid = 3;
+  int32 port_range_begin = 4;
+  int32 port_range_end = 5;
+  repeated RuntimeServiceState services = 6;
+}
+
+message GetRuntimeSnapshotRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message GetRuntimeSnapshotResponse {
+  string request_id = 1;
+  RuntimeSnapshot snapshot = 2;
+}
+
+message StartServiceRequest {
+  string request_id = 1;
+  string project_path = 2;
+  string service_key = 3;
+}
+
+message StartServiceResponse {
+  string request_id = 1;
+  string run_id = 2;
+  int64 pid = 3;
+  string status = 4;
+}
+
+message StartProjectRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message StartProjectResponse {
+  string request_id = 1;
+  RuntimeSnapshot snapshot = 2;
+}
+
+message StopServiceRequest {
+  string request_id = 1;
+  string project_path = 2;
+  string service_key = 3;
+}
+
+message StopServiceResponse {
+  string request_id = 1;
+  string run_id = 2;
+  string status = 3;
+}
+
+message StopProjectRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message StopProjectResponse {
+  string request_id = 1;
+  RuntimeSnapshot snapshot = 2;
+}
+
+message RestartServiceRequest {
+  string request_id = 1;
+  string project_path = 2;
+  string service_key = 3;
+}
+
+message RestartServiceResponse {
+  string request_id = 1;
+  string old_run_id = 2;
+  string new_run_id = 3;
+  int64 pid = 4;
+  string status = 5;
+}
+
+message LogEntry {
+  int64 id = 1;
+  string project_path = 2;
+  string timestamp = 3;
+  string service_name = 4;
+  string stream = 5;
+  string message = 6;
+  string run_id = 7;
+}
+
+message GetLogsRequest {
+  string request_id = 1;
+  string project_path = 2;
+  int32 limit = 3;
+  int64 after_id = 4;
+  repeated string service_names = 5;
+  string slave_id = 6;
+}
+
+message GetLogsResponse {
+  string request_id = 1;
+  repeated LogEntry entries = 2;
+}
+
+message ProcessStat {
+  int64 service_id = 1;
+  string service_name = 2;
+  string service_key = 3;
+  int64 pid = 4;
+  double cpu_percent = 5;
+  double memory_percent = 6;
+  double rss_mb = 7;
+  double virtual_mb = 8;
+  string elapsed = 9;
+  string command = 10;
+  string status = 11;
+  string run_id = 12;
+}
+
+message GetProcessStatsRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message GetProcessStatsResponse {
+  string request_id = 1;
+  repeated ProcessStat stats = 2;
+}
+
+message PortRangeSettings {
+  string mode = 1;
+  int32 begin = 2;
+}
+
+message GetPortRangeSettingsRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message GetPortRangeSettingsResponse {
+  string request_id = 1;
+  PortRangeSettings settings = 2;
+}
+
+message SetPortRangeSettingsRequest {
+  string request_id = 1;
+  string project_path = 2;
+  PortRangeSettings settings = 3;
+}
+
+message SetPortRangeSettingsResponse {
+  string request_id = 1;
+  PortRangeSettings settings = 2;
+}
+
+message LaunchEnvEntry {
+  string key = 1;
+  string value = 2;
+}
+
+message GetLaunchEnvironmentRequest {
+  string request_id = 1;
+  string project_path = 2;
+}
+
+message GetLaunchEnvironmentResponse {
+  string request_id = 1;
+  repeated LaunchEnvEntry entries = 2;
+}
+
+service MasterControl {
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc GetVersion(VersionRequest) returns (VersionResponse);
+  rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
+  rpc ListRegisteredSlaves(ListRegisteredSlavesRequest) returns (ListRegisteredSlavesResponse);
+  rpc CheckoutProjectOnSlave(CheckoutProjectOnSlaveRequest) returns (CheckoutProjectOnSlaveResponse);
+  rpc GetRuntimeSnapshot(GetRuntimeSnapshotRequest) returns (GetRuntimeSnapshotResponse);
+  rpc StartService(StartServiceRequest) returns (StartServiceResponse);
+  rpc StartProject(StartProjectRequest) returns (StartProjectResponse);
+  rpc StopService(StopServiceRequest) returns (StopServiceResponse);
+  rpc StopProject(StopProjectRequest) returns (StopProjectResponse);
+  rpc RestartService(RestartServiceRequest) returns (RestartServiceResponse);
+  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse);
+  rpc GetProcessStats(GetProcessStatsRequest) returns (GetProcessStatsResponse);
+  rpc GetPortRangeSettings(GetPortRangeSettingsRequest) returns (GetPortRangeSettingsResponse);
+  rpc SetPortRangeSettings(SetPortRangeSettingsRequest) returns (SetPortRangeSettingsResponse);
+  rpc GetLaunchEnvironment(GetLaunchEnvironmentRequest) returns (GetLaunchEnvironmentResponse);
+}

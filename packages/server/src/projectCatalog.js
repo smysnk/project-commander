@@ -1,3 +1,4 @@
+const path = require('path');
 const { Op } = require('sequelize');
 const { sequelize } = require('./db');
 const { Project, Service, Technology } = require('./models');
@@ -16,6 +17,21 @@ const toTechnologyLabel = (key) =>
 const toServiceName = (kind) => kind[0].toUpperCase() + kind.slice(1);
 const serviceIdentityKey = (service) => `${service.name}::${service.relativePath || ''}`;
 const getProjectPath = (project) => project.metadata?.path || null;
+const isCustomProject = (project) => Boolean(project?.metadata?.customPath);
+
+const listCustomProjectPaths = async () => {
+  const projects = await Project.findAll({
+    attributes: ['metadata'],
+  });
+
+  const paths = projects
+    .filter((project) => isCustomProject(project))
+    .map((project) => getProjectPath(project))
+    .filter((projectPath) => typeof projectPath === 'string' && projectPath.length > 0)
+    .map((projectPath) => path.resolve(projectPath));
+
+  return Array.from(new Set(paths));
+};
 
 const syncDiscoveredProjects = async (discoveryResult) => {
   const discoveredProjects = Array.isArray(discoveryResult?.projects) ? discoveryResult.projects : [];
@@ -51,14 +67,29 @@ const syncDiscoveredProjects = async (discoveryResult) => {
     }
 
     for (const discoveredProject of discoveredProjects) {
+      const discoveredCustomPath = Object.prototype.hasOwnProperty.call(discoveredProject, 'customPath')
+        ? Boolean(discoveredProject.customPath)
+        : Boolean(existingByPath.get(discoveredProject.path)?.metadata?.customPath);
+      const discoveredHostId = Number(discoveredProject?.hostId);
+      const normalizedHostId = Number.isInteger(discoveredHostId) && discoveredHostId > 0
+        ? discoveredHostId
+        : null;
+      const discoveredHostName = String(discoveredProject?.hostName || '').trim() || null;
+      const discoveredHostIp = String(discoveredProject?.hostIp || '').trim() || null;
+      const discoveredHostAgentUuid = String(discoveredProject?.hostAgentUuid || '').trim().toLowerCase() || null;
       let project = existingByPath.get(discoveredProject.path);
       if (!project) {
         project = await Project.create(
           {
             name: discoveredProject.name,
+            hostId: normalizedHostId,
             metadata: {
               path: discoveredProject.path,
               portBlock: null,
+              customPath: discoveredCustomPath,
+              hostName: discoveredHostName,
+              hostIp: discoveredHostIp,
+              hostAgentUuid: discoveredHostAgentUuid,
             },
           },
           { transaction },
@@ -68,14 +99,20 @@ const syncDiscoveredProjects = async (discoveryResult) => {
         const nextMetadata = {
           ...(project.metadata || {}),
           path: discoveredProject.path,
+          customPath: discoveredCustomPath,
+          hostName: discoveredHostName,
+          hostIp: discoveredHostIp,
+          hostAgentUuid: discoveredHostAgentUuid,
         };
         if (
           project.name !== discoveredProject.name ||
+          Number(project.hostId || 0) !== Number(normalizedHostId || 0) ||
           JSON.stringify(nextMetadata) !== JSON.stringify(project.metadata || {})
         ) {
           await project.update(
             {
               name: discoveredProject.name,
+              hostId: normalizedHostId,
               metadata: nextMetadata,
             },
             { transaction },
@@ -193,5 +230,6 @@ const syncDiscoveredProjects = async (discoveryResult) => {
 };
 
 module.exports = {
+  listCustomProjectPaths,
   syncDiscoveredProjects,
 };

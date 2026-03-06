@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package projectcommander.master.v1;
+
+option go_package = "github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/master/v1;masterv1";
+
+message SubscribeEventsRequest {
+  string request_id = 1;
+  repeated string project_paths = 2;
+}
+
+message RuntimeEvent {
+  string request_id = 1;
+  string event_id = 2;
+  string timestamp = 3;
+  string type = 4;
+  string project_path = 5;
+  string service_key = 6;
+  string run_id = 7;
+  string payload_json = 8;
+}
+
+service MasterEvents {
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream RuntimeEvent);
+}

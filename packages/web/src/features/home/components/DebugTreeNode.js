@@ -1,9 +1,12 @@
-import { useDebugTreeContext } from '../context/DebugTreeContext';
-
 const isTreeExpandable = (value) => Boolean(value) && typeof value === 'object';
 
-export default function DebugTreeNode({ name, value, path }) {
-  const { expandedPaths, togglePath } = useDebugTreeContext();
+export default function DebugTreeNode({
+  name,
+  value,
+  path,
+  expandedPaths,
+  togglePath,
+}) {
   const expandable = isTreeExpandable(value);
   const isExpanded = expandable ? expandedPaths.has(path) : false;
   const isArray = Array.isArray(value);
@@ -46,6 +49,8 @@ export default function DebugTreeNode({ name, value, path }) {
                 name={childKey}
                 value={childValue}
                 path={childPath}
+                expandedPaths={expandedPaths}
+                togglePath={togglePath}
               />
             );
           })}

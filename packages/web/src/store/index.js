@@ -5,13 +5,36 @@ import {
   defaultEditorTheme,
   defaultEditorThemes,
 } from '../components/editorThemeRegistry';
+import logQueryProtocol from '../lib/logQueryProtocol';
+import { MAX_OVERLAY_LOG_ENTRIES, MAX_PROJECT_LOG_ENTRIES } from '../features/home/constants/ui';
+import { normalizeLogLevelName } from '../features/home/lib/logTransforms';
+import { normalizeRuntimeBackendInfo } from '../features/home/lib/runtimeTransforms';
 
 const SET_RUNTIME_CONFIG = 'SET_RUNTIME_CONFIG';
+const SET_HOME_DOMAIN_PATCH = 'SET_HOME_DOMAIN_PATCH';
+const SET_HOME_DOMAIN_FIELD = 'SET_HOME_DOMAIN_FIELD';
 const SET_USER_STYLE = 'SET_USER_STYLE';
 const SET_PANEL_PROJECT_LIST_LAYOUT = 'SET_PANEL_PROJECT_LIST_LAYOUT';
 const SET_PANEL_PROJECT_LIST_SELECTED_PROJECT = 'SET_PANEL_PROJECT_LIST_SELECTED_PROJECT';
 const SET_PANEL_PROJECT_EXPLORER_MODE = 'SET_PANEL_PROJECT_EXPLORER_MODE';
 const SET_PANEL_PROJECT_EXPLORER_FOLLOW_MODE = 'SET_PANEL_PROJECT_EXPLORER_FOLLOW_MODE';
+const SET_UI_LEFT_PANEL_MODE = 'SET_UI_LEFT_PANEL_MODE';
+const SET_UI_HOSTS_SIDEBAR_COLLAPSED = 'SET_UI_HOSTS_SIDEBAR_COLLAPSED';
+const SET_UI_HOSTS_SIDEBAR_WIDTH_PX = 'SET_UI_HOSTS_SIDEBAR_WIDTH_PX';
+const SET_UI_SELECTED_HOST_ID = 'SET_UI_SELECTED_HOST_ID';
+const SET_UI_ACTIVE_LOG_CONTEXT_KEY = 'SET_UI_ACTIVE_LOG_CONTEXT_KEY';
+const SET_UI_SELECTED_LOG_SERVICES = 'SET_UI_SELECTED_LOG_SERVICES';
+const SET_UI_DISABLED_LOG_LEVELS = 'SET_UI_DISABLED_LOG_LEVELS';
+const SET_UI_ERROR = 'SET_UI_ERROR';
+const SET_UI_RESIZING = 'SET_UI_RESIZING';
+const SET_UI_DEBUG_EXPANDED_PATHS = 'SET_UI_DEBUG_EXPANDED_PATHS';
+const APPEND_HOME_OVERLAY_LOG = 'APPEND_HOME_OVERLAY_LOG';
+const APPEND_HOME_PROJECT_LOG = 'APPEND_HOME_PROJECT_LOG';
+const MERGE_HOME_RUNTIME_BACKEND_INFO = 'MERGE_HOME_RUNTIME_BACKEND_INFO';
+const APPLY_HOME_RUNTIME_PROJECT_UPDATE = 'APPLY_HOME_RUNTIME_PROJECT_UPDATE';
+const HOME_REALTIME_CONNECT = 'HOME_REALTIME_CONNECT';
+const HOME_REALTIME_DISCONNECT = 'HOME_REALTIME_DISCONNECT';
+const HOME_REALTIME_REQUEST_LOG_WINDOW = 'HOME_REALTIME_REQUEST_LOG_WINDOW';
 const USER_SETTINGS_STORAGE_KEY = 'project-discovery:user-settings';
 const USER_SETTINGS_STYLE_COOKIE = 'user_settings_style';
 const PANEL_STATE_STORAGE_KEY = 'project-discovery:panel-state';
@@ -19,6 +42,17 @@ const PANEL_STATE_STORAGE_KEY = 'project-discovery:panel-state';
 export const setRuntimeConfig = (payload) => ({
   type: SET_RUNTIME_CONFIG,
   payload,
+});
+
+export const setHomeDomainPatch = (patch) => ({
+  type: SET_HOME_DOMAIN_PATCH,
+  patch,
+});
+
+export const setHomeDomainField = (field, value) => ({
+  type: SET_HOME_DOMAIN_FIELD,
+  field,
+  value,
 });
 
 export const setUserStyle = (style) => ({
@@ -46,6 +80,92 @@ export const setPanelProjectExplorerFollowMode = (isFollowMode) => ({
   isFollowMode,
 });
 
+export const setUiLeftPanelMode = (leftPanelMode) => ({
+  type: SET_UI_LEFT_PANEL_MODE,
+  leftPanelMode,
+});
+
+export const setUiHostsSidebarCollapsed = (hostsSidebarCollapsed) => ({
+  type: SET_UI_HOSTS_SIDEBAR_COLLAPSED,
+  hostsSidebarCollapsed,
+});
+
+export const setUiHostsSidebarWidthPx = (hostsSidebarWidthPx) => ({
+  type: SET_UI_HOSTS_SIDEBAR_WIDTH_PX,
+  hostsSidebarWidthPx,
+});
+
+export const setUiSelectedHostId = (selectedHostId) => ({
+  type: SET_UI_SELECTED_HOST_ID,
+  selectedHostId,
+});
+
+export const setUiActiveLogContextKey = (activeLogContextKey) => ({
+  type: SET_UI_ACTIVE_LOG_CONTEXT_KEY,
+  activeLogContextKey,
+});
+
+export const setUiSelectedLogServices = (selectedLogServices) => ({
+  type: SET_UI_SELECTED_LOG_SERVICES,
+  selectedLogServices,
+});
+
+export const setUiDisabledLogLevels = (disabledLogLevels) => ({
+  type: SET_UI_DISABLED_LOG_LEVELS,
+  disabledLogLevels,
+});
+
+export const setUiError = (error) => ({
+  type: SET_UI_ERROR,
+  error,
+});
+
+export const setUiResizing = (resizing) => ({
+  type: SET_UI_RESIZING,
+  resizing,
+});
+
+export const setUiDebugExpandedPaths = (debugExpandedPaths) => ({
+  type: SET_UI_DEBUG_EXPANDED_PATHS,
+  debugExpandedPaths,
+});
+
+export const appendHomeOverlayLog = (entry) => ({
+  type: APPEND_HOME_OVERLAY_LOG,
+  entry,
+});
+
+export const appendHomeProjectLog = ({ entry, selectedProjectPath } = {}) => ({
+  type: APPEND_HOME_PROJECT_LOG,
+  entry,
+  selectedProjectPath,
+});
+
+export const mergeHomeRuntimeBackendInfo = (connection) => ({
+  type: MERGE_HOME_RUNTIME_BACKEND_INFO,
+  connection,
+});
+
+export const applyHomeRuntimeProjectUpdate = (update) => ({
+  type: APPLY_HOME_RUNTIME_PROJECT_UPDATE,
+  update,
+});
+
+export const connectHomeRealtime = (wsEndpoint) => ({
+  type: HOME_REALTIME_CONNECT,
+  wsEndpoint: String(wsEndpoint || ''),
+});
+
+export const disconnectHomeRealtime = () => ({
+  type: HOME_REALTIME_DISCONNECT,
+});
+
+export const requestHomeRealtimeLogWindow = ({ context, streams } = {}) => ({
+  type: HOME_REALTIME_REQUEST_LOG_WINDOW,
+  context,
+  streams,
+});
+
 const clampPanelWidth = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -54,7 +174,13 @@ const clampPanelWidth = (value) => {
   return Math.max(20, Math.min(80, Math.round(parsed)));
 };
 
-const PANEL_EXPLORER_MODES = new Set(['logs', 'debug', 'environment', 'top']);
+const UI_LEFT_PANEL_MODES = new Set(['projects', 'runtime', 'terminal']);
+const UI_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
+const HOSTS_SIDEBAR_WIDTH_DEFAULT = 360;
+const HOSTS_SIDEBAR_WIDTH_MIN = 220;
+const HOSTS_SIDEBAR_WIDTH_MAX = 680;
+
+const PANEL_EXPLORER_MODES = new Set(['logs', 'debug', 'environment', 'top', 'runtime', 'terminal']);
 
 const normalizePanelExplorerMode = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -67,6 +193,100 @@ const normalizePanelExplorerFollowMode = (value) => {
   }
   return true;
 };
+
+const normalizeUiLeftPanelMode = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return UI_LEFT_PANEL_MODES.has(normalized) ? normalized : 'projects';
+};
+
+const normalizeUiHostsSidebarCollapsed = (value) => Boolean(value);
+
+const clampUiHostsSidebarWidthPx = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return HOSTS_SIDEBAR_WIDTH_DEFAULT;
+  }
+  return Math.max(HOSTS_SIDEBAR_WIDTH_MIN, Math.min(HOSTS_SIDEBAR_WIDTH_MAX, Math.round(parsed)));
+};
+
+const normalizeUiSelectedHostId = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  const asNumber = Number.parseInt(String(value).trim(), 10);
+  if (Number.isInteger(asNumber) && asNumber > 0 && String(value).trim() === String(asNumber)) {
+    return asNumber;
+  }
+  const normalized = String(value).trim();
+  return normalized || null;
+};
+
+const normalizeUiActiveLogContextKey = (value) => {
+  const normalized = String(value || '').trim();
+  return normalized || 'runtime';
+};
+
+const normalizeUiSelectedLogServices = (value) => {
+  const source = Array.isArray(value) ? value : [];
+  const next = [];
+  const seen = new Set();
+  for (const entry of source) {
+    const normalized = String(entry || '').trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    next.push(normalized);
+  }
+  return next;
+};
+
+const normalizeUiDisabledLogLevels = (value) => {
+  const source = Array.isArray(value) ? value : [];
+  const next = [];
+  const seen = new Set();
+  for (const entry of source) {
+    const normalized = String(entry || '').trim().toLowerCase();
+    if (!UI_LOG_LEVELS.has(normalized) || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    next.push(normalized);
+  }
+  return next;
+};
+
+const normalizeUiError = (value) => String(value || '');
+
+const normalizeUiResizing = (value) => Boolean(value);
+
+const normalizeUiDebugExpandedPaths = (value) => {
+  const source = Array.isArray(value) ? value : [];
+  const next = [];
+  const seen = new Set();
+  for (const entry of source) {
+    const normalized = String(entry || '').trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    next.push(normalized);
+  }
+  return next;
+};
+
+const toPersistedUiInteractions = (uiInteractions = {}) => ({
+  leftPanelMode: normalizeUiLeftPanelMode(uiInteractions?.leftPanelMode),
+  hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(uiInteractions?.hostsSidebarCollapsed),
+  hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(uiInteractions?.hostsSidebarWidthPx),
+  selectedHostId: normalizeUiSelectedHostId(uiInteractions?.selectedHostId),
+  activeLogContextKey: normalizeUiActiveLogContextKey(uiInteractions?.activeLogContextKey),
+  selectedLogServices: normalizeUiSelectedLogServices(uiInteractions?.selectedLogServices),
+  disabledLogLevels: normalizeUiDisabledLogLevels(uiInteractions?.disabledLogLevels),
+});
 
 const getDefaultWsEndpoint = () => {
   const configuredServerPort = Number.parseInt(
@@ -131,60 +351,87 @@ export const resolveClientThemePreference = () => {
 const getInitialTheme = () => defaultEditorTheme;
 
 const getInitialPanelProjectList = () => {
-  const fallback = {
+  return {
     leftWidthPct: 50,
     selectedProjectPath: '',
   };
-
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(PANEL_STATE_STORAGE_KEY);
-    if (!raw) {
-      return fallback;
-    }
-
-    const parsed = JSON.parse(raw);
-    const rawPanelProjectList = parsed?.panelProjectList || parsed?.panels || parsed;
-    return {
-      leftWidthPct: clampPanelWidth(rawPanelProjectList?.leftWidthPct),
-      selectedProjectPath:
-        typeof rawPanelProjectList?.selectedProjectPath === 'string' ? rawPanelProjectList.selectedProjectPath : '',
-    };
-  } catch {
-    return fallback;
-  }
 };
 
 const getInitialPanelProjectExplorer = () => {
-  const fallback = {
+  return {
     mode: 'logs',
     isFollowMode: true,
   };
-
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(PANEL_STATE_STORAGE_KEY);
-    if (!raw) {
-      return fallback;
-    }
-
-    const parsed = JSON.parse(raw);
-    const rawPanelProjectExplorer = parsed?.panelProjectExplorer || {};
-
-    return {
-      mode: normalizePanelExplorerMode(rawPanelProjectExplorer?.mode),
-      isFollowMode: normalizePanelExplorerFollowMode(rawPanelProjectExplorer?.isFollowMode),
-    };
-  } catch {
-    return fallback;
-  }
 };
+
+const getInitialUiInteractions = () => {
+  return {
+    leftPanelMode: 'projects',
+    hostsSidebarCollapsed: false,
+    hostsSidebarWidthPx: HOSTS_SIDEBAR_WIDTH_DEFAULT,
+    selectedHostId: 'master-agent',
+    activeLogContextKey: 'runtime',
+    selectedLogServices: [],
+    disabledLogLevels: [],
+    error: '',
+    resizing: false,
+    debugExpandedPaths: [],
+  };
+};
+
+const getInitialHomeDomain = () => ({
+  projects: [],
+  hosts: [],
+  hostsLoading: false,
+  showAddHostRow: false,
+  manualHostIp: '',
+  addingHost: false,
+  deletingHostId: null,
+  upgradingHostId: null,
+  showAddDirectoryRowByHostId: {},
+  directoryInputByHostId: {},
+  directoryMutationBusyByHostId: {},
+  showCheckoutRowByHostId: {},
+  checkoutRepoInputByHostId: {},
+  checkoutBaseDirectoryByHostId: {},
+  checkoutDestinationByHostId: {},
+  checkoutAutoDestinationByHostId: {},
+  checkoutMutationBusyByHostId: {},
+  terminalInputByHostId: {},
+  terminalStartingByHostId: {},
+  terminalSendingByHostId: {},
+  terminalSessionByHostId: {},
+  terminalOutputBySessionId: {},
+  scannedAt: '',
+  discoveryConfig: {
+    projectPath: '',
+    folderPattern: '',
+    maxDepth: null,
+  },
+  loading: true,
+  runtimeBackendInfo: {
+    name: 'js',
+    displayName: 'JavaScript Runtime Manager',
+    masterAgent: null,
+  },
+  runtimeBackendInfoLoading: false,
+  projectLogs: [],
+  overlayLogs: [],
+  logsQueryEntriesByContext: {},
+  logsLoading: false,
+  projectEnvironment: [],
+  environmentLoading: false,
+  projectPortRangeSettings: {
+    mode: 'AUTOMATIC',
+    begin: null,
+  },
+  projectPortRangeSettingsLoading: false,
+  projectPortRangeSettingsSaving: false,
+  manualPortRangeInput: '',
+  projectProcessStats: [],
+  processStatsLoading: false,
+  seenLogServicesByProject: {},
+});
 
 const initialState = {
   settings: {
@@ -195,6 +442,8 @@ const initialState = {
   },
   panelProjectList: getInitialPanelProjectList(),
   panelProjectExplorer: getInitialPanelProjectExplorer(),
+  uiInteractions: getInitialUiInteractions(),
+  homeDomain: getInitialHomeDomain(),
   runtime: {
     loaded: false,
     config: {
@@ -206,6 +455,182 @@ const initialState = {
 
 function reducer(state = initialState, action) {
   switch (action.type) {
+    case SET_HOME_DOMAIN_PATCH:
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          ...(
+            action.patch && typeof action.patch === 'object' && !Array.isArray(action.patch)
+              ? action.patch
+              : {}
+          ),
+        },
+      };
+    case SET_HOME_DOMAIN_FIELD: {
+      const field = String(action.field || '').trim();
+      if (!field) {
+        return state;
+      }
+      if (typeof action.value === 'function') {
+        if (process.env.NODE_ENV !== 'production') {
+          // Enforce serializable actions for predictable replay/debugging.
+          console.warn(`Ignored non-serializable setHomeDomainField("${field}") update.`);
+        }
+        return state;
+      }
+      const currentValue = state.homeDomain?.[field];
+      const nextValue = action.value;
+      if (currentValue === nextValue) {
+        return state;
+      }
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          [field]: nextValue,
+        },
+      };
+    }
+    case APPEND_HOME_OVERLAY_LOG: {
+      const entry = action.entry && typeof action.entry === 'object' ? action.entry : null;
+      if (!entry) {
+        return state;
+      }
+      const current = Array.isArray(state.homeDomain?.overlayLogs) ? state.homeDomain.overlayLogs : [];
+      const next = [...current, entry];
+      const bounded = next.length > MAX_OVERLAY_LOG_ENTRIES
+        ? next.slice(next.length - MAX_OVERLAY_LOG_ENTRIES)
+        : next;
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          overlayLogs: bounded,
+        },
+      };
+    }
+    case APPEND_HOME_PROJECT_LOG: {
+      const entry = action.entry && typeof action.entry === 'object' ? action.entry : null;
+      if (!entry) {
+        return state;
+      }
+      const targetProjectPath = String(action.selectedProjectPath || '').trim();
+      const entryProjectPath = String(entry.projectPath || '').trim();
+      if (!targetProjectPath || !entryProjectPath || targetProjectPath !== entryProjectPath) {
+        return state;
+      }
+      const current = Array.isArray(state.homeDomain?.projectLogs) ? state.homeDomain.projectLogs : [];
+      const normalizedId = String(entry.id || '').trim();
+      if (!normalizedId) {
+        return state;
+      }
+      const hasDuplicate = current.some((logEntry) => String(logEntry?.id || '').trim() === normalizedId);
+      if (hasDuplicate) {
+        return state;
+      }
+      const next = [...current, entry];
+      const bounded = next.length > MAX_PROJECT_LOG_ENTRIES
+        ? next.slice(next.length - MAX_PROJECT_LOG_ENTRIES)
+        : next;
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          projectLogs: bounded,
+        },
+      };
+    }
+    case MERGE_HOME_RUNTIME_BACKEND_INFO: {
+      const connection = action.connection && typeof action.connection === 'object'
+        ? action.connection
+        : null;
+      if (!connection) {
+        return state;
+      }
+      const normalizedCurrent = normalizeRuntimeBackendInfo(state.homeDomain?.runtimeBackendInfo);
+      const currentMasterAgent = normalizedCurrent.masterAgent || {};
+      const nextRuntimeBackendInfo = normalizeRuntimeBackendInfo({
+        ...normalizedCurrent,
+        name: 'go-master',
+        masterAgent: {
+          ...currentMasterAgent,
+          socketPath: connection.socketPath ?? currentMasterAgent.socketPath ?? null,
+          target: connection.target ?? currentMasterAgent.target ?? null,
+          service: connection.service ?? currentMasterAgent.service ?? null,
+          status: connection.status ?? currentMasterAgent.status ?? null,
+          connectionStatus: connection.connectionStatus ?? currentMasterAgent.connectionStatus ?? null,
+          connectionHealth: connection.connectionHealth ?? currentMasterAgent.connectionHealth ?? null,
+          lastConnectedAt: connection.lastConnectedAt ?? currentMasterAgent.lastConnectedAt ?? null,
+          lastAttemptAt: connection.lastAttemptAt ?? currentMasterAgent.lastAttemptAt ?? null,
+          reconnectAttempts: Number.isInteger(Number(connection.reconnectAttempts))
+            ? Number(connection.reconnectAttempts)
+            : (currentMasterAgent.reconnectAttempts || 0),
+          version: connection.version ?? currentMasterAgent.version ?? null,
+          protocolVersion: connection.protocolVersion ?? currentMasterAgent.protocolVersion ?? null,
+          startedAt: connection.startedAt ?? currentMasterAgent.startedAt ?? null,
+          capabilities: Array.isArray(connection.capabilities)
+            ? connection.capabilities
+            : (currentMasterAgent.capabilities || []),
+          grantedCapabilities: Array.isArray(connection.grantedCapabilities)
+            ? connection.grantedCapabilities
+            : (currentMasterAgent.grantedCapabilities || []),
+          error: connection.error ?? currentMasterAgent.error ?? null,
+        },
+      });
+      if (JSON.stringify(normalizedCurrent) === JSON.stringify(nextRuntimeBackendInfo)) {
+        return state;
+      }
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          runtimeBackendInfo: nextRuntimeBackendInfo,
+        },
+      };
+    }
+    case APPLY_HOME_RUNTIME_PROJECT_UPDATE: {
+      const update = action.update && typeof action.update === 'object' ? action.update : null;
+      const projectPath = String(update?.projectPath || '').trim();
+      if (!projectPath) {
+        return state;
+      }
+      const currentProjects = Array.isArray(state.homeDomain?.projects) ? state.homeDomain.projects : [];
+      let changed = false;
+      const nextProjects = currentProjects.map((project) => {
+        if (String(project?.path || '').trim() !== projectPath) {
+          return project;
+        }
+        const nextProject = {
+          ...project,
+          runtimeStatus: update.status,
+          runtimePid: update.pid,
+          runtimePorts: update.ports || [],
+          runtimePortRangeBegin: update.portRangeBegin ?? null,
+          runtimePortRangeEnd: update.portRangeEnd ?? null,
+          runtimeServicePorts: update.servicePorts || {},
+          runtimeServicePids: update.servicePids || {},
+          runtimeServiceStates: update.serviceStates || {},
+          runtimeServiceEntries: update.serviceRuntimeEntries || [],
+          runtimeLastExitCode: update.lastExitCode ?? null,
+        };
+        if (JSON.stringify(project) === JSON.stringify(nextProject)) {
+          return project;
+        }
+        changed = true;
+        return nextProject;
+      });
+      if (!changed) {
+        return state;
+      }
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          projects: nextProjects,
+        },
+      };
+    }
     case SET_USER_STYLE:
       if (!state.settings.themes.includes(action.style)) {
         return state;
@@ -269,6 +694,86 @@ function reducer(state = initialState, action) {
           isFollowMode: normalizePanelExplorerFollowMode(action.isFollowMode),
         },
       };
+    case SET_UI_LEFT_PANEL_MODE:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          leftPanelMode: normalizeUiLeftPanelMode(action.leftPanelMode),
+        },
+      };
+    case SET_UI_HOSTS_SIDEBAR_COLLAPSED:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(action.hostsSidebarCollapsed),
+        },
+      };
+    case SET_UI_HOSTS_SIDEBAR_WIDTH_PX:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(action.hostsSidebarWidthPx),
+        },
+      };
+    case SET_UI_SELECTED_HOST_ID:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          selectedHostId: normalizeUiSelectedHostId(action.selectedHostId),
+        },
+      };
+    case SET_UI_ACTIVE_LOG_CONTEXT_KEY:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          activeLogContextKey: normalizeUiActiveLogContextKey(action.activeLogContextKey),
+        },
+      };
+    case SET_UI_SELECTED_LOG_SERVICES:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          selectedLogServices: normalizeUiSelectedLogServices(action.selectedLogServices),
+        },
+      };
+    case SET_UI_DISABLED_LOG_LEVELS:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          disabledLogLevels: normalizeUiDisabledLogLevels(action.disabledLogLevels),
+        },
+      };
+    case SET_UI_ERROR:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          error: normalizeUiError(action.error),
+        },
+      };
+    case SET_UI_RESIZING:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          resizing: normalizeUiResizing(action.resizing),
+        },
+      };
+    case SET_UI_DEBUG_EXPANDED_PATHS:
+      return {
+        ...state,
+        uiInteractions: {
+          ...state.uiInteractions,
+          debugExpandedPaths: normalizeUiDebugExpandedPaths(action.debugExpandedPaths),
+        },
+      };
     default:
       return state;
   }
@@ -307,6 +812,42 @@ function mergeInitialState(preloadedState) {
         preloadedState?.panelProjectExplorer?.isFollowMode ?? initialState.panelProjectExplorer.isFollowMode,
       ),
     },
+    uiInteractions: {
+      leftPanelMode: normalizeUiLeftPanelMode(
+        preloadedState?.uiInteractions?.leftPanelMode ?? initialState.uiInteractions.leftPanelMode,
+      ),
+      hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(
+        preloadedState?.uiInteractions?.hostsSidebarCollapsed ?? initialState.uiInteractions.hostsSidebarCollapsed,
+      ),
+      hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(
+        preloadedState?.uiInteractions?.hostsSidebarWidthPx ?? initialState.uiInteractions.hostsSidebarWidthPx,
+      ),
+      selectedHostId: normalizeUiSelectedHostId(
+        preloadedState?.uiInteractions?.selectedHostId ?? initialState.uiInteractions.selectedHostId,
+      ),
+      activeLogContextKey: normalizeUiActiveLogContextKey(
+        preloadedState?.uiInteractions?.activeLogContextKey ?? initialState.uiInteractions.activeLogContextKey,
+      ),
+      selectedLogServices: normalizeUiSelectedLogServices(
+        preloadedState?.uiInteractions?.selectedLogServices ?? initialState.uiInteractions.selectedLogServices,
+      ),
+      disabledLogLevels: normalizeUiDisabledLogLevels(
+        preloadedState?.uiInteractions?.disabledLogLevels ?? initialState.uiInteractions.disabledLogLevels,
+      ),
+      error: normalizeUiError(
+        preloadedState?.uiInteractions?.error ?? initialState.uiInteractions.error,
+      ),
+      resizing: normalizeUiResizing(
+        preloadedState?.uiInteractions?.resizing ?? initialState.uiInteractions.resizing,
+      ),
+      debugExpandedPaths: normalizeUiDebugExpandedPaths(
+        preloadedState?.uiInteractions?.debugExpandedPaths ?? initialState.uiInteractions.debugExpandedPaths,
+      ),
+    },
+    homeDomain: {
+      ...initialState.homeDomain,
+      ...(preloadedState?.homeDomain || {}),
+    },
     runtime: {
       ...initialState.runtime,
       ...(preloadedState?.runtime || {}),
@@ -317,6 +858,726 @@ function mergeInitialState(preloadedState) {
     },
   };
 }
+
+const {
+  buildLogsQueryMessage,
+  normalizeLogsQueryResult,
+} = logQueryProtocol;
+
+const WEBSOCKET_DISCONNECTED_ERROR = 'Websocket disconnected; reconnecting...';
+const DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK = 120;
+const DEPLOY_SUDO_PASSWORD_PROMPT_TITLE = 'Project Commander requires sudo access to install or update a slave service.';
+
+const toIsoTimestamp = (value) => {
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) {
+      return new Date(parsed).toISOString();
+    }
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toISOString();
+  }
+  return new Date().toISOString();
+};
+
+const normalizeOverlayLogStream = (value) => {
+  const normalized = String(value || 'system').trim().toLowerCase();
+  if (normalized === 'stdout' || normalized === 'stderr' || normalized === 'system') {
+    return normalized;
+  }
+  return 'system';
+};
+
+const appendOverlayLogEntry = (storeApi, entry, { overlaySeedRef }) => {
+  const message = String(entry?.message || '').trimEnd();
+  if (!message) {
+    return;
+  }
+  const nextEntry = {
+    id: `overlay-${overlaySeedRef.current}`,
+    projectPath: '@overlay',
+    timestamp: toIsoTimestamp(entry?.timestamp),
+    serviceName: String(entry?.serviceName || 'system').trim() || 'system',
+    level: normalizeLogLevelName(entry?.level),
+    source: String(entry?.source || entry?.serviceName || 'system').trim().toLowerCase() || 'system',
+    hostId: Number.isInteger(Number(entry?.hostId)) ? Number(entry?.hostId) : null,
+    hostName: String(entry?.hostName || '').trim() || null,
+    hostIp: String(entry?.hostIp || '').trim() || null,
+    agentUuid: String(entry?.agentUuid || entry?.slaveId || '').trim() || null,
+    slaveId: String(entry?.slaveId || entry?.agentUuid || '').trim() || null,
+    stream: normalizeOverlayLogStream(entry?.stream),
+    message,
+  };
+  overlaySeedRef.current += 1;
+  storeApi.dispatch(appendHomeOverlayLog(nextEntry));
+};
+
+const appendProjectLogEntry = (storeApi, entry, { projectLogSeedRef }) => {
+  const projectPath = String(entry?.projectPath || '').trim();
+  const serviceName = String(entry?.serviceName || '').trim();
+  const message = String(entry?.message || '').trimEnd();
+  if (!projectPath || !serviceName || !message) {
+    return;
+  }
+  const stream = String(entry?.stream || 'stdout').trim().toLowerCase();
+  const normalizedStream = (
+    stream === 'stdout' || stream === 'stderr' || stream === 'system'
+  )
+    ? stream
+    : 'stdout';
+  const nextId = String(entry?.id || `project-log-${Date.now()}-${projectLogSeedRef.current}`).trim();
+  projectLogSeedRef.current += 1;
+  const nextEntry = {
+    id: nextId,
+    projectPath,
+    timestamp: toIsoTimestamp(entry?.timestamp),
+    serviceName,
+    level: normalizeLogLevelName(entry?.level),
+    stream: normalizedStream,
+    message,
+  };
+
+  const selectedProjectPath = String(storeApi.getState()?.panelProjectList?.selectedProjectPath || '').trim();
+  if (!selectedProjectPath || selectedProjectPath !== projectPath) {
+    return;
+  }
+
+  storeApi.dispatch(appendHomeProjectLog({
+    entry: nextEntry,
+    selectedProjectPath,
+  }));
+};
+
+const normalizeDeployActionLabel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'upgrade') {
+    return 'upgrade';
+  }
+  if (normalized === 'redeploy' || normalized === 're-deploy') {
+    return 're-deploy';
+  }
+  return 'deployment';
+};
+
+const buildDeploySudoPromptMessage = ({
+  hostName = null,
+  hostIp = null,
+  deploymentAction = 'deployment',
+  timeoutSeconds = DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK,
+} = {}) => {
+  const normalizedHostName = String(hostName || '').trim();
+  const normalizedHostIp = String(hostIp || '').trim();
+  const hostLabel = normalizedHostName || normalizedHostIp || 'selected host';
+  const actionLabel = normalizeDeployActionLabel(deploymentAction);
+  const timeout = Number.isInteger(Number(timeoutSeconds)) && Number(timeoutSeconds) > 0
+    ? Number(timeoutSeconds)
+    : DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK;
+
+  return [
+    DEPLOY_SUDO_PASSWORD_PROMPT_TITLE,
+    '',
+    `Host: ${hostLabel}`,
+    `Action: ${actionLabel}`,
+    `Timeout: ${timeout}s`,
+    '',
+    'Enter sudo password:',
+  ].join('\n');
+};
+
+const isDeploySudoChallengeExpired = ({
+  requestedAt = null,
+  timeoutSeconds = DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK,
+} = {}) => {
+  const parsedRequestedAt = Date.parse(String(requestedAt || ''));
+  const timeout = Number.isInteger(Number(timeoutSeconds)) && Number(timeoutSeconds) > 0
+    ? Number(timeoutSeconds)
+    : DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK;
+  if (Number.isNaN(parsedRequestedAt)) {
+    return false;
+  }
+  return Date.now() > (parsedRequestedAt + timeout * 1000);
+};
+
+const realtimeMiddleware = (storeApi) => {
+  const wsRef = { current: null };
+  const reconnectTimerRef = { current: null };
+  const disconnectTimerRef = { current: null };
+  const runtimeConnectionFlushTimerRef = { current: null };
+  const pendingRuntimeConnectionRef = { current: null };
+  const lastRuntimeConnectionFingerprintRef = { current: '' };
+  const lastRuntimeConnectionStatusRef = { current: '' };
+  const retryCountRef = { current: 0 };
+  const lastEventIdRef = { current: '' };
+  const logQuerySequenceRef = { current: 0 };
+  const overlaySeedRef = { current: 1 };
+  const projectLogSeedRef = { current: 1 };
+  const promptedSudoChallengeIdsRef = { current: new Set() };
+  const pendingSudoChallengeIdsRef = { current: new Set() };
+  const endpointRef = { current: '' };
+  const isManualDisconnectRef = { current: false };
+
+  const clearReconnectTimer = () => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  };
+
+  const clearDisconnectTimer = () => {
+    if (disconnectTimerRef.current) {
+      clearTimeout(disconnectTimerRef.current);
+      disconnectTimerRef.current = null;
+    }
+  };
+
+  const clearRuntimeConnectionFlushTimer = () => {
+    if (runtimeConnectionFlushTimerRef.current) {
+      clearTimeout(runtimeConnectionFlushTimerRef.current);
+      runtimeConnectionFlushTimerRef.current = null;
+    }
+  };
+
+  const buildRuntimeConnectionFingerprint = (connection) => {
+    if (!connection || typeof connection !== 'object') {
+      return '';
+    }
+    return JSON.stringify({
+      socketPath: connection.socketPath ?? null,
+      target: connection.target ?? null,
+      service: connection.service ?? null,
+      status: connection.status ?? null,
+      connectionStatus: connection.connectionStatus ?? null,
+      connectionHealth: connection.connectionHealth ?? null,
+      lastConnectedAt: connection.lastConnectedAt ?? null,
+      lastAttemptAt: connection.lastAttemptAt ?? null,
+      reconnectAttempts: Number.isFinite(Number(connection.reconnectAttempts))
+        ? Number(connection.reconnectAttempts)
+        : null,
+      version: connection.version ?? null,
+      protocolVersion: connection.protocolVersion ?? null,
+      startedAt: connection.startedAt ?? null,
+      capabilities: Array.isArray(connection.capabilities) ? connection.capabilities : [],
+      grantedCapabilities: Array.isArray(connection.grantedCapabilities) ? connection.grantedCapabilities : [],
+      error: connection.error ?? null,
+    });
+  };
+
+  const flushRuntimeConnection = () => {
+    runtimeConnectionFlushTimerRef.current = null;
+    const pending = pendingRuntimeConnectionRef.current;
+    pendingRuntimeConnectionRef.current = null;
+    if (!pending || typeof pending !== 'object') {
+      return;
+    }
+    const fingerprint = buildRuntimeConnectionFingerprint(pending);
+    if (!fingerprint || fingerprint === lastRuntimeConnectionFingerprintRef.current) {
+      return;
+    }
+    lastRuntimeConnectionFingerprintRef.current = fingerprint;
+    lastRuntimeConnectionStatusRef.current = String(pending.connectionStatus || '').trim().toLowerCase();
+    storeApi.dispatch(mergeHomeRuntimeBackendInfo(pending));
+  };
+
+  const scheduleRuntimeConnectionFlush = (immediate = false) => {
+    if (immediate) {
+      clearRuntimeConnectionFlushTimer();
+      flushRuntimeConnection();
+      return;
+    }
+    if (runtimeConnectionFlushTimerRef.current) {
+      return;
+    }
+    runtimeConnectionFlushTimerRef.current = setTimeout(() => {
+      flushRuntimeConnection();
+    }, 300);
+  };
+
+  const closeSocket = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  };
+
+  const resolveEndpoint = (wsEndpoint) => {
+    const rawEndpoint = String(wsEndpoint || '').trim();
+    if (!rawEndpoint || typeof window === 'undefined') {
+      return '';
+    }
+    if (rawEndpoint.startsWith('/')) {
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      return `${protocol}://${window.location.host}${rawEndpoint}`;
+    }
+    return rawEndpoint;
+  };
+
+  const scheduleReconnect = () => {
+    if (isManualDisconnectRef.current) {
+      return;
+    }
+    clearReconnectTimer();
+    const retry = retryCountRef.current;
+    const delayMs = Math.min(10000, 750 * (retry + 1));
+    reconnectTimerRef.current = setTimeout(() => {
+      connectSocket(endpointRef.current);
+    }, delayMs);
+    retryCountRef.current = retry + 1;
+  };
+
+  const sendDeploySudoPasswordMessage = ({ action, challengeId, password = '' } = {}) => {
+    const socket = wsRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+    const normalizedChallengeId = String(challengeId || '').trim();
+    if (!normalizedChallengeId) {
+      return false;
+    }
+    const payload = {
+      action: String(action || '').trim(),
+      challengeId: normalizedChallengeId,
+    };
+    if (payload.action === 'deploy.sudo.password.submit') {
+      payload.password = String(password || '');
+    }
+    socket.send(JSON.stringify(payload));
+    return true;
+  };
+
+  const handleDeploySudoPasswordChallenge = (challengePayload) => {
+    const challengeId = String(challengePayload?.challengeId || '').trim();
+    if (!challengeId) {
+      return;
+    }
+    if (promptedSudoChallengeIdsRef.current.has(challengeId)) {
+      return;
+    }
+    promptedSudoChallengeIdsRef.current.add(challengeId);
+    pendingSudoChallengeIdsRef.current.add(challengeId);
+
+    const timeoutSeconds = Number.parseInt(String(challengePayload?.timeoutSeconds || '').trim(), 10);
+    const normalizedTimeoutSeconds = Number.isInteger(timeoutSeconds) && timeoutSeconds > 0
+      ? timeoutSeconds
+      : DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK;
+    const hostId = Number.isInteger(Number(challengePayload?.hostId)) ? Number(challengePayload.hostId) : null;
+    const hostName = String(challengePayload?.hostName || '').trim() || null;
+    const hostIp = String(challengePayload?.hostIp || '').trim() || null;
+    const deploymentAction = normalizeDeployActionLabel(challengePayload?.deploymentAction);
+
+    if (isDeploySudoChallengeExpired({
+      requestedAt: challengePayload?.requestedAt,
+      timeoutSeconds: normalizedTimeoutSeconds,
+    })) {
+      appendOverlayLogEntry(storeApi, {
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        serviceName: 'node-backend',
+        source: 'node-backend',
+        stream: 'system',
+        hostId,
+        hostName,
+        hostIp,
+        message: 'Skipping expired sudo password prompt for slave deployment.',
+      }, { overlaySeedRef });
+      pendingSudoChallengeIdsRef.current.delete(challengeId);
+      return;
+    }
+
+    const promptMessage = buildDeploySudoPromptMessage({
+      hostName,
+      hostIp,
+      deploymentAction,
+      timeoutSeconds: normalizedTimeoutSeconds,
+    });
+    const password = typeof window !== 'undefined'
+      ? window.prompt(promptMessage, '')
+      : null;
+    const submitted = typeof password === 'string' && password.length > 0;
+
+    const sent = sendDeploySudoPasswordMessage({
+      action: submitted ? 'deploy.sudo.password.submit' : 'deploy.sudo.password.cancel',
+      challengeId,
+      password: submitted ? password : '',
+    });
+
+    appendOverlayLogEntry(storeApi, {
+      timestamp: new Date().toISOString(),
+      level: submitted ? 'info' : 'warn',
+      serviceName: 'node-backend',
+      source: 'node-backend',
+      stream: 'system',
+      hostId,
+      hostName,
+      hostIp,
+      message: sent
+        ? (submitted
+          ? `Sudo password submitted for slave ${deploymentAction} on ${hostName || hostIp || 'host'}.`
+          : `Sudo password prompt cancelled for slave ${deploymentAction} on ${hostName || hostIp || 'host'}.`)
+        : `Unable to respond to sudo password challenge for ${hostName || hostIp || 'host'} because websocket is disconnected.`,
+    }, { overlaySeedRef });
+    if (!sent) {
+      pendingSudoChallengeIdsRef.current.delete(challengeId);
+    }
+  };
+
+  const updateLogsQueryEntriesForContext = ({
+    contextKey,
+    scope,
+    streams,
+    serverTime,
+    requestId,
+  } = {}) => {
+    const normalizedContextKey = String(contextKey || '').trim();
+    if (!normalizedContextKey) {
+      return;
+    }
+
+    const normalizedServerTime = toIsoTimestamp(serverTime || Date.now());
+    const normalizedStreams = (Array.isArray(streams) ? streams : [])
+      .map((stream, streamIndex) => {
+        const streamId = String(stream?.streamId || `stream-${streamIndex}`).trim();
+        if (!streamId) {
+          return null;
+        }
+        const totalLines = Math.max(0, Number.parseInt(stream?.totalLines, 10) || 0);
+        const offset = Math.max(0, Number.parseInt(stream?.offset, 10) || 0);
+        const lines = (Array.isArray(stream?.lines) ? stream.lines : [])
+          .map((line, lineIndex) => {
+            const fallbackLineId = `${normalizedContextKey}:${streamId}:${offset + lineIndex}`;
+            const lineId = String(line?.id || fallbackLineId).trim() || fallbackLineId;
+            return {
+              id: lineId,
+              projectPath: String(line?.projectPath || '').trim() || '@overlay',
+              timestamp: toIsoTimestamp(line?.timestamp || normalizedServerTime),
+              serviceName: String(line?.serviceName || 'runtime').trim() || 'runtime',
+              source: String(line?.source || line?.serviceName || 'runtime').trim().toLowerCase() || 'runtime',
+              stream: String(line?.stream || 'stdout').trim().toLowerCase() || 'stdout',
+              level: normalizeLogLevelName(line?.level),
+              message: String(line?.message || ''),
+              hostId: Number.isInteger(Number(line?.hostId)) ? Number(line.hostId) : null,
+              hostName: String(line?.hostName || '').trim() || null,
+              hostIp: String(line?.hostIp || '').trim() || null,
+              agentUuid: String(line?.agentUuid || line?.slaveId || '').trim() || null,
+              slaveId: String(line?.slaveId || line?.agentUuid || '').trim() || null,
+            };
+          });
+        return {
+          streamId,
+          totalLines,
+          offset,
+          lines,
+        };
+      })
+      .filter(Boolean);
+
+    const seenLineIds = new Set();
+    const flattenedEntries = normalizedStreams
+      .flatMap((stream) => (Array.isArray(stream?.lines) ? stream.lines : []))
+      .filter((line) => {
+        const lineId = String(line?.id || '').trim();
+        if (!lineId || seenLineIds.has(lineId)) {
+          return false;
+        }
+        seenLineIds.add(lineId);
+        return true;
+      })
+      .sort((left, right) => {
+        const leftTimestamp = toIsoTimestamp(left?.timestamp);
+        const rightTimestamp = toIsoTimestamp(right?.timestamp);
+        if (leftTimestamp !== rightTimestamp) {
+          return leftTimestamp.localeCompare(rightTimestamp);
+        }
+        return String(left?.id || '').localeCompare(String(right?.id || ''));
+      });
+
+    const currentByContext = storeApi.getState()?.homeDomain?.logsQueryEntriesByContext;
+    const normalizedCurrentByContext = (
+      currentByContext && typeof currentByContext === 'object'
+        ? currentByContext
+        : {}
+    );
+    const nextByContext = {
+      ...normalizedCurrentByContext,
+      [normalizedContextKey]: {
+        scope: String(scope || 'runtime').trim().toLowerCase() || 'runtime',
+        requestId: String(requestId || '').trim() || null,
+        receivedAt: normalizedServerTime,
+        error: null,
+        streams: normalizedStreams,
+        entries: flattenedEntries,
+      },
+    };
+    storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', nextByContext));
+  };
+
+  const updateLogsQueryErrorForContext = ({
+    contextKey,
+    scope,
+    requestId,
+    error,
+  } = {}) => {
+    const normalizedContextKey = String(contextKey || '').trim();
+    if (!normalizedContextKey) {
+      return;
+    }
+    const normalizedError = String(error || '').trim();
+    const currentByContext = storeApi.getState()?.homeDomain?.logsQueryEntriesByContext;
+    const normalizedCurrentByContext = (
+      currentByContext && typeof currentByContext === 'object'
+        ? currentByContext
+        : {}
+    );
+    const currentEntry = normalizedCurrentByContext[normalizedContextKey];
+    const nextByContext = {
+      ...normalizedCurrentByContext,
+      [normalizedContextKey]: {
+        scope: String(scope || currentEntry?.scope || 'runtime').trim().toLowerCase() || 'runtime',
+        requestId: String(requestId || currentEntry?.requestId || '').trim() || null,
+        receivedAt: toIsoTimestamp(Date.now()),
+        error: normalizedError || null,
+        streams: Array.isArray(currentEntry?.streams) ? currentEntry.streams : [],
+        entries: Array.isArray(currentEntry?.entries) ? currentEntry.entries : [],
+      },
+    };
+    storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', nextByContext));
+  };
+
+  const handleSocketMessage = (event) => {
+    let payload = null;
+    try {
+      payload = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (!payload || typeof payload !== 'object') {
+      return;
+    }
+
+    if (payload.kind === 'hello' || payload.kind === 'subscribed' || payload.kind === 'pong') {
+      return;
+    }
+
+    if (
+      payload.kind === 'deploy.sudo.password.accepted'
+      || payload.kind === 'deploy.sudo.password.cancelled'
+      || payload.kind === 'deploy.sudo.password.error'
+    ) {
+      const challengeId = String(payload?.challengeId || '').trim();
+      if (challengeId) {
+        pendingSudoChallengeIdsRef.current.delete(challengeId);
+      }
+      const statusLevel = payload.kind === 'deploy.sudo.password.error'
+        ? 'error'
+        : (
+          payload.kind === 'deploy.sudo.password.cancelled'
+            ? 'warn'
+            : 'info'
+        );
+      const statusMessage = payload.kind === 'deploy.sudo.password.accepted'
+        ? 'Sudo password accepted by backend.'
+        : (
+          payload.kind === 'deploy.sudo.password.cancelled'
+            ? 'Sudo password request cancelled.'
+            : `Sudo password request error: ${String(payload?.error || 'unknown error')}`
+        );
+      appendOverlayLogEntry(storeApi, {
+        timestamp: new Date().toISOString(),
+        level: statusLevel,
+        serviceName: 'node-backend',
+        source: 'node-backend',
+        stream: statusLevel === 'error' ? 'stderr' : 'system',
+        message: statusMessage,
+      }, { overlaySeedRef });
+      return;
+    }
+
+    if (payload.kind === 'logs.query.result') {
+      const normalized = normalizeLogsQueryResult(payload);
+      if (!normalized) {
+        return;
+      }
+      const contextKey = String(normalized.contextKey || normalized.scope || 'runtime').trim()
+        || 'runtime';
+      updateLogsQueryEntriesForContext({
+        contextKey,
+        scope: normalized.scope,
+        streams: normalized.streams,
+        serverTime: payload?.serverTime,
+        requestId: normalized.requestId,
+      });
+      return;
+    }
+
+    if (payload.kind === 'logs.query.error') {
+      const queryErrorMessage = String(payload?.error || '').trim();
+      const activeContext = String(storeApi.getState()?.uiInteractions?.activeLogContextKey || '').trim();
+      const contextKey = String(payload?.contextKey || activeContext || payload?.scope || 'runtime').trim()
+        || 'runtime';
+      updateLogsQueryErrorForContext({
+        contextKey,
+        scope: payload?.scope,
+        requestId: payload?.requestId,
+        error: queryErrorMessage,
+      });
+      if (queryErrorMessage) {
+        appendOverlayLogEntry(storeApi, {
+          timestamp: new Date().toISOString(),
+          serviceName: 'node-backend',
+          source: 'node-backend',
+          stream: 'stderr',
+          message: `[logs.query] ${queryErrorMessage}`,
+        }, { overlaySeedRef });
+      }
+      return;
+    }
+
+    if (payload.kind !== 'event') {
+      return;
+    }
+
+    const eventId = String(payload.eventId || '').trim();
+    if (eventId) {
+      lastEventIdRef.current = eventId;
+    }
+    const topic = String(payload.topic || '').trim();
+    if (!topic || !payload.payload || typeof payload.payload !== 'object') {
+      return;
+    }
+
+    if (topic === 'deploy.sudo.password.required') {
+      handleDeploySudoPasswordChallenge(payload.payload);
+      return;
+    }
+
+    if (topic === 'log.overlay') {
+      appendOverlayLogEntry(storeApi, payload.payload, { overlaySeedRef });
+      return;
+    }
+
+    if (topic === 'project.log.append') {
+      appendProjectLogEntry(storeApi, payload.payload, { projectLogSeedRef });
+      return;
+    }
+
+    if (topic === 'runtime.master.connection') {
+      const connection = payload.payload;
+      const nextConnectionStatus = String(connection?.connectionStatus || '').trim().toLowerCase();
+      const shouldFlushImmediately = Boolean(nextConnectionStatus)
+        && nextConnectionStatus !== lastRuntimeConnectionStatusRef.current;
+      pendingRuntimeConnectionRef.current = connection;
+      scheduleRuntimeConnectionFlush(shouldFlushImmediately);
+      return;
+    }
+
+    if (topic === 'runtime.project.updated' && payload.payload?.projectPath) {
+      storeApi.dispatch(applyHomeRuntimeProjectUpdate(payload.payload));
+    }
+  };
+
+  const connectSocket = (wsEndpoint) => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const resolvedEndpoint = resolveEndpoint(wsEndpoint);
+    if (!resolvedEndpoint) {
+      return;
+    }
+
+    const socket = new WebSocket(resolvedEndpoint);
+    wsRef.current = socket;
+
+    socket.onopen = () => {
+      retryCountRef.current = 0;
+      const currentError = String(storeApi.getState()?.uiInteractions?.error || '');
+      if (currentError === WEBSOCKET_DISCONNECTED_ERROR) {
+        storeApi.dispatch(setUiError(''));
+      }
+      socket.send(JSON.stringify({
+        action: 'subscribe',
+        topics: ['*'],
+        lastEventId: lastEventIdRef.current || null,
+      }));
+    };
+
+    socket.onmessage = handleSocketMessage;
+
+    socket.onerror = () => {
+      const currentError = String(storeApi.getState()?.uiInteractions?.error || '');
+      if (!currentError) {
+        storeApi.dispatch(setUiError(WEBSOCKET_DISCONNECTED_ERROR));
+      }
+    };
+
+    socket.onclose = () => {
+      if (wsRef.current === socket) {
+        wsRef.current = null;
+      }
+      if (!isManualDisconnectRef.current) {
+        const currentError = String(storeApi.getState()?.uiInteractions?.error || '');
+        if (!currentError) {
+          storeApi.dispatch(setUiError(WEBSOCKET_DISCONNECTED_ERROR));
+        }
+        scheduleReconnect();
+      }
+    };
+  };
+
+  return (next) => (action) => {
+    if (action.type === HOME_REALTIME_CONNECT) {
+      clearDisconnectTimer();
+      clearRuntimeConnectionFlushTimer();
+      pendingRuntimeConnectionRef.current = null;
+      storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', {}));
+      pendingSudoChallengeIdsRef.current.clear();
+      endpointRef.current = String(action.wsEndpoint || '').trim();
+      isManualDisconnectRef.current = false;
+      clearReconnectTimer();
+      closeSocket();
+      if (endpointRef.current) {
+        connectSocket(endpointRef.current);
+      }
+      return next(action);
+    }
+
+    if (action.type === HOME_REALTIME_DISCONNECT) {
+      isManualDisconnectRef.current = true;
+      endpointRef.current = '';
+      storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', {}));
+      pendingSudoChallengeIdsRef.current.clear();
+      clearDisconnectTimer();
+      clearReconnectTimer();
+      clearRuntimeConnectionFlushTimer();
+      pendingRuntimeConnectionRef.current = null;
+      disconnectTimerRef.current = setTimeout(() => {
+        closeSocket();
+        retryCountRef.current = 0;
+        disconnectTimerRef.current = null;
+      }, 120);
+      return next(action);
+    }
+
+    if (action.type === HOME_REALTIME_REQUEST_LOG_WINDOW) {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const sequence = logQuerySequenceRef.current + 1;
+        logQuerySequenceRef.current = sequence;
+        const requestId = `logs-query-${Date.now()}-${sequence}`;
+        const payload = buildLogsQueryMessage({
+          requestId,
+          context: action.context,
+          streams: action.streams,
+        });
+        if (payload) {
+          socket.send(JSON.stringify(payload));
+        }
+      }
+      return next(action);
+    }
+
+    return next(action);
+  };
+};
 
 const persistUserSettingsMiddleware = (storeApi) => (next) => (action) => {
   const previousSettings = storeApi.getState()?.userSettings;
@@ -351,12 +1612,17 @@ const persistUserSettingsMiddleware = (storeApi) => (next) => (action) => {
 const persistPanelStateMiddleware = (storeApi) => (next) => (action) => {
   const previousPanelProjectList = storeApi.getState()?.panelProjectList;
   const previousPanelProjectExplorer = storeApi.getState()?.panelProjectExplorer;
+  const previousUiInteractions = storeApi.getState()?.uiInteractions;
   const result = next(action);
   const currentPanelProjectList = storeApi.getState()?.panelProjectList;
   const currentPanelProjectExplorer = storeApi.getState()?.panelProjectExplorer;
+  const currentUiInteractions = storeApi.getState()?.uiInteractions;
+  const previousPersistedUiInteractions = toPersistedUiInteractions(previousUiInteractions || {});
+  const currentPersistedUiInteractions = toPersistedUiInteractions(currentUiInteractions || {});
   const changed =
     JSON.stringify(previousPanelProjectList) !== JSON.stringify(currentPanelProjectList) ||
-    JSON.stringify(previousPanelProjectExplorer) !== JSON.stringify(currentPanelProjectExplorer);
+    JSON.stringify(previousPanelProjectExplorer) !== JSON.stringify(currentPanelProjectExplorer) ||
+    JSON.stringify(previousPersistedUiInteractions) !== JSON.stringify(currentPersistedUiInteractions);
 
   if (changed && typeof window !== 'undefined') {
     try {
@@ -371,6 +1637,7 @@ const persistPanelStateMiddleware = (storeApi) => (next) => (action) => {
             mode: normalizePanelExplorerMode(currentPanelProjectExplorer?.mode),
             isFollowMode: normalizePanelExplorerFollowMode(currentPanelProjectExplorer?.isFollowMode),
           },
+          uiInteractions: currentPersistedUiInteractions,
         }),
       );
     } catch {
@@ -383,12 +1650,16 @@ const persistPanelStateMiddleware = (storeApi) => (next) => (action) => {
 
 export const makeStore = (preloadedState) => {
   const middlewareEnhancer = applyMiddleware(
+    realtimeMiddleware,
     persistUserSettingsMiddleware,
     persistPanelStateMiddleware,
   );
   const composeEnhancers =
     typeof window !== 'undefined' && window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
-      ? window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
+      ? window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__({
+        name: `Project Commander Web @ ${window.location.host}`,
+        instanceId: `project-commander-web-${window.location.host}`,
+      })
       : compose;
 
   const enhancer = composeEnhancers(middlewareEnhancer);

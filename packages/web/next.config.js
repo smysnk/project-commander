@@ -13,18 +13,18 @@ module.exports = {
   },
   async rewrites() {
     return [
-      ...(process.env.BUILD !== 'true' ? [{
+      {
         source: '/graphql',
         destination: `http://localhost:${serverPort}/graphql`,
-      }] : []),
-      ...(process.env.BUILD !== 'true' ? [{
+      },
+      {
         source: '/api/discovery/:path*',
         destination: `http://localhost:${serverPort}/api/discovery/:path*`,
-      }] : []),
-      ...(process.env.BUILD !== 'true' ? [{
+      },
+      {
         source: '/health',
         destination: `http://localhost:${serverPort}/health`,
-      }] : []),
+      },
     ];
   },
 };

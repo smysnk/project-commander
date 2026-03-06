@@ -8,3 +8,4 @@ coverage
 runtime-logs
 test-results
 *.sqlite
+bin

@@ -1,0 +1,9 @@
+{
+  "name": "agent-slave",
+  "private": true,
+  "scripts": {
+    "dev": "make dev",
+    "run": "make run",
+    "build": "make build"
+  }
+}

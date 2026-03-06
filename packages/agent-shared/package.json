@@ -1,0 +1,7 @@
+{
+  "name": "agent-shared",
+  "private": true,
+  "scripts": {
+    "proto:generate": "make proto-generate"
+  }
+}

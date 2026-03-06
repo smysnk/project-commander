@@ -1,0 +1,507 @@
+const net = require('net');
+const { randomUUID } = require('crypto');
+const { sequelize } = require('./db');
+const { Host, Project } = require('./models');
+
+const HOST_SOURCE_RUNTIME = 'runtime';
+const HOST_SOURCE_MANUAL = 'manual';
+const DEFAULT_HOST_DIRECTORY_FALLBACK = '~/play';
+
+const normalizeHostIp = (ip) => String(ip || '').trim();
+const normalizeHostName = (name) => String(name || '').trim();
+const normalizeHostAgentUuid = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized || null;
+};
+
+const normalizeHostPort = (port) => {
+  const parsed = Number(port);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
+    return 0;
+  }
+  return parsed;
+};
+
+const normalizeHostMetadata = (metadata) => (
+  metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? metadata
+    : {}
+);
+
+const normalizeHostDirectoryPath = (directoryPathInput) => {
+  const normalized = String(directoryPathInput || '').trim().replace(/\\/g, '/');
+  if (!normalized) {
+    throw new Error('directoryPath is required');
+  }
+  if (normalized.includes('\0')) {
+    throw new Error('directoryPath cannot contain null bytes');
+  }
+  if (normalized === '/') {
+    return normalized;
+  }
+  return normalized.replace(/\/+$/g, '');
+};
+
+const normalizeHostDirectories = (input) => {
+  const directories = Array.isArray(input) ? input : [];
+  const unique = [];
+  const seen = new Set();
+  for (const directoryPath of directories) {
+    let normalized = '';
+    try {
+      normalized = normalizeHostDirectoryPath(directoryPath);
+    } catch {
+      normalized = '';
+    }
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  return unique;
+};
+
+const getHostDirectoriesFromMetadata = (metadata) => {
+  const normalizedMetadata = normalizeHostMetadata(metadata);
+  return normalizeHostDirectories(normalizedMetadata.directories);
+};
+
+const getDefaultHostDirectory = () => {
+  const configured = String(process.env.PC_SLAVE_DEFAULT_PROJECT_PATH || '').trim();
+  const candidate = configured || DEFAULT_HOST_DIRECTORY_FALLBACK;
+  try {
+    return normalizeHostDirectoryPath(candidate);
+  } catch {
+    return DEFAULT_HOST_DIRECTORY_FALLBACK;
+  }
+};
+
+const getInitialHostDirectories = () => [getDefaultHostDirectory()];
+
+const normalizeRegisteredHost = (input) => {
+  const name = normalizeHostName(input?.name || input?.hostName);
+  if (!name) {
+    return null;
+  }
+
+  const ip = normalizeHostIp(input?.ip);
+  if (!ip) {
+    return null;
+  }
+
+  return {
+    name,
+    ip,
+    port: normalizeHostPort(input?.port),
+    source: HOST_SOURCE_RUNTIME,
+    slaveId: normalizeHostAgentUuid(input?.slaveId),
+  };
+};
+
+const generateHostAgentUuid = () => normalizeHostAgentUuid(randomUUID());
+
+const isValidHostname = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.length > 253) {
+    return false;
+  }
+  const labels = normalized.split('.');
+  if (labels.some((label) => !label || label.length > 63)) {
+    return false;
+  }
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label));
+};
+
+const parseManualHostTarget = (targetInput) => {
+  const rawTarget = String(targetInput || '').trim();
+  if (!rawTarget) {
+    throw new Error('host target is required');
+  }
+  if (rawTarget.includes('\0')) {
+    throw new Error('host target cannot contain null bytes');
+  }
+
+  let host = '';
+  let sshUser = null;
+  let sshPort = null;
+
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(rawTarget)) {
+    let parsed;
+    try {
+      parsed = new URL(rawTarget);
+    } catch {
+      throw new Error(`Invalid host target URL: ${rawTarget}`);
+    }
+    const protocol = String(parsed.protocol || '').replace(/:$/, '').toLowerCase();
+    const isSshLikeProtocol = protocol === 'ssh' || protocol === 'sftp' || protocol === 'scp';
+    host = String(parsed.hostname || '').trim();
+    sshUser = isSshLikeProtocol ? (String(parsed.username || '').trim() || null) : null;
+    if (isSshLikeProtocol && parsed.port) {
+      const parsedPort = Number.parseInt(parsed.port, 10);
+      if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+        sshPort = parsedPort;
+      }
+    }
+  } else {
+    const userHostPortMatch = rawTarget.match(/^([^@\s]+)@([^:\s]+)(?::(\d+))?$/);
+    if (userHostPortMatch) {
+      sshUser = String(userHostPortMatch[1] || '').trim() || null;
+      host = String(userHostPortMatch[2] || '').trim();
+      if (userHostPortMatch[3]) {
+        const parsedPort = Number.parseInt(userHostPortMatch[3], 10);
+        if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+          sshPort = parsedPort;
+        }
+      }
+    } else {
+      const bracketIpv6Match = rawTarget.match(/^\[([^\]]+)\]:(\d+)$/);
+      if (bracketIpv6Match) {
+        host = String(bracketIpv6Match[1] || '').trim();
+        const parsedPort = Number.parseInt(bracketIpv6Match[2], 10);
+        if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+          sshPort = parsedPort;
+        }
+      } else {
+      const hostPortMatch = rawTarget.match(/^([^:\s]+):(\d+)$/);
+        if (hostPortMatch && net.isIP(String(hostPortMatch[1] || '').trim()) !== 6) {
+          host = String(hostPortMatch[1] || '').trim();
+          const parsedPort = Number.parseInt(hostPortMatch[2], 10);
+          if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
+            sshPort = parsedPort;
+          }
+        } else {
+          host = rawTarget;
+        }
+      }
+    }
+  }
+
+  const normalizedHost = normalizeHostIp(host).replace(/^\[|\]$/g, '').toLowerCase();
+  if (!normalizedHost) {
+    throw new Error(`Unable to resolve host from target: ${rawTarget}`);
+  }
+
+  if (net.isIP(normalizedHost) === 0 && !isValidHostname(normalizedHost)) {
+    throw new Error(`Host target must resolve to a valid IPv4/IPv6 address or hostname: ${rawTarget}`);
+  }
+
+  return {
+    target: rawTarget,
+    host: normalizedHost,
+    sshUser,
+    sshPort,
+  };
+};
+
+const resolveManualHostName = async ({ ip, transaction }) => {
+  let sequence = 1;
+  while (sequence <= 1000) {
+    const candidate = sequence === 1 ? ip : `${ip}-${sequence}`;
+    // eslint-disable-next-line no-await-in-loop
+    const existing = await Host.findOne({
+      attributes: ['id'],
+      where: { name: candidate },
+      transaction,
+    });
+    if (!existing) {
+      return candidate;
+    }
+    sequence += 1;
+  }
+  throw new Error('Unable to allocate a unique host name.');
+};
+
+const addManualHost = async (targetInput) => {
+  const normalizedTarget = parseManualHostTarget(targetInput);
+  const ip = normalizedTarget.host;
+
+  return sequelize.transaction(async (transaction) => {
+    const existing = await Host.findOne({
+      where: {
+        source: HOST_SOURCE_MANUAL,
+        ip,
+      },
+      transaction,
+    });
+    if (existing) {
+      const existingMetadata = normalizeHostMetadata(existing.metadata);
+      const hasDirectories = Object.prototype.hasOwnProperty.call(existingMetadata, 'directories');
+      const existingDirectories = hasDirectories
+        ? getHostDirectoriesFromMetadata(existingMetadata)
+        : getInitialHostDirectories();
+      const shouldUpdateMetadata = (
+        !hasDirectories
+        || JSON.stringify(existingDirectories) !== JSON.stringify(existingMetadata.directories || [])
+      );
+      const nextMetadata = {
+        ...existingMetadata,
+        directories: existingDirectories,
+        manualTarget: normalizedTarget.target,
+        sshUser: normalizedTarget.sshUser,
+        sshPort: normalizedTarget.sshPort,
+      };
+      const metadataChanged = JSON.stringify(nextMetadata) !== JSON.stringify(existingMetadata);
+      const updates = {};
+      if (!normalizeHostAgentUuid(existing.agentUuid)) {
+        updates.agentUuid = generateHostAgentUuid();
+      }
+      if (shouldUpdateMetadata || metadataChanged) {
+        updates.metadata = nextMetadata;
+      }
+      if (Object.keys(updates).length > 0) {
+        await existing.update(updates, { transaction });
+      }
+      return existing;
+    }
+
+    const name = await resolveManualHostName({ ip, transaction });
+    return Host.create({
+      name,
+      ip,
+      port: 0,
+      source: HOST_SOURCE_MANUAL,
+      agentUuid: generateHostAgentUuid(),
+      metadata: {
+        directories: getInitialHostDirectories(),
+        manualTarget: normalizedTarget.target,
+        sshUser: normalizedTarget.sshUser,
+        sshPort: normalizedTarget.sshPort,
+      },
+    }, { transaction });
+  });
+};
+
+const getHostById = async (hostIdInput, { transaction } = {}) => {
+  const hostId = Number(hostIdInput);
+  if (!Number.isInteger(hostId) || hostId <= 0) {
+    throw new Error('hostId must be a positive integer');
+  }
+  return Host.findByPk(hostId, { transaction });
+};
+
+const deleteHostById = async (hostIdInput) => {
+  const hostId = Number(hostIdInput);
+  if (!Number.isInteger(hostId) || hostId <= 0) {
+    throw new Error('hostId must be a positive integer');
+  }
+
+  return sequelize.transaction(async (transaction) => {
+    const host = await Host.findByPk(hostId, { transaction });
+    if (!host) {
+      return false;
+    }
+
+    await Project.update(
+      { hostId: null },
+      {
+        where: { hostId },
+        transaction,
+      },
+    );
+    await host.destroy({ transaction });
+    return true;
+  });
+};
+
+const syncRegisteredHosts = async (registeredHosts) => {
+  const normalizedHosts = Array.isArray(registeredHosts)
+    ? registeredHosts
+      .map((entry) => normalizeRegisteredHost(entry))
+      .filter(Boolean)
+    : [];
+
+  const deduped = [];
+  const seenKeys = new Set();
+  for (const host of normalizedHosts) {
+    const dedupeKey = host.slaveId ? `slave:${host.slaveId}` : `name:${host.name}`;
+    if (seenKeys.has(dedupeKey)) {
+      continue;
+    }
+    deduped.push(host);
+    seenKeys.add(dedupeKey);
+  }
+
+  await sequelize.transaction(async (transaction) => {
+    const existingHosts = await Host.findAll({
+      attributes: ['id', 'name', 'ip', 'port', 'source', 'agentUuid', 'metadata'],
+      transaction,
+    });
+    const existingByAgentUuid = new Map();
+    const existingByName = new Map();
+    const existingByIp = new Map();
+
+    for (const host of existingHosts) {
+      const normalizedAgentUuid = normalizeHostAgentUuid(host.agentUuid);
+      if (normalizedAgentUuid && !existingByAgentUuid.has(normalizedAgentUuid)) {
+        existingByAgentUuid.set(normalizedAgentUuid, host);
+      }
+      if (host.name && !existingByName.has(host.name)) {
+        existingByName.set(host.name, host);
+      }
+      if (host.ip && !existingByIp.has(host.ip)) {
+        existingByIp.set(host.ip, host);
+      }
+    }
+
+    const matchedExistingIds = new Set();
+
+    for (const host of deduped) {
+      let existing = null;
+      if (host.slaveId) {
+        existing = existingByAgentUuid.get(host.slaveId) || null;
+      }
+      if (!existing) {
+        existing = existingByName.get(host.name) || null;
+      }
+      if (!existing) {
+        existing = existingByIp.get(host.ip) || null;
+      }
+
+      if (!existing) {
+        const created = await Host.create({
+          ...host,
+          source: HOST_SOURCE_RUNTIME,
+          agentUuid: host.slaveId,
+          metadata: { directories: getInitialHostDirectories() },
+        }, { transaction });
+        matchedExistingIds.add(Number(created.id));
+        continue;
+      }
+
+      matchedExistingIds.add(Number(existing.id));
+
+      const existingAgentUuid = normalizeHostAgentUuid(existing.agentUuid);
+      const nextAgentUuid = host.slaveId || existingAgentUuid || null;
+      const nextSource = existing.source || HOST_SOURCE_RUNTIME;
+      const nextName = host.name;
+      const existingMetadata = normalizeHostMetadata(existing.metadata);
+      const hasDirectories = Object.prototype.hasOwnProperty.call(existingMetadata, 'directories');
+      const nextDirectories = hasDirectories
+        ? getHostDirectoriesFromMetadata(existingMetadata)
+        : getInitialHostDirectories();
+      const nextMetadata = {
+        ...existingMetadata,
+        directories: nextDirectories,
+      };
+      const existingDirectories = Array.isArray(existingMetadata.directories)
+        ? existingMetadata.directories
+        : [];
+      const metadataChanged = (
+        !hasDirectories
+        || JSON.stringify(existingDirectories) !== JSON.stringify(nextDirectories)
+      );
+
+      if (
+        existing.name !== nextName ||
+        existing.ip !== host.ip ||
+        Number(existing.port) !== Number(host.port) ||
+        existing.source !== nextSource ||
+        existingAgentUuid !== nextAgentUuid ||
+        metadataChanged
+      ) {
+        await existing.update({
+          name: nextName,
+          ip: host.ip,
+          port: host.port,
+          source: nextSource,
+          agentUuid: nextAgentUuid,
+          metadata: nextMetadata,
+        }, { transaction });
+      }
+    }
+
+    const staleIds = existingHosts
+      .filter((host) => {
+        const source = String(host.source || '').toLowerCase();
+        const isRuntimeSourced = source === '' || source === HOST_SOURCE_RUNTIME;
+        return isRuntimeSourced && !matchedExistingIds.has(Number(host.id));
+      })
+      .map((host) => host.id);
+
+    if (staleIds.length > 0) {
+      await Host.destroy({
+        where: { id: staleIds },
+        transaction,
+      });
+    }
+  });
+};
+
+const addHostDirectory = async ({ hostId, directoryPath }) => {
+  const normalizedDirectoryPath = normalizeHostDirectoryPath(directoryPath);
+
+  return sequelize.transaction(async (transaction) => {
+    const host = await getHostById(hostId, { transaction });
+    if (!host) {
+      throw new Error(`Host not found: ${hostId}`);
+    }
+
+    const metadata = normalizeHostMetadata(host.metadata);
+    const directories = getHostDirectoriesFromMetadata(metadata);
+    if (directories.includes(normalizedDirectoryPath)) {
+      return host;
+    }
+
+    const nextDirectories = [...directories, normalizedDirectoryPath];
+    await host.update({
+      metadata: {
+        ...metadata,
+        directories: nextDirectories,
+      },
+    }, { transaction });
+    return host;
+  });
+};
+
+const removeHostDirectory = async ({ hostId, directoryPath }) => {
+  const normalizedDirectoryPath = normalizeHostDirectoryPath(directoryPath);
+
+  return sequelize.transaction(async (transaction) => {
+    const host = await getHostById(hostId, { transaction });
+    if (!host) {
+      throw new Error(`Host not found: ${hostId}`);
+    }
+
+    const metadata = normalizeHostMetadata(host.metadata);
+    const directories = getHostDirectoriesFromMetadata(metadata);
+    const nextDirectories = directories.filter((entry) => entry !== normalizedDirectoryPath);
+    if (nextDirectories.length === directories.length) {
+      return host;
+    }
+
+    await host.update({
+      metadata: {
+        ...metadata,
+        directories: nextDirectories,
+      },
+    }, { transaction });
+    return host;
+  });
+};
+
+const listHostsWithProjects = async () => Host.findAll({
+  attributes: ['id', 'name', 'ip', 'port', 'source', 'agentUuid', 'metadata'],
+  include: [{
+    model: Project,
+    as: 'projects',
+    attributes: ['id', 'name', 'metadata'],
+    required: false,
+  }],
+  order: [['name', 'ASC']],
+});
+
+module.exports = {
+  addManualHost,
+  deleteHostById,
+  getHostById,
+  normalizeHostDirectoryPath,
+  getHostDirectoriesFromMetadata,
+  addHostDirectory,
+  removeHostDirectory,
+  syncRegisteredHosts,
+  listHostsWithProjects,
+};

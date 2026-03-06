@@ -2,8 +2,18 @@ const { Project } = require('./project');
 const { Service } = require('./service');
 const { Technology } = require('./technology');
 const { PortRange } = require('./portRange');
+const { Host } = require('./host');
 
 const initModelAssociations = () => {
+  Host.hasMany(Project, {
+    as: 'projects',
+    foreignKey: 'hostId',
+  });
+  Project.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
   Project.hasMany(Service, {
     as: 'services',
     foreignKey: 'projectId',
@@ -38,6 +48,7 @@ const initModelAssociations = () => {
 
 module.exports = {
   Project,
+  Host,
   Service,
   Technology,
   PortRange,

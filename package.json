@@ -8,12 +8,22 @@
   "scripts": {
     "dev": "mono-helper env yarn workspaces foreach -p -A -i run dev",
     "build": "yarn build:server && yarn build:web",
-    "start": "sh -c 'yarn start:server & yarn start:web & wait'",
+    "build:all": "make build-all",
+    "start": "make start",
     "dev:web": "yarn workspace web dev",
     "build:web": "yarn workspace web build",
     "start:web": "yarn workspace web start",
     "dev:server": "yarn workspace server dev",
     "build:server": "yarn workspace server build",
-    "start:server": "yarn workspace server start"
+    "start:server": "yarn workspace server start",
+    "proto:generate:go": "yarn workspace agent-shared proto:generate",
+    "agent:master:dev": "yarn workspace agent-master dev",
+    "agent:master:build": "yarn workspace agent-master build",
+    "agent:master:smoke": "yarn workspace server agent:master:smoke",
+    "agent:slave:dev": "yarn workspace agent-slave dev",
+    "agent:slave:build": "yarn workspace agent-slave build",
+    "deploy:slave": "./scripts/deploy/deploy-slave.sh",
+    "deploy:stack": "./scripts/deploy/deploy-stack.sh",
+    "e2e:host-directories": "make e2e-host-directories"
   }
 }

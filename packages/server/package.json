@@ -6,10 +6,13 @@
     "dev": "NODE_ENV=development nodemon --watch src src/index.js",
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
-    "build": "echo 'No server build step required'"
+    "build": "echo 'No server build step required'",
+    "agent:master:smoke": "node src/agent/smoke.js"
   },
   "dependencies": {
     "@apollo/server": "^4.11.3",
+    "@grpc/grpc-js": "^1.14.0",
+    "@grpc/proto-loader": "^0.8.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

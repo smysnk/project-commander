@@ -57,6 +57,11 @@ Project.init(
         this.setDataValue('metadata', metadata);
       },
     },
+    hostId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'host_id',
+    },
   },
   {
     sequelize,
