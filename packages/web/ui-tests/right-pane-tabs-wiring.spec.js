@@ -165,7 +165,29 @@ async function installGraphqlMocks(page) {
 test('right pane tabs are left-aligned, mutually exclusive, and mapped to expected panels', async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
-  await installWebSocketMock(page, []);
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: 'project',
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: 'merged',
+        lines: [
+          {
+            id: 1,
+            projectPath: PROJECT_PATH,
+            timestamp: new Date(Date.UTC(2026, 2, 6, 14, 0, 0)).toISOString(),
+            serviceName: 'web',
+            stream: 'stdout',
+            level: 'info',
+            message: 'mock-project-log',
+          },
+        ],
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {

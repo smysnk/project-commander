@@ -19,11 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SlaveControl_RegisterSlave_FullMethodName       = "/projectcommander.slave.v1.SlaveControl/RegisterSlave"
-	SlaveControl_Heartbeat_FullMethodName           = "/projectcommander.slave.v1.SlaveControl/Heartbeat"
-	SlaveControl_ReportCommandResult_FullMethodName = "/projectcommander.slave.v1.SlaveControl/ReportCommandResult"
-	SlaveControl_AssignWorkload_FullMethodName      = "/projectcommander.slave.v1.SlaveControl/AssignWorkload"
-	SlaveControl_Drain_FullMethodName               = "/projectcommander.slave.v1.SlaveControl/Drain"
+	SlaveControl_RegisterSlave_FullMethodName               = "/projectcommander.slave.v1.SlaveControl/RegisterSlave"
+	SlaveControl_Heartbeat_FullMethodName                   = "/projectcommander.slave.v1.SlaveControl/Heartbeat"
+	SlaveControl_ReportCommandResult_FullMethodName         = "/projectcommander.slave.v1.SlaveControl/ReportCommandResult"
+	SlaveControl_GetDesiredProcesses_FullMethodName         = "/projectcommander.slave.v1.SlaveControl/GetDesiredProcesses"
+	SlaveControl_ReportProcessReconciliation_FullMethodName = "/projectcommander.slave.v1.SlaveControl/ReportProcessReconciliation"
+	SlaveControl_AssignWorkload_FullMethodName              = "/projectcommander.slave.v1.SlaveControl/AssignWorkload"
+	SlaveControl_Drain_FullMethodName                       = "/projectcommander.slave.v1.SlaveControl/Drain"
 )
 
 // SlaveControlClient is the client API for SlaveControl service.
@@ -33,6 +35,8 @@ type SlaveControlClient interface {
 	RegisterSlave(ctx context.Context, in *RegisterSlaveRequest, opts ...grpc.CallOption) (*RegisterSlaveResponse, error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	ReportCommandResult(ctx context.Context, in *ReportCommandResultRequest, opts ...grpc.CallOption) (*ReportCommandResultResponse, error)
+	GetDesiredProcesses(ctx context.Context, in *GetDesiredProcessesRequest, opts ...grpc.CallOption) (*GetDesiredProcessesResponse, error)
+	ReportProcessReconciliation(ctx context.Context, in *ReportProcessReconciliationRequest, opts ...grpc.CallOption) (*ReportProcessReconciliationResponse, error)
 	AssignWorkload(ctx context.Context, in *AssignWorkloadRequest, opts ...grpc.CallOption) (*AssignWorkloadResponse, error)
 	Drain(ctx context.Context, in *DrainRequest, opts ...grpc.CallOption) (*DrainResponse, error)
 }
@@ -75,6 +79,26 @@ func (c *slaveControlClient) ReportCommandResult(ctx context.Context, in *Report
 	return out, nil
 }
 
+func (c *slaveControlClient) GetDesiredProcesses(ctx context.Context, in *GetDesiredProcessesRequest, opts ...grpc.CallOption) (*GetDesiredProcessesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDesiredProcessesResponse)
+	err := c.cc.Invoke(ctx, SlaveControl_GetDesiredProcesses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *slaveControlClient) ReportProcessReconciliation(ctx context.Context, in *ReportProcessReconciliationRequest, opts ...grpc.CallOption) (*ReportProcessReconciliationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportProcessReconciliationResponse)
+	err := c.cc.Invoke(ctx, SlaveControl_ReportProcessReconciliation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *slaveControlClient) AssignWorkload(ctx context.Context, in *AssignWorkloadRequest, opts ...grpc.CallOption) (*AssignWorkloadResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AssignWorkloadResponse)
@@ -102,6 +126,8 @@ type SlaveControlServer interface {
 	RegisterSlave(context.Context, *RegisterSlaveRequest) (*RegisterSlaveResponse, error)
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	ReportCommandResult(context.Context, *ReportCommandResultRequest) (*ReportCommandResultResponse, error)
+	GetDesiredProcesses(context.Context, *GetDesiredProcessesRequest) (*GetDesiredProcessesResponse, error)
+	ReportProcessReconciliation(context.Context, *ReportProcessReconciliationRequest) (*ReportProcessReconciliationResponse, error)
 	AssignWorkload(context.Context, *AssignWorkloadRequest) (*AssignWorkloadResponse, error)
 	Drain(context.Context, *DrainRequest) (*DrainResponse, error)
 	mustEmbedUnimplementedSlaveControlServer()
@@ -122,6 +148,12 @@ func (UnimplementedSlaveControlServer) Heartbeat(context.Context, *HeartbeatRequ
 }
 func (UnimplementedSlaveControlServer) ReportCommandResult(context.Context, *ReportCommandResultRequest) (*ReportCommandResultResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReportCommandResult not implemented")
+}
+func (UnimplementedSlaveControlServer) GetDesiredProcesses(context.Context, *GetDesiredProcessesRequest) (*GetDesiredProcessesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDesiredProcesses not implemented")
+}
+func (UnimplementedSlaveControlServer) ReportProcessReconciliation(context.Context, *ReportProcessReconciliationRequest) (*ReportProcessReconciliationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReportProcessReconciliation not implemented")
 }
 func (UnimplementedSlaveControlServer) AssignWorkload(context.Context, *AssignWorkloadRequest) (*AssignWorkloadResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AssignWorkload not implemented")
@@ -204,6 +236,42 @@ func _SlaveControl_ReportCommandResult_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SlaveControl_GetDesiredProcesses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDesiredProcessesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SlaveControlServer).GetDesiredProcesses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SlaveControl_GetDesiredProcesses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SlaveControlServer).GetDesiredProcesses(ctx, req.(*GetDesiredProcessesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SlaveControl_ReportProcessReconciliation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportProcessReconciliationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SlaveControlServer).ReportProcessReconciliation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SlaveControl_ReportProcessReconciliation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SlaveControlServer).ReportProcessReconciliation(ctx, req.(*ReportProcessReconciliationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _SlaveControl_AssignWorkload_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AssignWorkloadRequest)
 	if err := dec(in); err != nil {
@@ -258,6 +326,14 @@ var SlaveControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReportCommandResult",
 			Handler:    _SlaveControl_ReportCommandResult_Handler,
+		},
+		{
+			MethodName: "GetDesiredProcesses",
+			Handler:    _SlaveControl_GetDesiredProcesses_Handler,
+		},
+		{
+			MethodName: "ReportProcessReconciliation",
+			Handler:    _SlaveControl_ReportProcessReconciliation_Handler,
 		},
 		{
 			MethodName: "AssignWorkload",

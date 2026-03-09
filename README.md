@@ -1,11 +1,78 @@
-# Project Discovery App
+# Project Commander
 
-Yarn monorepo with a Next.js frontend and an Express server for project discovery.
+Project Commander is a local-first control plane for development projects and remote build hosts.
 
-## Workspaces
+It gives you a single web UI for:
 
-- `packages/web`: Next.js UI
-- `packages/server`: Discovery API
+- discovering projects on the local machine and on registered slave agents
+- starting and stopping project runtimes
+- streaming logs with tail-style viewing
+- inspecting environment and process state
+- opening interactive terminal sessions on slave agents
+- deploying, upgrading, and monitoring remote slave agents from a master agent
+
+The application is built for teams or individuals who want one place to supervise many repos and many machines without manually jumping between terminals, SSH sessions, and ad hoc scripts.
+
+## How It Works
+
+Project Commander is split into four main parts:
+
+- `packages/web`
+  Next.js frontend for projects, runtime status, hosts, logs, and terminal interaction.
+- `packages/server`
+  Node.js backend that exposes GraphQL and websocket APIs, persists app state, and brokers UI actions.
+- `packages/agent-master`
+  Go master agent responsible for runtime control, slave coordination, log access, and host communication.
+- `packages/agent-slave`
+  Go slave agent that runs on managed hosts, reports health and discovered projects, executes remote commands, and can watch project directories for restart-on-change workflows.
+
+At runtime, the typical flow is:
+
+1. The web app connects to the Node backend over GraphQL and websocket.
+2. The Node backend talks to the Go master agent.
+3. The Go master agent manages local runtime state and connected slave agents.
+4. Slave agents report heartbeats, discovered projects, logs, and command results back through the master.
+
+## Core Capabilities
+
+### Project Management
+
+- detect projects from configured directories
+- support manually-added project paths
+- show runtime status, ports, services, and process state
+- discover project metadata on slave hosts and surface it in the main project list
+
+### Host Management
+
+- register slave agents with the master agent
+- add hosts manually from the UI
+- deploy or re-deploy slave agents to remote machines
+- manage host-specific directories used for project discovery and checkout
+- show host health, last heartbeat, version, and logs
+
+### Runtime Control
+
+- start or stop projects and individual services
+- inspect launch environment and port range configuration
+- surface runtime status from the master agent in the UI
+
+### Logs And Terminal
+
+- stream runtime, master, and slave logs into the UI
+- query logs in tail/seek windows instead of loading entire files
+- filter logs by level and package
+- open long-lived interactive terminal sessions against slave hosts
+
+## Repository Layout
+
+- `packages/web`: Next.js application
+- `packages/server`: Express + GraphQL + websocket backend
+- `packages/agent-master`: Go master agent
+- `packages/agent-slave`: Go slave agent
+- `packages/agent-shared`: shared protobuf generation output for Go packages
+- `proto`: protobuf contracts between the server, master agent, and slave agent
+- `scripts`: deployment and build scripts
+- `docs`: architecture notes, implementation plans, and deployment guides
 
 ## Quick Start
 
@@ -15,102 +82,88 @@ yarn install
 yarn dev
 ```
 
-- Web: `http://localhost:${WEB_PORT:-3000}`
-- Server: `http://localhost:${SERVER_PORT:-4000}`
+Default local endpoints:
 
-## Discovery Rules
+- Web UI: `http://localhost:3000`
+- Node backend GraphQL: `http://localhost:4000/graphql`
+- Node backend health: `http://localhost:4000/health`
 
-- Folder with `package.json` -> `node-project`
-- Folder with `package.json` + `packages/` -> `node-monorepo`
-- Folder with `go.mod` -> `go-project`
-- Folder with `go.work` OR a `go.mod` that contains nested child `go.mod` files -> `go-monorepo`
-- Folder with `Makefile`, `makefile`, or `GNUmakefile` -> `hasMakefile=true`
+`yarn dev` runs the monorepo development stack and is intended to bring up the web app, server, and agent workspaces that provide a `dev` script.
 
-Only folders whose **folder name** matches `PROJECT_FOLDER_PATTERN` are evaluated as candidate projects.
-
-## API Endpoints
-
-- `POST /graphql` (default frontend endpoint)
-- `GET /api/discovery/config`
-- `PUT /api/discovery/config`
-- `GET /api/discovery/projects`
-- `GET /health`
-
-## Runtime Variables Pattern
-
-- Frontend bootstraps runtime config from GraphQL `runtimeConfig` query.
-- Runtime config is stored in Redux under `runtime.config`.
-- The app writes runtime config to `window.__RUNTIME_CONFIG__`.
-- Frontend defaults GraphQL requests to `/graphql`.
-
-## Go Master Agent (Weeks 1-4)
-
-Week 1-4 companion-agent implementation is available:
-
-- Protobuf contracts:
-  - `proto/projectcommander/master/v1/master_control.proto`
-  - `proto/projectcommander/master/v1/master_events.proto`
-  - `proto/projectcommander/slave/v1/slave_control.proto`
-- Go agent modules:
-  - `packages/agent-master` (`pc-master` + runtime control)
-  - `packages/agent-slave` (`pc-slave`)
-  - `packages/agent-shared` (generated Go protobuf stubs)
-- Go master runtime control is implemented for:
-  - runtime snapshots/logs/process stats
-  - launch environment + port-range settings
-  - start/stop/restart service
-  - start/stop project
-- Node smoke client:
-  - `packages/server/src/agent/smoke.js`
-
-Useful commands:
+## Useful Commands
 
 ```bash
-# Regenerate Go protobuf stubs
-yarn proto:generate:go
+# Start the full development stack
+yarn dev
 
-# Build every target (web + server + pc-master + pc-slave)
+# Build the web and server packages
+yarn build
+
+# Build everything, including Go agents
 yarn build:all
 
-# Run Go master locally over UDS (dev watch/reload mode)
+# Run only the web frontend
+yarn dev:web
+
+# Run only the Node backend
+yarn dev:server
+
+# Run the Go master agent in dev mode
 yarn agent:master:dev
 
-# Build Go master binary
-yarn agent:master:build
-
-# Run Go slave locally (dev watch/reload mode)
+# Run the Go slave agent in dev mode
 yarn agent:slave:dev
 
-# Build Go slave binary
-yarn agent:slave:build
-
-# Run Node->Go smoke RPC checks (requires master running)
-yarn agent:master:smoke
+# Build Go protobuf bindings
+yarn proto:generate:go
 ```
 
-Runtime backend:
+## Testing
 
-- Go master backend is always enabled for the server runtime.
-
-Slave workload watch/reload:
-
-- When `pc-slave` is started with `PC_SLAVE_PROJECT_PATH` (or `--project-path`), it launches `PC_SLAVE_LAUNCH_COMMAND` (default: `yarn dev`).
-- The slave watches `<project>/packages` for file changes.
-- Ignore patterns are loaded from `<project>/.gitignore`.
-- On detected changes, the slave restarts the launched workload process.
-
-## Remote Deployment
-
-Deployment tooling is available for SSH + systemd environments:
+Canonical root test entrypoints:
 
 ```bash
-# Deploy only the slave agent to a remote host
+# Run the unified workspace test report
+yarn test
+
+# Run the unified workspace test report with coverage enabled where supported
+yarn test:coverage
+```
+
+Canonical test artifacts are written to:
+
+- `artifacts/workspace-tests/report.json`
+- `artifacts/workspace-tests/index.html`
+- `artifacts/workspace-tests/raw/`
+
+`report.json` is the machine-readable source of truth. `index.html` is the drillable human-facing report. `raw/` contains per-suite native artifacts such as normalized NDJSON and Playwright JSON payloads.
+
+## Deployment
+
+Project Commander includes deployment helpers for remote hosts.
+
+```bash
+# Deploy a slave agent to a remote host
 yarn deploy:slave --host user@remote-host
 
-# Deploy master + GraphQL server + Next.js web to a remote host
+# Deploy the application stack to a remote host
 yarn deploy:stack --host user@remote-host
 ```
 
-Detailed options and examples:
+More detail is available in [docs/remote-deployment.md](docs/remote-deployment.md).
 
-- [Remote Deployment Guide](docs/remote-deployment.md)
+## Environment
+
+Copy [.env.example](.env.example) to `.env` and adjust values for your local machine, master agent, and deployment setup.
+
+Important configuration areas include:
+
+- web and server ports
+- master agent socket and network endpoints
+- slave shared key configuration
+- default project discovery directory
+- deployment and runtime settings
+
+## Purpose Summary
+
+Project Commander exists to make a development machine cluster feel like one controllable workspace. Instead of manually managing processes, logs, ports, project discovery, and shell access across many repositories and hosts, the app centralizes those operations behind a single master/slave runtime model and a browser UI.

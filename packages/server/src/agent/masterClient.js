@@ -174,6 +174,94 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
     );
   };
 
+  const upsertDesiredProcess = async ({
+    slaveId,
+    desiredProcess,
+    timeoutMs = 5000,
+  } = {}) => {
+    const requestId = generateRequestId('upsert-desired-process');
+    return invokeUnary(
+      client,
+      'UpsertDesiredProcess',
+      {
+        requestId,
+        slaveId: slaveId ? String(slaveId) : '',
+        desiredProcess: desiredProcess && typeof desiredProcess === 'object' ? desiredProcess : {},
+      },
+      { requestId, timeoutMs },
+    );
+  };
+
+  const deleteDesiredProcess = async ({
+    slaveId,
+    processKey,
+    timeoutMs = 5000,
+  } = {}) => {
+    const requestId = generateRequestId('delete-desired-process');
+    return invokeUnary(
+      client,
+      'DeleteDesiredProcess',
+      {
+        requestId,
+        slaveId: slaveId ? String(slaveId) : '',
+        processKey: processKey ? String(processKey) : '',
+      },
+      { requestId, timeoutMs },
+    );
+  };
+
+  const listDesiredProcesses = async ({ slaveId, timeoutMs = 5000 } = {}) => {
+    const requestId = generateRequestId('list-desired-processes');
+    return invokeUnary(
+      client,
+      'ListDesiredProcesses',
+      {
+        requestId,
+        slaveId: slaveId ? String(slaveId) : '',
+      },
+      { requestId, timeoutMs },
+    );
+  };
+
+  const getSlaveRuntimeState = async ({ slaveId, timeoutMs = 5000 } = {}) => {
+    const requestId = generateRequestId('get-slave-runtime-state');
+    return invokeUnary(
+      client,
+      'GetSlaveRuntimeState',
+      {
+        requestId,
+        slaveId: slaveId ? String(slaveId) : '',
+      },
+      { requestId, timeoutMs },
+    );
+  };
+
+  const queueSlaveKill = async ({
+    slaveId,
+    runId,
+    processKey,
+    pid,
+    hard = false,
+    reason,
+    timeoutMs = 5000,
+  } = {}) => {
+    const requestId = generateRequestId('queue-slave-kill');
+    return invokeUnary(
+      client,
+      'QueueSlaveKill',
+      {
+        requestId,
+        slaveId: slaveId ? String(slaveId) : '',
+        runId: runId ? String(runId) : '',
+        processKey: processKey ? String(processKey) : '',
+        pid: Number.isInteger(pid) ? pid : 0,
+        hard: Boolean(hard),
+        reason: reason ? String(reason) : '',
+      },
+      { requestId, timeoutMs },
+    );
+  };
+
   const startService = async ({ projectPath, serviceKey, timeoutMs = 5000 } = {}) => {
     const requestId = generateRequestId('start-service');
     return invokeUnary(
@@ -245,6 +333,7 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
   const getLogs = async ({
     projectPath,
     slaveId,
+    runId,
     limit,
     afterId,
     serviceNames,
@@ -258,6 +347,7 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
         requestId,
         projectPath: projectPath ? String(projectPath) : '',
         slaveId: slaveId ? String(slaveId) : '',
+        runId: runId ? String(runId) : '',
         limit: Number.isInteger(limit) ? limit : 0,
         afterId: Number.isInteger(afterId) ? afterId : 0,
         serviceNames: Array.isArray(serviceNames) ? serviceNames.filter(Boolean) : [],
@@ -389,6 +479,11 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
     handshake,
     listRegisteredSlaves,
     checkoutProjectOnSlave,
+    upsertDesiredProcess,
+    deleteDesiredProcess,
+    listDesiredProcesses,
+    getSlaveRuntimeState,
+    queueSlaveKill,
     getRuntimeSnapshot,
     startService,
     stopService,

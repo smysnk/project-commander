@@ -41,6 +41,10 @@ const createJSRuntimeBackend = () => ({
     return [];
   },
 
+  async getManagedProcessLogs() {
+    return [];
+  },
+
   async getProjectLaunchEnvironment(projectPath) {
     return runtimeManager.getProjectLaunchEnvironment(projectPath);
   },

@@ -68,6 +68,7 @@ export default function useLogsPanelController({
   disabledLogLevels,
   seenLogServicesByProject,
   setSeenLogServicesByProject,
+  selectedProcessLogTarget,
   loadProjectLogs,
   setProjectLogs,
   setProjectEnvironment,
@@ -88,14 +89,32 @@ export default function useLogsPanelController({
 }) {
   const isProjectLogContext = leftPanelMode === LEFT_PANEL_MODE.PROJECTS;
   const isMasterLogContext = leftPanelMode !== LEFT_PANEL_MODE.PROJECTS && isMasterSidebarSelected;
+  const normalizedSelectedProcessLogTarget = (
+    selectedProcessLogTarget && typeof selectedProcessLogTarget === 'object'
+      ? selectedProcessLogTarget
+      : null
+  );
+  const processTargetHostId = Number(normalizedSelectedProcessLogTarget?.hostId || 0);
+  const selectedHostId = Number(selectedHost?.id || 0);
+  const isProcessLogContext = (
+    leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
+    && !isMasterLogContext
+    && selectedHost != null
+    && Boolean(String(normalizedSelectedProcessLogTarget?.runId || '').trim())
+    && Number.isInteger(selectedHostId)
+    && selectedHostId > 0
+    && processTargetHostId === selectedHostId
+  );
   const isHostLogContext = (
     leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
     && !isMasterLogContext
+    && !isProcessLogContext
     && selectedHost != null
   );
   const isRuntimeLogContext = (
     leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
     && !isMasterLogContext
+    && !isProcessLogContext
     && !isHostLogContext
   );
   const lastClientConsoleMessageRef = useRef({
@@ -190,13 +209,6 @@ export default function useLogsPanelController({
   }, [appendOverlayLog]);
 
   useEffect(() => {
-    if (rightTab !== 'logs' || !followLogs) {
-      return;
-    }
-    scrollLogsToEnd('auto');
-  }, [followLogs, overlayLogs, projectLogs, rightTab, scrollLogsToEnd]);
-
-  useEffect(() => {
     projectLogsRef.current = projectLogs;
   }, [projectLogs, projectLogsRef]);
 
@@ -231,23 +243,23 @@ export default function useLogsPanelController({
     setSeenLogServicesByProject,
   ]);
 
-  const projectLogServiceOptions = useMemo(() => {
-    if (!selectedProjectPath) {
-      return [];
-    }
-    return (seenLogServicesByProject[selectedProjectPath] || [])
-      .map((serviceName) => String(serviceName || '').trim())
-      .filter(Boolean);
-  }, [seenLogServicesByProject, selectedProjectPath]);
-
   const logContextDescriptor = useMemo(() => (
     buildLogsContextDescriptor({
       isProjectLogContext,
       selectedProjectPath,
+      isProcessLogContext,
+      selectedProcessLogTarget: normalizedSelectedProcessLogTarget,
       isHostLogContext,
       selectedHost,
     })
-  ), [isHostLogContext, isProjectLogContext, selectedHost, selectedProjectPath]);
+  ), [
+    isHostLogContext,
+    isProcessLogContext,
+    isProjectLogContext,
+    normalizedSelectedProcessLogTarget,
+    selectedHost,
+    selectedProjectPath,
+  ]);
 
   const activeLogContextKey = String(logContextDescriptor?.contextKey || 'runtime').trim() || 'runtime';
   const queryContextEntry = useMemo(() => {
@@ -264,6 +276,38 @@ export default function useLogsPanelController({
     const entries = queryContextEntry.entries;
     return Array.isArray(entries) ? entries : [];
   }, [queryContextEntry]);
+  useEffect(() => {
+    if (rightTab !== 'logs' || !followLogs) {
+      return;
+    }
+    scrollLogsToEnd('auto');
+  }, [
+    followLogs,
+    overlayLogs,
+    projectLogs,
+    queryContextEntry?.receivedAt,
+    rightTab,
+    scrollLogsToEnd,
+  ]);
+  const projectLogServiceOptions = useMemo(() => {
+    if (!selectedProjectPath) {
+      return [];
+    }
+    const persistedNames = (seenLogServicesByProject[selectedProjectPath] || [])
+      .map((serviceName) => String(serviceName || '').trim())
+      .filter(Boolean);
+    const queryNames = queryEntriesForActiveContext
+      .map((entry) => String(entry?.serviceName || '').trim())
+      .filter(Boolean);
+    const projectLogNames = projectLogs
+      .map((entry) => String(entry?.serviceName || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set([
+      ...persistedNames,
+      ...queryNames,
+      ...projectLogNames,
+    ]));
+  }, [projectLogs, queryEntriesForActiveContext, seenLogServicesByProject, selectedProjectPath]);
   const queryStreamsForActiveContext = useMemo(() => {
     if (!queryContextEntry || typeof queryContextEntry !== 'object') {
       return [];
@@ -296,7 +340,11 @@ export default function useLogsPanelController({
       })
       .filter(Boolean);
   }, [activeLogContextKey, queryContextEntry]);
-  const shouldUseTailViewerQuery = rightTab === 'logs' && (isProjectLogContext || isHostLogContext);
+  const shouldUseTailViewerQuery = rightTab === 'logs' && (
+    isProjectLogContext
+    || isHostLogContext
+    || isProcessLogContext
+  );
 
   const disabledLogLevelSet = useMemo(
     () => new Set(
@@ -309,7 +357,7 @@ export default function useLogsPanelController({
 
   const displayedLogs = useMemo(() => {
     let scopedLogs = [];
-    const hasQueryBackedContext = isProjectLogContext || isHostLogContext;
+    const hasQueryBackedContext = isProjectLogContext || isHostLogContext || isProcessLogContext;
     const hasQueryContextEntry = hasQueryBackedContext && Boolean(queryContextEntry);
     const queryBackedEntries = hasQueryBackedContext ? queryEntriesForActiveContext : [];
     if (isProjectLogContext) {
@@ -327,6 +375,8 @@ export default function useLogsPanelController({
         const serviceName = String(entry?.serviceName || '').trim();
         return !disabledServices.has(serviceName);
       });
+    } else if (isProcessLogContext) {
+      scopedLogs = hasQueryContextEntry ? queryBackedEntries.slice() : [];
     } else if (isRuntimeLogContext) {
       scopedLogs = overlayLogs.filter((entry) => (
         RUNTIME_LOG_SOURCES.includes(toOverlaySource(entry))
@@ -418,6 +468,7 @@ export default function useLogsPanelController({
     disabledLogLevelSet,
     isHostLogContext,
     isMasterLogContext,
+    isProcessLogContext,
     isProjectLogContext,
     isRuntimeLogContext,
     overlayLogs,
@@ -516,11 +567,25 @@ export default function useLogsPanelController({
   }, [leftPanelMode, loadProjectLogs, selectedProjectPath, shouldUseTailViewerQuery]);
 
   const localLogStreams = useMemo(() => {
+    const hasActiveProjectServiceFilters = isProjectLogContext
+      && Array.isArray(selectedLogServices)
+      && selectedLogServices.length > 0;
+    const hasActiveLevelFilters = disabledLogLevelSet.size > 0;
     if (shouldUseTailViewerQuery && queryStreamsForActiveContext.length > 0) {
-      return queryStreamsForActiveContext;
+      if (!hasActiveProjectServiceFilters && !hasActiveLevelFilters) {
+        return queryStreamsForActiveContext;
+      }
+      return buildLogStreams(displayedLogs);
     }
     return buildLogStreams(displayedLogs);
-  }, [displayedLogs, queryStreamsForActiveContext, shouldUseTailViewerQuery]);
+  }, [
+    disabledLogLevelSet,
+    displayedLogs,
+    isProjectLogContext,
+    queryStreamsForActiveContext,
+    selectedLogServices,
+    shouldUseTailViewerQuery,
+  ]);
 
   const toggleLogService = useCallback((serviceName) => {
     const current = Array.isArray(selectedLogServices) ? selectedLogServices : [];
@@ -693,9 +758,11 @@ export default function useLogsPanelController({
     logLevelOptions: LOG_LEVEL_ORDER,
     isLogLevelDisabled,
     toggleLogLevel,
+    isProcessLogContext,
     isProjectLogContext,
     logServiceOptions,
     selectedLogServices,
+    selectedProcessLogTarget: normalizedSelectedProcessLogTarget,
     logServiceColorMap,
     toggleLogService,
     displayedLogs,
@@ -718,6 +785,7 @@ export default function useLogsPanelController({
     isHostLogContext,
     isLogLevelDisabled,
     isMasterLogContext,
+    isProcessLogContext,
     isProjectLogContext,
     isRuntimeLogContext,
     localLogStreams,
@@ -731,6 +799,7 @@ export default function useLogsPanelController({
     requestLogWindowOverWebsocket,
     selectedHost,
     selectedLogServices,
+    normalizedSelectedProcessLogTarget,
     selectedProject,
     toggleLogLevel,
     toggleLogService,

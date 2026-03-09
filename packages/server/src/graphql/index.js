@@ -126,6 +126,116 @@ const typeDefs = `#graphql
     message: String
   }
 
+  input RuntimeEnvEntryInput {
+    key: String!
+    value: String
+  }
+
+  type RuntimeEnvEntry {
+    key: String!
+    value: String
+  }
+
+  type DesiredProcessDefinition {
+    id: Int!
+    hostId: Int!
+    projectId: Int!
+    serviceId: Int
+    slaveId: String
+    hostName: String
+    projectName: String
+    serviceName: String
+    processKey: String!
+    packageKey: String!
+    packageRelativePath: String
+    projectPath: String
+    desiredState: String!
+    launchMode: String!
+    cwd: String!
+    command: String!
+    args: [String!]!
+    env: [RuntimeEnvEntry!]!
+    envHash: String
+    launchFingerprint: String
+    logRoot: String
+    restartPolicy: String
+    updatedAt: String
+  }
+
+  type ProcessRuntimeTelemetry {
+    sampledAt: String!
+    cpuPercent: Float!
+    memoryPercent: Float!
+    rssBytes: Float!
+    vmsBytes: Float!
+    readBytes: Float!
+    writeBytes: Float!
+    readOps: Float!
+    writeOps: Float!
+    openFds: Int
+    threadCount: Int
+    status: String!
+  }
+
+  type HostRuntimeTelemetry {
+    sampledAt: String!
+    cpuPercent: Float!
+    load1m: Float
+    load5m: Float
+    load15m: Float
+    memoryTotalBytes: Float!
+    memoryUsedBytes: Float!
+    memoryAvailableBytes: Float!
+    diskTotalBytes: Float!
+    diskUsedBytes: Float!
+    diskAvailableBytes: Float!
+    diskMount: String
+  }
+
+  type ObservedProcessRun {
+    id: Int
+    runId: String!
+    desiredProcessId: Int
+    hostId: Int!
+    projectId: Int!
+    serviceId: Int
+    slaveId: String
+    bootId: String
+    processKey: String!
+    packageKey: String!
+    projectPath: String
+    pid: Float!
+    pgid: Float
+    launchFingerprint: String
+    command: String!
+    args: [String!]!
+    cwd: String
+    envHash: String
+    status: String!
+    startedAt: String
+    lastSeenAt: String
+    exitedAt: String
+    exitCode: Int
+    exitSignal: String
+    logPath: String
+    adopted: Boolean!
+    reconciliationSource: String
+    runtimeState: ProcessRuntimeTelemetry
+  }
+
+  type SlaveRuntimeStateSnapshot {
+    host: Host!
+    desiredProcesses: [DesiredProcessDefinition!]!
+    observedRuns: [ObservedProcessRun!]!
+    hostRuntimeState: HostRuntimeTelemetry
+  }
+
+  type RuntimeKillCommandResult {
+    commandId: String
+    status: String!
+    message: String
+  }
+
   type TerminalOutputEntry {
     timestamp: String!
     stream: String!
@@ -233,6 +343,9 @@ const typeDefs = `#graphql
     runtimeConfig: RuntimeConfig!
     runtimeBackendInfo: RuntimeBackendInfo!
     hosts: [Host!]!
+    slaveRuntimeState(hostId: Int, agentUuid: String): SlaveRuntimeStateSnapshot
+    desiredProcesses(hostId: Int, projectId: Int, agentUuid: String): [DesiredProcessDefinition!]!
+    observedProcessRuns(hostId: Int, agentUuid: String): [ObservedProcessRun!]!
     terminalSession(hostId: Int!): TerminalSession
     discoveryConfig: DiscoveryConfig!
     discoveredProjects: ProjectDiscoveryResult!
@@ -256,6 +369,51 @@ const typeDefs = `#graphql
     addHostDirectory(hostId: Int!, directoryPath: String!): Host!
     removeHostDirectory(hostId: Int!, directoryPath: String!): Host!
     upgradeHostAgent(hostId: Int!): Host!
+    ensureDesiredProcess(
+      hostId: Int
+      agentUuid: String
+      projectId: Int
+      projectPath: String
+      serviceId: Int
+      processKey: String
+      packageKey: String
+      packageRelativePath: String
+      desiredState: String
+      launchMode: String!
+      cwd: String!
+      command: String!
+      args: [String!]
+      env: [RuntimeEnvEntryInput!]
+      logRoot: String
+      restartPolicy: String
+      createdBy: String
+      updatedBy: String
+    ): DesiredProcessDefinition!
+    deleteDesiredProcessDefinition(
+      desiredProcessId: Int
+      hostId: Int
+      agentUuid: String
+      projectId: Int
+      projectPath: String
+      packageKey: String
+      processKey: String
+    ): Boolean!
+    softKillProcess(
+      hostId: Int
+      agentUuid: String
+      runId: String
+      processKey: String
+      pid: Int
+      reason: String
+    ): RuntimeKillCommandResult!
+    hardKillProcess(
+      hostId: Int
+      agentUuid: String
+      runId: String
+      processKey: String
+      pid: Int
+      reason: String
+    ): RuntimeKillCommandResult!
     checkoutHostProject(
       hostId: Int!
       repositoryUrl: String!
@@ -339,6 +497,178 @@ const mapHostForGraphql = (host, fallback = {}) => {
   };
 };
 
+const toPlainRecord = (value) => (
+  value && typeof value?.get === 'function'
+    ? value.get({ plain: true })
+    : value
+);
+
+const mapRuntimeEnvEntries = (entriesOrObject) => {
+  if (Array.isArray(entriesOrObject)) {
+    return entriesOrObject
+      .map((entry) => ({
+        key: String(entry?.key || '').trim(),
+        value: entry?.value == null ? null : String(entry.value),
+      }))
+      .filter((entry) => entry.key);
+  }
+  if (!entriesOrObject || typeof entriesOrObject !== 'object') {
+    return [];
+  }
+  return Object.entries(entriesOrObject)
+    .map(([key, value]) => ({
+      key: String(key || '').trim(),
+      value: value == null ? null : String(value),
+    }))
+    .filter((entry) => entry.key)
+    .sort((left, right) => left.key.localeCompare(right.key));
+};
+
+const mapDesiredProcessForGraphql = (desiredProcess) => {
+  const record = toPlainRecord(desiredProcess);
+  if (!record) {
+    return null;
+  }
+  const host = toPlainRecord(record.host);
+  const project = toPlainRecord(record.project);
+  const service = toPlainRecord(record.service);
+  const id = Number(record.id);
+  const hostId = Number(record.hostId);
+  const projectId = Number(record.projectId);
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(hostId) || hostId <= 0 || !Number.isInteger(projectId) || projectId <= 0) {
+    return null;
+  }
+  return {
+    id,
+    hostId,
+    projectId,
+    serviceId: Number.isInteger(Number(record.serviceId)) ? Number(record.serviceId) : null,
+    slaveId: host?.agentUuid ? String(host.agentUuid).trim() : null,
+    hostName: host?.name ? String(host.name).trim() : null,
+    projectName: project?.name ? String(project.name).trim() : null,
+    serviceName: service?.name ? String(service.name).trim() : null,
+    processKey: String(record.processKey || '').trim(),
+    packageKey: String(record.packageKey || '').trim(),
+    packageRelativePath: record.packageRelativePath ? String(record.packageRelativePath).trim() : null,
+    projectPath: project?.metadata?.path || project?.path || null,
+    desiredState: String(record.desiredState || 'running').trim() || 'running',
+    launchMode: String(record.launchMode || 'exec').trim() || 'exec',
+    cwd: String(record.cwd || '').trim(),
+    command: String(record.command || '').trim(),
+    args: Array.isArray(record.argsJson) ? record.argsJson.map((value) => String(value)) : [],
+    env: mapRuntimeEnvEntries(record.envJson),
+    envHash: record.envHash ? String(record.envHash).trim() : null,
+    launchFingerprint: record.launchFingerprint ? String(record.launchFingerprint).trim() : null,
+    logRoot: record.logRoot ? String(record.logRoot).trim() : null,
+    restartPolicy: record.restartPolicy ? String(record.restartPolicy).trim() : null,
+    updatedAt: record.updatedAt ? String(record.updatedAt) : null,
+  };
+};
+
+const mapProcessRuntimeTelemetryForGraphql = (runtimeState) => {
+  const record = toPlainRecord(runtimeState);
+  if (!record) {
+    return null;
+  }
+  return {
+    sampledAt: String(record.sampledAt || new Date().toISOString()),
+    cpuPercent: Number(record.cpuPercent || 0),
+    memoryPercent: Number(record.memoryPercent || 0),
+    rssBytes: Number(record.rssBytes || 0),
+    vmsBytes: Number(record.vmsBytes || 0),
+    readBytes: Number(record.readBytes || 0),
+    writeBytes: Number(record.writeBytes || 0),
+    readOps: Number(record.readOps || 0),
+    writeOps: Number(record.writeOps || 0),
+    openFds: Number.isInteger(Number(record.openFds)) ? Number(record.openFds) : null,
+    threadCount: Number.isInteger(Number(record.threadCount)) ? Number(record.threadCount) : null,
+    status: String(record.status || 'unknown').trim() || 'unknown',
+  };
+};
+
+const mapHostRuntimeTelemetryForGraphql = (hostRuntimeState) => {
+  const record = toPlainRecord(hostRuntimeState);
+  if (!record) {
+    return null;
+  }
+  return {
+    sampledAt: String(record.sampledAt || new Date().toISOString()),
+    cpuPercent: Number(record.cpuPercent || 0),
+    load1m: record.load1m == null ? null : Number(record.load1m),
+    load5m: record.load5m == null ? null : Number(record.load5m),
+    load15m: record.load15m == null ? null : Number(record.load15m),
+    memoryTotalBytes: Number(record.memoryTotalBytes || 0),
+    memoryUsedBytes: Number(record.memoryUsedBytes || 0),
+    memoryAvailableBytes: Number(record.memoryAvailableBytes || 0),
+    diskTotalBytes: Number(record.diskTotalBytes || 0),
+    diskUsedBytes: Number(record.diskUsedBytes || 0),
+    diskAvailableBytes: Number(record.diskAvailableBytes || 0),
+    diskMount: record.diskMount ? String(record.diskMount).trim() : null,
+  };
+};
+
+const mapObservedProcessRunForGraphql = (processRun) => {
+  const record = toPlainRecord(processRun);
+  if (!record) {
+    return null;
+  }
+  const hostId = Number(record.hostId);
+  const projectId = Number(record.projectId);
+  if (!Number.isInteger(hostId) || hostId <= 0 || !Number.isInteger(projectId) || projectId <= 0) {
+    return null;
+  }
+  return {
+    id: Number.isInteger(Number(record.id)) ? Number(record.id) : null,
+    runId: String(record.runId || '').trim(),
+    desiredProcessId: Number.isInteger(Number(record.desiredProcessId)) ? Number(record.desiredProcessId) : null,
+    hostId,
+    projectId,
+    serviceId: Number.isInteger(Number(record.serviceId)) ? Number(record.serviceId) : null,
+    slaveId: record.slaveId ? String(record.slaveId).trim() : null,
+    bootId: record.bootId ? String(record.bootId).trim() : null,
+    processKey: String(record.packageKey || record.processKey || '').trim(),
+    packageKey: String(record.packageKey || '').trim(),
+    projectPath: record.projectPath ? String(record.projectPath).trim() : null,
+    pid: Number(record.pid || 0),
+    pgid: record.pgid == null ? null : Number(record.pgid),
+    launchFingerprint: record.launchFingerprint ? String(record.launchFingerprint).trim() : null,
+    command: String(record.command || '').trim(),
+    args: Array.isArray(record.argsJson) ? record.argsJson.map((value) => String(value)) : [],
+    cwd: record.cwd ? String(record.cwd).trim() : null,
+    envHash: record.envHash ? String(record.envHash).trim() : null,
+    status: String(record.status || 'unknown').trim() || 'unknown',
+    startedAt: record.startedAt ? String(record.startedAt) : null,
+    lastSeenAt: record.lastSeenAt ? String(record.lastSeenAt) : null,
+    exitedAt: record.exitedAt ? String(record.exitedAt) : null,
+    exitCode: Number.isInteger(Number(record.exitCode)) ? Number(record.exitCode) : null,
+    exitSignal: record.exitSignal ? String(record.exitSignal).trim() : null,
+    logPath: record.logPath ? String(record.logPath).trim() : null,
+    adopted: Boolean(record.adopted),
+    reconciliationSource: record.reconciliationSource ? String(record.reconciliationSource).trim() : null,
+    runtimeState: mapProcessRuntimeTelemetryForGraphql(record.runtimeState),
+  };
+};
+
+const mapSlaveRuntimeStateForGraphql = (runtimeState) => {
+  if (!runtimeState || typeof runtimeState !== 'object') {
+    return null;
+  }
+  const hostPayload = mapHostForGraphql(toPlainRecord(runtimeState.host));
+  if (!hostPayload) {
+    return null;
+  }
+  return {
+    host: hostPayload,
+    desiredProcesses: Array.isArray(runtimeState.desiredProcesses)
+      ? runtimeState.desiredProcesses.map((entry) => mapDesiredProcessForGraphql(entry)).filter(Boolean)
+      : [],
+    observedRuns: Array.isArray(runtimeState.processRuns || runtimeState.observedRuns)
+      ? (runtimeState.processRuns || runtimeState.observedRuns).map((entry) => mapObservedProcessRunForGraphql(entry)).filter(Boolean)
+      : [],
+    hostRuntimeState: mapHostRuntimeTelemetryForGraphql(runtimeState.hostRuntimeState),
+  };
+};
+
 const normalizeTerminalOutputEntry = (entry) => ({
   timestamp: String(entry?.timestamp || new Date().toISOString()),
   stream: String(entry?.stream || 'stdout').trim().toLowerCase() || 'stdout',
@@ -386,6 +716,7 @@ const createResolvers = ({
   startHostTerminalSession: startHostTerminalSessionFn,
   sendHostTerminalInput: sendHostTerminalInputFn,
   closeHostTerminalSession: closeHostTerminalSessionFn,
+  processRegistry = null,
   runtimeBackend,
   serverVersion = null,
   serverProtocolVersion = null,
@@ -430,6 +761,15 @@ const createResolvers = ({
   if (typeof closeHostTerminalSessionFn !== 'function') {
     throw new Error('closeHostTerminalSession is required for GraphQL resolvers.');
   }
+  if (processRegistry && typeof processRegistry !== 'object') {
+    throw new Error('processRegistry must be an object when provided to GraphQL resolvers.');
+  }
+
+  const requireProcessRegistry = (methodName) => {
+    if (!processRegistry || typeof processRegistry[methodName] !== 'function') {
+      throw new Error(`processRegistry.${methodName} is required for runtime registry GraphQL operations.`);
+    }
+  };
 
   return ({
   Query: {
@@ -456,6 +796,34 @@ const createResolvers = ({
     hosts: async () => {
       const hosts = await listHosts();
       return hosts.map((host) => mapHostForGraphql(host)).filter(Boolean);
+    },
+    slaveRuntimeState: async (_, { hostId, agentUuid }) => {
+      requireProcessRegistry('getSlaveRuntimeState');
+      const runtimeState = await processRegistry.getSlaveRuntimeState({
+        hostId,
+        slaveId: agentUuid,
+      });
+      return mapSlaveRuntimeStateForGraphql(runtimeState);
+    },
+    desiredProcesses: async (_, { hostId, projectId, agentUuid }) => {
+      requireProcessRegistry('listDesiredProcesses');
+      const desiredProcesses = await processRegistry.listDesiredProcesses({
+        hostId,
+        projectId,
+        slaveId: agentUuid,
+      });
+      return Array.isArray(desiredProcesses)
+        ? desiredProcesses.map((entry) => mapDesiredProcessForGraphql(entry)).filter(Boolean)
+        : [];
+    },
+    observedProcessRuns: async (_, { hostId, agentUuid }) => {
+      requireProcessRegistry('getSlaveRuntimeState');
+      const runtimeState = await processRegistry.getSlaveRuntimeState({
+        hostId,
+        slaveId: agentUuid,
+      });
+      const runs = Array.isArray(runtimeState?.processRuns) ? runtimeState.processRuns : [];
+      return runs.map((entry) => mapObservedProcessRunForGraphql(entry)).filter(Boolean);
     },
     terminalSession: async (_, { hostId }) => {
       const session = await getTerminalSessionFn({ hostId });
@@ -576,6 +944,85 @@ const createResolvers = ({
     upgradeHostAgent: async (_, { hostId }) => {
       const host = await upgradeHostAgentFn({ hostId });
       return mapHostForGraphql(host);
+    },
+    ensureDesiredProcess: async (_, args) => {
+      requireProcessRegistry('ensureDesiredProcess');
+      const desiredProcess = await processRegistry.ensureDesiredProcess({
+        hostId: args.hostId,
+        slaveId: args.agentUuid,
+        projectId: args.projectId,
+        projectPath: args.projectPath,
+        serviceId: args.serviceId,
+        processKey: args.processKey,
+        packageKey: args.packageKey,
+        packageRelativePath: args.packageRelativePath,
+        desiredState: args.desiredState,
+        launchMode: args.launchMode,
+        cwd: args.cwd,
+        command: args.command,
+        argsJson: Array.isArray(args.args) ? args.args : [],
+        envJson: Array.isArray(args.env)
+          ? args.env.reduce((accumulator, entry) => {
+            const key = String(entry?.key || '').trim();
+            if (!key) {
+              return accumulator;
+            }
+            accumulator[key] = entry?.value == null ? '' : String(entry.value);
+            return accumulator;
+          }, {})
+          : {},
+        logRoot: args.logRoot,
+        restartPolicy: args.restartPolicy,
+        createdBy: args.createdBy,
+        updatedBy: args.updatedBy,
+      });
+      return mapDesiredProcessForGraphql(desiredProcess);
+    },
+    deleteDesiredProcessDefinition: async (_, args) => {
+      requireProcessRegistry('deleteDesiredProcessDefinition');
+      return processRegistry.deleteDesiredProcessDefinition({
+        desiredProcessId: args.desiredProcessId,
+        hostId: args.hostId,
+        slaveId: args.agentUuid,
+        projectId: args.projectId,
+        projectPath: args.projectPath,
+        packageKey: args.packageKey,
+        processKey: args.processKey,
+      });
+    },
+    softKillProcess: async (_, args) => {
+      requireProcessRegistry('queueProcessKill');
+      const result = await processRegistry.queueProcessKill({
+        hostId: args.hostId,
+        slaveId: args.agentUuid,
+        runId: args.runId,
+        processKey: args.processKey,
+        pid: args.pid,
+        hard: false,
+        reason: args.reason,
+      });
+      return {
+        commandId: result?.commandId ? String(result.commandId) : null,
+        status: String(result?.status || 'queued').trim().toLowerCase() || 'queued',
+        message: 'soft kill command queued',
+      };
+    },
+    hardKillProcess: async (_, args) => {
+      requireProcessRegistry('queueProcessKill');
+      const result = await processRegistry.queueProcessKill({
+        hostId: args.hostId,
+        slaveId: args.agentUuid,
+        runId: args.runId,
+        processKey: args.processKey,
+        pid: args.pid,
+        hard: true,
+        reason: args.reason,
+      });
+      return {
+        commandId: result?.commandId ? String(result.commandId) : null,
+        status: String(result?.status || 'queued').trim().toLowerCase() || 'queued',
+        message: 'hard kill command queued',
+      };
     },
     checkoutHostProject: async (_, {
       hostId,

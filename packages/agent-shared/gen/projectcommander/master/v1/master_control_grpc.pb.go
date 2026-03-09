@@ -24,6 +24,11 @@ const (
 	MasterControl_Handshake_FullMethodName              = "/projectcommander.master.v1.MasterControl/Handshake"
 	MasterControl_ListRegisteredSlaves_FullMethodName   = "/projectcommander.master.v1.MasterControl/ListRegisteredSlaves"
 	MasterControl_CheckoutProjectOnSlave_FullMethodName = "/projectcommander.master.v1.MasterControl/CheckoutProjectOnSlave"
+	MasterControl_UpsertDesiredProcess_FullMethodName   = "/projectcommander.master.v1.MasterControl/UpsertDesiredProcess"
+	MasterControl_DeleteDesiredProcess_FullMethodName   = "/projectcommander.master.v1.MasterControl/DeleteDesiredProcess"
+	MasterControl_ListDesiredProcesses_FullMethodName   = "/projectcommander.master.v1.MasterControl/ListDesiredProcesses"
+	MasterControl_GetSlaveRuntimeState_FullMethodName   = "/projectcommander.master.v1.MasterControl/GetSlaveRuntimeState"
+	MasterControl_QueueSlaveKill_FullMethodName         = "/projectcommander.master.v1.MasterControl/QueueSlaveKill"
 	MasterControl_GetRuntimeSnapshot_FullMethodName     = "/projectcommander.master.v1.MasterControl/GetRuntimeSnapshot"
 	MasterControl_StartService_FullMethodName           = "/projectcommander.master.v1.MasterControl/StartService"
 	MasterControl_StartProject_FullMethodName           = "/projectcommander.master.v1.MasterControl/StartProject"
@@ -46,6 +51,11 @@ type MasterControlClient interface {
 	Handshake(ctx context.Context, in *HandshakeRequest, opts ...grpc.CallOption) (*HandshakeResponse, error)
 	ListRegisteredSlaves(ctx context.Context, in *ListRegisteredSlavesRequest, opts ...grpc.CallOption) (*ListRegisteredSlavesResponse, error)
 	CheckoutProjectOnSlave(ctx context.Context, in *CheckoutProjectOnSlaveRequest, opts ...grpc.CallOption) (*CheckoutProjectOnSlaveResponse, error)
+	UpsertDesiredProcess(ctx context.Context, in *UpsertDesiredProcessRequest, opts ...grpc.CallOption) (*UpsertDesiredProcessResponse, error)
+	DeleteDesiredProcess(ctx context.Context, in *DeleteDesiredProcessRequest, opts ...grpc.CallOption) (*DeleteDesiredProcessResponse, error)
+	ListDesiredProcesses(ctx context.Context, in *ListDesiredProcessesRequest, opts ...grpc.CallOption) (*ListDesiredProcessesResponse, error)
+	GetSlaveRuntimeState(ctx context.Context, in *GetSlaveRuntimeStateRequest, opts ...grpc.CallOption) (*GetSlaveRuntimeStateResponse, error)
+	QueueSlaveKill(ctx context.Context, in *QueueSlaveKillRequest, opts ...grpc.CallOption) (*QueueSlaveKillResponse, error)
 	GetRuntimeSnapshot(ctx context.Context, in *GetRuntimeSnapshotRequest, opts ...grpc.CallOption) (*GetRuntimeSnapshotResponse, error)
 	StartService(ctx context.Context, in *StartServiceRequest, opts ...grpc.CallOption) (*StartServiceResponse, error)
 	StartProject(ctx context.Context, in *StartProjectRequest, opts ...grpc.CallOption) (*StartProjectResponse, error)
@@ -111,6 +121,56 @@ func (c *masterControlClient) CheckoutProjectOnSlave(ctx context.Context, in *Ch
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CheckoutProjectOnSlaveResponse)
 	err := c.cc.Invoke(ctx, MasterControl_CheckoutProjectOnSlave_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterControlClient) UpsertDesiredProcess(ctx context.Context, in *UpsertDesiredProcessRequest, opts ...grpc.CallOption) (*UpsertDesiredProcessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpsertDesiredProcessResponse)
+	err := c.cc.Invoke(ctx, MasterControl_UpsertDesiredProcess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterControlClient) DeleteDesiredProcess(ctx context.Context, in *DeleteDesiredProcessRequest, opts ...grpc.CallOption) (*DeleteDesiredProcessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteDesiredProcessResponse)
+	err := c.cc.Invoke(ctx, MasterControl_DeleteDesiredProcess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterControlClient) ListDesiredProcesses(ctx context.Context, in *ListDesiredProcessesRequest, opts ...grpc.CallOption) (*ListDesiredProcessesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDesiredProcessesResponse)
+	err := c.cc.Invoke(ctx, MasterControl_ListDesiredProcesses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterControlClient) GetSlaveRuntimeState(ctx context.Context, in *GetSlaveRuntimeStateRequest, opts ...grpc.CallOption) (*GetSlaveRuntimeStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSlaveRuntimeStateResponse)
+	err := c.cc.Invoke(ctx, MasterControl_GetSlaveRuntimeState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *masterControlClient) QueueSlaveKill(ctx context.Context, in *QueueSlaveKillRequest, opts ...grpc.CallOption) (*QueueSlaveKillResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(QueueSlaveKillResponse)
+	err := c.cc.Invoke(ctx, MasterControl_QueueSlaveKill_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +296,11 @@ type MasterControlServer interface {
 	Handshake(context.Context, *HandshakeRequest) (*HandshakeResponse, error)
 	ListRegisteredSlaves(context.Context, *ListRegisteredSlavesRequest) (*ListRegisteredSlavesResponse, error)
 	CheckoutProjectOnSlave(context.Context, *CheckoutProjectOnSlaveRequest) (*CheckoutProjectOnSlaveResponse, error)
+	UpsertDesiredProcess(context.Context, *UpsertDesiredProcessRequest) (*UpsertDesiredProcessResponse, error)
+	DeleteDesiredProcess(context.Context, *DeleteDesiredProcessRequest) (*DeleteDesiredProcessResponse, error)
+	ListDesiredProcesses(context.Context, *ListDesiredProcessesRequest) (*ListDesiredProcessesResponse, error)
+	GetSlaveRuntimeState(context.Context, *GetSlaveRuntimeStateRequest) (*GetSlaveRuntimeStateResponse, error)
+	QueueSlaveKill(context.Context, *QueueSlaveKillRequest) (*QueueSlaveKillResponse, error)
 	GetRuntimeSnapshot(context.Context, *GetRuntimeSnapshotRequest) (*GetRuntimeSnapshotResponse, error)
 	StartService(context.Context, *StartServiceRequest) (*StartServiceResponse, error)
 	StartProject(context.Context, *StartProjectRequest) (*StartProjectResponse, error)
@@ -271,6 +336,21 @@ func (UnimplementedMasterControlServer) ListRegisteredSlaves(context.Context, *L
 }
 func (UnimplementedMasterControlServer) CheckoutProjectOnSlave(context.Context, *CheckoutProjectOnSlaveRequest) (*CheckoutProjectOnSlaveResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckoutProjectOnSlave not implemented")
+}
+func (UnimplementedMasterControlServer) UpsertDesiredProcess(context.Context, *UpsertDesiredProcessRequest) (*UpsertDesiredProcessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertDesiredProcess not implemented")
+}
+func (UnimplementedMasterControlServer) DeleteDesiredProcess(context.Context, *DeleteDesiredProcessRequest) (*DeleteDesiredProcessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDesiredProcess not implemented")
+}
+func (UnimplementedMasterControlServer) ListDesiredProcesses(context.Context, *ListDesiredProcessesRequest) (*ListDesiredProcessesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDesiredProcesses not implemented")
+}
+func (UnimplementedMasterControlServer) GetSlaveRuntimeState(context.Context, *GetSlaveRuntimeStateRequest) (*GetSlaveRuntimeStateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSlaveRuntimeState not implemented")
+}
+func (UnimplementedMasterControlServer) QueueSlaveKill(context.Context, *QueueSlaveKillRequest) (*QueueSlaveKillResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method QueueSlaveKill not implemented")
 }
 func (UnimplementedMasterControlServer) GetRuntimeSnapshot(context.Context, *GetRuntimeSnapshotRequest) (*GetRuntimeSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRuntimeSnapshot not implemented")
@@ -412,6 +492,96 @@ func _MasterControl_CheckoutProjectOnSlave_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MasterControlServer).CheckoutProjectOnSlave(ctx, req.(*CheckoutProjectOnSlaveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterControl_UpsertDesiredProcess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertDesiredProcessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterControlServer).UpsertDesiredProcess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterControl_UpsertDesiredProcess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterControlServer).UpsertDesiredProcess(ctx, req.(*UpsertDesiredProcessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterControl_DeleteDesiredProcess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDesiredProcessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterControlServer).DeleteDesiredProcess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterControl_DeleteDesiredProcess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterControlServer).DeleteDesiredProcess(ctx, req.(*DeleteDesiredProcessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterControl_ListDesiredProcesses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDesiredProcessesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterControlServer).ListDesiredProcesses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterControl_ListDesiredProcesses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterControlServer).ListDesiredProcesses(ctx, req.(*ListDesiredProcessesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterControl_GetSlaveRuntimeState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSlaveRuntimeStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterControlServer).GetSlaveRuntimeState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterControl_GetSlaveRuntimeState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterControlServer).GetSlaveRuntimeState(ctx, req.(*GetSlaveRuntimeStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MasterControl_QueueSlaveKill_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueueSlaveKillRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MasterControlServer).QueueSlaveKill(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MasterControl_QueueSlaveKill_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MasterControlServer).QueueSlaveKill(ctx, req.(*QueueSlaveKillRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -640,6 +810,26 @@ var MasterControl_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckoutProjectOnSlave",
 			Handler:    _MasterControl_CheckoutProjectOnSlave_Handler,
+		},
+		{
+			MethodName: "UpsertDesiredProcess",
+			Handler:    _MasterControl_UpsertDesiredProcess_Handler,
+		},
+		{
+			MethodName: "DeleteDesiredProcess",
+			Handler:    _MasterControl_DeleteDesiredProcess_Handler,
+		},
+		{
+			MethodName: "ListDesiredProcesses",
+			Handler:    _MasterControl_ListDesiredProcesses_Handler,
+		},
+		{
+			MethodName: "GetSlaveRuntimeState",
+			Handler:    _MasterControl_GetSlaveRuntimeState_Handler,
+		},
+		{
+			MethodName: "QueueSlaveKill",
+			Handler:    _MasterControl_QueueSlaveKill_Handler,
 		},
 		{
 			MethodName: "GetRuntimeSnapshot",

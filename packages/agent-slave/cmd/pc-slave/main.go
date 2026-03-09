@@ -54,6 +54,10 @@ type config struct {
 	ProjectPath       string
 	LaunchCommand     string
 	WatchInterval     time.Duration
+	BootID            string
+	AgentStartedAt    string
+	StateRoot         string
+	ProcessLogRoot    string
 }
 
 func main() {
@@ -220,6 +224,19 @@ func resolveConfig(
 		logFormat = "text"
 	}
 
+	stateRoot, err := resolveStateRoot(strings.TrimSpace(os.Getenv("PC_SLAVE_STATE_ROOT")), slaveID)
+	if err != nil {
+		return config{}, err
+	}
+	processLogRoot, err := resolveProcessLogRoot(strings.TrimSpace(os.Getenv("PC_SLAVE_PROCESS_LOG_DIR")), stateRoot)
+	if err != nil {
+		return config{}, err
+	}
+	bootID, err := resolveBootID()
+	if err != nil {
+		return config{}, err
+	}
+
 	return config{
 		SlaveID:           slaveID,
 		HostName:          hostName,
@@ -231,6 +248,10 @@ func resolveConfig(
 		ProjectPath:       projectPath,
 		LaunchCommand:     launchCommand,
 		WatchInterval:     watchInterval,
+		BootID:            strings.TrimSpace(bootID),
+		AgentStartedAt:    time.Now().UTC().Format(time.RFC3339Nano),
+		StateRoot:         stateRoot,
+		ProcessLogRoot:    processLogRoot,
 	}, nil
 }
 
@@ -434,22 +455,20 @@ func run(cfg config, logger *slog.Logger) error {
 		cfg.LaunchCommand,
 		"watch_interval",
 		cfg.WatchInterval.String(),
+		"boot_id",
+		cfg.BootID,
+		"state_root",
+		cfg.StateRoot,
+		"process_log_root",
+		cfg.ProcessLogRoot,
 	)
 
-	var supervisor *workloadSupervisor
-	if cfg.ProjectPath != "" {
-		nextSupervisor, supervisorErr := newWorkloadSupervisor(
-			logger,
-			cfg.ProjectPath,
-			cfg.LaunchCommand,
-			cfg.WatchInterval,
-		)
-		if supervisorErr != nil {
-			return fmt.Errorf("initialize workload supervisor: %w", supervisorErr)
-		}
-		supervisor = nextSupervisor
-		go supervisor.Run(ctx)
+	processManager, err := newProcessManager(logger, cfg)
+	if err != nil {
+		return fmt.Errorf("initialize process manager: %w", err)
 	}
+	telemetrySampler := newTelemetrySampler(logger, cfg)
+	processLogShipper := newProcessLogShipper(logger)
 
 	discoveryInterval := resolveDiscoveryInterval()
 	discoveryMaxDepth := resolveDiscoveryMaxDepth()
@@ -637,6 +656,68 @@ func run(cfg config, logger *slog.Logger) error {
 		}
 	}
 
+	fetchDesiredProcesses := func(parent context.Context) ([]*slavev1.DesiredProcess, error) {
+		requestID := nextRequestID("desired-processes")
+		rpcCtx, rpcCancel := buildRPCContext(parent, requestID)
+		defer rpcCancel()
+		response, err := client.GetDesiredProcesses(rpcCtx, &slavev1.GetDesiredProcessesRequest{
+			RequestId: requestID,
+			SlaveId:   cfg.SlaveID,
+			BootId:    cfg.BootID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return response.GetDesiredProcesses(), nil
+	}
+
+	reportProcessReconciliation := func(parent context.Context, changes []*slavev1.ProcessReconciliationChange) error {
+		if len(changes) == 0 {
+			return nil
+		}
+		requestID := nextRequestID("reconcile")
+		rpcCtx, rpcCancel := buildRPCContext(parent, requestID)
+		defer rpcCancel()
+		_, err := client.ReportProcessReconciliation(rpcCtx, &slavev1.ReportProcessReconciliationRequest{
+			RequestId:    requestID,
+			SlaveId:      cfg.SlaveID,
+			BootId:       cfg.BootID,
+			Changes:      changes,
+			ObservedRuns: processManager.ObservedRuns(),
+		})
+		return err
+	}
+
+	flushProcessReconciliation := func(parent context.Context) {
+		changes := processManager.DrainPendingReconciliationChanges()
+		if len(changes) == 0 {
+			return
+		}
+		if err := reportProcessReconciliation(parent, changes); err != nil {
+			processManager.RequeuePendingReconciliationChanges(changes)
+			logger.Warn(
+				"failed to report process reconciliation",
+				"change_count",
+				len(changes),
+				"error",
+				err.Error(),
+			)
+		}
+	}
+
+	reconcileRuntime := func(parent context.Context, source string) {
+		desiredProcesses, err := fetchDesiredProcesses(parent)
+		if err != nil {
+			logger.Warn("failed to fetch desired processes", "error", err.Error())
+			return
+		}
+		if err := processManager.ReconcileDesiredProcesses(parent, desiredProcesses, source); err != nil {
+			logger.Warn("failed to reconcile desired processes", "error", err.Error())
+			return
+		}
+		flushProcessReconciliation(parent)
+	}
+
 	go func() {
 		for {
 			select {
@@ -661,7 +742,7 @@ func run(cfg config, logger *slog.Logger) error {
 					command.GetTargetPath(),
 				)
 
-				result := executeSlaveCommand(ctx, logger, command)
+				result := executeSlaveCommand(ctx, logger, processManager, command)
 				if reportErr := reportCommandResult(ctx, command, result); reportErr != nil {
 					logger.Warn(
 						"failed to report slave command result",
@@ -687,6 +768,7 @@ func run(cfg config, logger *slog.Logger) error {
 				if commandType == slaveCommandTypeGitCheckout && result.status == slaveCommandStatusCompleted {
 					forceDiscoveryRefresh.Store(true)
 				}
+				flushProcessReconciliation(ctx)
 			}
 		}
 	}()
@@ -714,6 +796,10 @@ func run(cfg config, logger *slog.Logger) error {
 			response.GetAssignedCluster(),
 			"discovered_projects",
 			len(discoveredProjects),
+			"desired_process_count",
+			response.GetDesiredProcessCount(),
+			"reconcile_required",
+			response.GetReconcileRequired(),
 		)
 		return nil
 	}
@@ -723,9 +809,24 @@ func run(cfg config, logger *slog.Logger) error {
 		rpcCtx, rpcCancel := buildRPCContext(parent, requestID)
 		defer rpcCancel()
 		discoveredProjects := collectDiscoveredProjects(false)
+		observedRuns := processManager.ObservedRuns()
+		hostTelemetry := telemetrySampler.SampleHostTelemetry()
+		processTelemetry := telemetrySampler.SampleProcessTelemetry(observedRuns)
+		processLogChunks := processLogShipper.Collect(observedRuns, time.Now().UTC())
 		response, err := client.Heartbeat(
 			rpcCtx,
-			buildHeartbeatRequest(cfg, requestID, runningServices, discoveredProjects, time.Now().UTC()),
+			buildHeartbeatRequest(
+				cfg,
+				requestID,
+				runningServices,
+				discoveredProjects,
+				hostTelemetry,
+				processTelemetry,
+				observedRuns,
+				processLogChunks,
+				processManager.RuntimeSequence(),
+				time.Now().UTC(),
+			),
 		)
 		if err != nil {
 			return nil, err
@@ -749,6 +850,12 @@ func run(cfg config, logger *slog.Logger) error {
 			heartbeatCount,
 			"running_services",
 			runningServices,
+			"observed_runs",
+			len(observedRuns),
+			"process_telemetry",
+			len(processTelemetry),
+			"runtime_sequence",
+			processManager.RuntimeSequence(),
 		)
 		return response, nil
 	}
@@ -758,6 +865,7 @@ func run(cfg config, logger *slog.Logger) error {
 		logger.Warn("initial registration failed; will retry on heartbeat", "error", err.Error())
 	} else {
 		registered = true
+		reconcileRuntime(ctx, reconciliationSourceStartup)
 	}
 
 	heartbeatCounter := 0
@@ -776,13 +884,17 @@ func run(cfg config, logger *slog.Logger) error {
 					continue
 				}
 				registered = true
+				reconcileRuntime(ctx, reconciliationSourceStartup)
 			}
 
-			heartbeatCounter += 1
-			runningServices := int32(0)
-			if supervisor != nil {
-				runningServices = supervisor.RunningServices()
+			reconcileRuntime(ctx, reconciliationSourceTick)
+			if err := processManager.Tick(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				logger.Warn("process manager tick failed", "error", err.Error())
 			}
+			flushProcessReconciliation(ctx)
+
+			heartbeatCounter += 1
+			runningServices := processManager.RunningServices()
 			response, err := sendHeartbeat(ctx, heartbeatCounter, runningServices)
 			if err != nil {
 				logger.Warn("heartbeat failed; forcing re-registration", "error", err.Error())

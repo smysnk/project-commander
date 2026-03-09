@@ -22,12 +22,114 @@ message RegisterSlaveRequest {
   repeated DiscoveredProject discovered_projects = 6;
   string version = 7;
   string protocol_version = 8;
+  string boot_id = 9;
+  string agent_started_at = 10;
+  string process_log_root = 11;
+  string state_root = 12;
+  repeated string runtime_capabilities = 13;
 }
 
 message RegisterSlaveResponse {
   string request_id = 1;
   string status = 2;
   string assigned_cluster = 3;
+  int32 desired_process_count = 4;
+  bool reconcile_required = 5;
+}
+
+message ProcessEnvEntry {
+  string key = 1;
+  string value = 2;
+}
+
+message DesiredProcess {
+  int64 desired_process_id = 1;
+  int64 host_id = 2;
+  int64 project_id = 3;
+  int64 service_id = 4;
+  string process_key = 5;
+  string project_path = 6;
+  string package_key = 7;
+  string package_relative_path = 8;
+  string desired_state = 9;
+  string launch_mode = 10;
+  string cwd = 11;
+  string command = 12;
+  repeated string args = 13;
+  repeated ProcessEnvEntry env = 14;
+  string env_hash = 15;
+  string launch_fingerprint = 16;
+  string log_root = 17;
+  string restart_policy = 18;
+  string updated_at = 19;
+}
+
+message ObservedProcessRun {
+  string run_id = 1;
+  int64 desired_process_id = 2;
+  string process_key = 3;
+  string project_path = 4;
+  string package_key = 5;
+  int64 pid = 6;
+  int64 pgid = 7;
+  string boot_id = 8;
+  string launch_fingerprint = 9;
+  string command = 10;
+  repeated string args = 11;
+  string cwd = 12;
+  string env_hash = 13;
+  string status = 14;
+  string started_at = 15;
+  string last_seen_at = 16;
+  string exited_at = 17;
+  int32 exit_code = 18;
+  string exit_signal = 19;
+  string log_path = 20;
+  bool adopted = 21;
+  string reconciliation_source = 22;
+}
+
+message ProcessTelemetrySample {
+  string run_id = 1;
+  string process_key = 2;
+  int64 pid = 3;
+  string sampled_at = 4;
+  double cpu_percent = 5;
+  double memory_percent = 6;
+  int64 rss_bytes = 7;
+  int64 vms_bytes = 8;
+  int64 read_bytes = 9;
+  int64 write_bytes = 10;
+  int64 read_ops = 11;
+  int64 write_ops = 12;
+  int32 open_fds = 13;
+  int32 thread_count = 14;
+  string status = 15;
+}
+
+message ProcessLogChunk {
+  string run_id = 1;
+  string process_key = 2;
+  string package_key = 3;
+  string log_path = 4;
+  string sampled_at = 5;
+  string stream = 6;
+  repeated string lines = 7;
+}
+
+message HostTelemetrySample {
+  string sampled_at = 1;
+  double cpu_percent = 2;
+  double load_1m = 3;
+  double load_5m = 4;
+  double load_15m = 5;
+  int64 memory_total_bytes = 6;
+  int64 memory_used_bytes = 7;
+  int64 memory_available_bytes = 8;
+  int64 disk_total_bytes = 9;
+  int64 disk_used_bytes = 10;
+  int64 disk_available_bytes = 11;
+  string disk_mount = 12;
 }
 
 message HeartbeatRequest {
@@ -40,12 +142,49 @@ message HeartbeatRequest {
   repeated DiscoveredProject discovered_projects = 7;
   string version = 8;
   string protocol_version = 9;
+  string boot_id = 10;
+  HostTelemetrySample host_telemetry = 11;
+  repeated ProcessTelemetrySample process_telemetry = 12;
+  repeated ObservedProcessRun observed_runs = 13;
+  int64 runtime_sequence = 14;
+  repeated ProcessLogChunk process_log_chunks = 15;
 }
 
 message HeartbeatResponse {
   string request_id = 1;
   string status = 2;
   repeated SlaveCommand commands = 3;
+}
+
+message GitCheckoutCommand {
+  string repository_url = 1;
+  string base_directory = 2;
+  string destination_folder = 3;
+  string target_path = 4;
+}
+
+message LaunchProcessCommand {
+  string run_id = 1;
+  string process_key = 2;
+  string project_path = 3;
+  string package_key = 4;
+  string package_relative_path = 5;
+  string cwd = 6;
+  string command = 7;
+  repeated string args = 8;
+  repeated ProcessEnvEntry env = 9;
+  string env_hash = 10;
+  string log_root = 11;
+  string launch_fingerprint = 12;
+}
+
+message KillProcessCommand {
+  string run_id = 1;
+  string process_key = 2;
+  int64 pid = 3;
+  int64 pgid = 4;
+  string signal = 5;
+  string reason = 6;
 }
 
 message SlaveCommand {
@@ -56,6 +195,12 @@ message SlaveCommand {
   string destination_folder = 5;
   string target_path = 6;
   string requested_at = 7;
+  oneof payload {
+    GitCheckoutCommand git_checkout = 8;
+    LaunchProcessCommand launch_process = 9;
+    KillProcessCommand soft_kill_process = 10;
+    KillProcessCommand hard_kill_process = 11;
+  }
 }
 
 message ReportCommandResultRequest {
@@ -70,6 +215,38 @@ message ReportCommandResultRequest {
 }
 
 message ReportCommandResultResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+message ProcessReconciliationChange {
+  string change_type = 1;
+  string reason = 2;
+  DesiredProcess desired_process = 3;
+  ObservedProcessRun observed_run = 4;
+}
+
+message GetDesiredProcessesRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string boot_id = 3;
+}
+
+message GetDesiredProcessesResponse {
+  string request_id = 1;
+  string status = 2;
+  repeated DesiredProcess desired_processes = 3;
+}
+
+message ReportProcessReconciliationRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string boot_id = 3;
+  repeated ProcessReconciliationChange changes = 4;
+  repeated ObservedProcessRun observed_runs = 5;
+}
+
+message ReportProcessReconciliationResponse {
   string request_id = 1;
   string status = 2;
 }
@@ -102,6 +279,8 @@ service SlaveControl {
   rpc RegisterSlave(RegisterSlaveRequest) returns (RegisterSlaveResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc ReportCommandResult(ReportCommandResultRequest) returns (ReportCommandResultResponse);
+  rpc GetDesiredProcesses(GetDesiredProcessesRequest) returns (GetDesiredProcessesResponse);
+  rpc ReportProcessReconciliation(ReportProcessReconciliationRequest) returns (ReportProcessReconciliationResponse);
   rpc AssignWorkload(AssignWorkloadRequest) returns (AssignWorkloadResponse);
   rpc Drain(DrainRequest) returns (DrainResponse);
 }

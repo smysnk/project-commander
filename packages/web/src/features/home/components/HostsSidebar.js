@@ -1,5 +1,12 @@
 import { FiGitBranch, FiPlus, FiServer, FiTrash2, FiUpload } from 'react-icons/fi';
+import TagChip from '../../../components/TagChip';
 import { useHostsSidebarContext } from '../context/HostsSidebarContext';
+import {
+  formatRuntimeByteRatio,
+  formatRuntimeBytes,
+  formatRuntimePercent,
+  getObservedProcessLabel,
+} from '../lib/runtimeRegistryUi';
 
 const isLoopbackTarget = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -46,6 +53,12 @@ export default function HostsSidebar() {
     checkoutMutationBusyByHostId,
     slaveTargetVersion,
     upgradingHostId,
+    runtimeRegistryByHostId,
+    runtimeRegistryLoadingByHostId,
+    runtimeActionBusyByHostId,
+    onViewManagedProcessLogs,
+    onSoftKillObservedProcess,
+    onHardKillObservedProcess,
     onUpgradeHostAgent,
     onDeleteHost,
     onToggleHostCheckoutRow,
@@ -251,6 +264,16 @@ export default function HostsSidebar() {
                   const targetValue = useSocketTarget
                     ? String(host?.targetSocket || host?.ip || '-').trim() || '-'
                     : (host.ip || '-');
+                  const runtimeBundle = runtimeRegistryByHostId?.[hostId] || null;
+                  const runtimeLoading = Boolean(runtimeRegistryLoadingByHostId?.[hostId]);
+                  const runtimeBusy = Boolean(runtimeActionBusyByHostId?.[hostId]);
+                  const observedRuns = Array.isArray(runtimeBundle?.observedProcessRuns)
+                    ? runtimeBundle.observedProcessRuns
+                    : [];
+                  const desiredProcesses = Array.isArray(runtimeBundle?.desiredProcesses)
+                    ? runtimeBundle.desiredProcesses
+                    : [];
+                  const hostRuntimeState = runtimeBundle?.slaveRuntimeState?.hostRuntimeState || null;
                   const projectCount = Number.isInteger(Number(host?.projectCount))
                     ? Number(host.projectCount)
                     : (Array.isArray(host?.projects) ? host.projects.length : 0);
@@ -381,6 +404,45 @@ export default function HostsSidebar() {
                             {formatVersionWithProtocol(host?.version, host?.protocolVersion)}
                           </span>
                         </div>
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Runtime CPU</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading
+                                ? 'Loading...'
+                                : formatRuntimePercent(hostRuntimeState?.cpuPercent)}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Runtime Memory</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading
+                                ? 'Loading...'
+                                : formatRuntimeByteRatio(
+                                  hostRuntimeState?.memoryUsedBytes,
+                                  hostRuntimeState?.memoryTotalBytes,
+                                )}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Desired Processes</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading ? 'Loading...' : desiredProcesses.length}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Observed Runs</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading ? 'Loading...' : observedRuns.length}
+                            </span>
+                          </div>
+                        ) : null}
                         <div className="hostFieldItem">
                           <span className="hostFieldLabel hostFieldLabelWithAction">
                             <span>Directories</span>
@@ -405,6 +467,56 @@ export default function HostsSidebar() {
                           </span>
                         </div>
                       </div>
+                      {isSelectedHost && observedRuns.length > 0 ? (
+                        <div className="hostRuntimeProcessList">
+                          {observedRuns.map((observedRun) => (
+                            <div
+                              className="hostRuntimeProcessRow"
+                              key={`${hostId}-${observedRun.runId}`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <div className="hostRuntimeProcessIdentity">
+                                <TagChip className="logServiceTag">
+                                  {getObservedProcessLabel(observedRun)}
+                                </TagChip>
+                                <span className="hostRuntimeProcessMeta">
+                                  pid {Number(observedRun?.pid || 0) > 0 ? Number(observedRun.pid) : '-'}
+                                  {' · '}
+                                  {String(observedRun?.status || '-').trim() || '-'}
+                                  {' · '}
+                                  {formatRuntimeBytes(observedRun?.runtimeState?.rssBytes)}
+                                </span>
+                              </div>
+                              <div className="hostRuntimeProcessActions">
+                                <button
+                                  type="button"
+                                  className="hostsActionButton"
+                                  onClick={() => onViewManagedProcessLogs?.(host, observedRun)}
+                                  disabled={runtimeBusy}
+                                >
+                                  Logs
+                                </button>
+                                <button
+                                  type="button"
+                                  className="hostsActionButton"
+                                  onClick={() => onSoftKillObservedProcess?.(host, observedRun)}
+                                  disabled={runtimeBusy}
+                                >
+                                  Soft
+                                </button>
+                                <button
+                                  type="button"
+                                  className="hostsDeleteButton"
+                                  onClick={() => onHardKillObservedProcess?.(host, observedRun)}
+                                  disabled={runtimeBusy}
+                                >
+                                  Hard
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       {showDirectoryRow ? (
                         <div
                           className="hostDirectoryAddRow"

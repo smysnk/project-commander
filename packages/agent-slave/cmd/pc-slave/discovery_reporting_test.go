@@ -77,6 +77,9 @@ func TestBuildRegisterSlaveRequest_IncludesDiscoveredProjectsFromWatchDirectory(
 		HostName:       "test-host",
 		SlavePort:      42050,
 		MasterEndpoint: "127.0.0.1:50052",
+		BootID:         "boot-test",
+		StateRoot:      filepath.Join(rootDir, "state"),
+		ProcessLogRoot: filepath.Join(rootDir, "logs"),
 	}
 	request := buildRegisterSlaveRequest(cfg, "register-1", discoveredProjects)
 	if request.GetSlaveId() != cfg.SlaveID {
@@ -84,6 +87,18 @@ func TestBuildRegisterSlaveRequest_IncludesDiscoveredProjectsFromWatchDirectory(
 	}
 	if len(request.GetDiscoveredProjects()) == 0 {
 		t.Fatalf("expected register request to include discovered projects")
+	}
+	if strings.TrimSpace(request.GetBootId()) == "" {
+		t.Fatalf("expected register request to include boot id")
+	}
+	if strings.TrimSpace(request.GetStateRoot()) == "" {
+		t.Fatalf("expected register request to include state root")
+	}
+	if strings.TrimSpace(request.GetProcessLogRoot()) == "" {
+		t.Fatalf("expected register request to include process log root")
+	}
+	if len(request.GetRuntimeCapabilities()) == 0 {
+		t.Fatalf("expected register request to include runtime capabilities")
 	}
 
 	for _, project := range request.GetDiscoveredProjects() {
@@ -119,12 +134,40 @@ func TestBuildHeartbeatRequest_IncludesFullDiscoveredProjectMetadata(t *testing.
 		HostName:       "meta-host",
 		SlavePort:      42051,
 		MasterEndpoint: "127.0.0.1:50052",
+		BootID:         "boot-meta",
+		StateRoot:      filepath.Join(rootDir, "state"),
+		ProcessLogRoot: filepath.Join(rootDir, "logs"),
 	}
 	request := buildHeartbeatRequest(
 		cfg,
 		"heartbeat-1",
 		3,
 		discoveredProjects,
+		&slavev1.HostTelemetrySample{
+			SampledAt:            "2026-03-05T12:00:00Z",
+			CpuPercent:           12.5,
+			MemoryTotalBytes:     100,
+			MemoryUsedBytes:      40,
+			MemoryAvailableBytes: 60,
+			DiskTotalBytes:       1000,
+			DiskUsedBytes:        250,
+			DiskAvailableBytes:   750,
+			DiskMount:            "/tmp",
+		},
+		[]*slavev1.ProcessTelemetrySample{
+			{
+				RunId:         "run-1",
+				ProcessKey:    "api",
+				Pid:           1234,
+				SampledAt:     "2026-03-05T12:00:00Z",
+				CpuPercent:    2.5,
+				MemoryPercent: 1.25,
+				Status:        "running",
+			},
+		},
+		nil,
+		nil,
+		42,
 		time.Date(2026, time.March, 5, 12, 0, 0, 0, time.UTC),
 	)
 
@@ -159,6 +202,18 @@ func TestBuildHeartbeatRequest_IncludesFullDiscoveredProjectMetadata(t *testing.
 	if request.GetProtocolVersion() != slaveProtocolVersion {
 		t.Fatalf("expected heartbeat protocol version %q, got %q", slaveProtocolVersion, request.GetProtocolVersion())
 	}
+	if request.GetBootId() != cfg.BootID {
+		t.Fatalf("expected heartbeat boot id %q, got %q", cfg.BootID, request.GetBootId())
+	}
+	if request.GetRuntimeSequence() != 42 {
+		t.Fatalf("expected heartbeat runtime sequence 42, got %d", request.GetRuntimeSequence())
+	}
+	if request.GetHostTelemetry() == nil || request.GetHostTelemetry().GetDiskTotalBytes() != 1000 {
+		t.Fatalf("expected heartbeat host telemetry to be included")
+	}
+	if len(request.GetProcessTelemetry()) != 1 || request.GetProcessTelemetry()[0].GetRunId() != "run-1" {
+		t.Fatalf("expected heartbeat process telemetry to be included")
+	}
 }
 
 func TestDiscoveredProjects_AreReportedWhenFoldersAreAddedAndRemoved(t *testing.T) {
@@ -173,9 +228,12 @@ func TestDiscoveredProjects_AreReportedWhenFoldersAreAddedAndRemoved(t *testing.
 		HostName:       "reporting-host",
 		SlavePort:      42052,
 		MasterEndpoint: "127.0.0.1:50052",
+		BootID:         "boot-reporting",
+		StateRoot:      filepath.Join(rootDir, "state"),
+		ProcessLogRoot: filepath.Join(rootDir, "logs"),
 	}
 
-	initialHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-initial", 0, collector.Collect(true), time.Now().UTC())
+	initialHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-initial", 0, collector.Collect(true), nil, nil, nil, nil, 0, time.Now().UTC())
 	initialPaths := projectPathsSetFromRequest(initialHeartbeat.GetDiscoveredProjects())
 	if _, exists := initialPaths[filepath.Clean(projectOnePath)]; !exists {
 		t.Fatalf("expected initial heartbeat to include project %q", projectOnePath)
@@ -185,7 +243,7 @@ func TestDiscoveredProjects_AreReportedWhenFoldersAreAddedAndRemoved(t *testing.
 	}
 
 	writeDiscoveryFixtureFile(t, filepath.Join(projectTwoPath, "package.json"), `{"name":"two"}`)
-	addedHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-added", 0, collector.Collect(true), time.Now().UTC())
+	addedHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-added", 0, collector.Collect(true), nil, nil, nil, nil, 0, time.Now().UTC())
 	addedPaths := projectPathsSetFromRequest(addedHeartbeat.GetDiscoveredProjects())
 	if _, exists := addedPaths[filepath.Clean(projectTwoPath)]; !exists {
 		t.Fatalf("expected heartbeat to include newly added project %q", projectTwoPath)
@@ -194,7 +252,7 @@ func TestDiscoveredProjects_AreReportedWhenFoldersAreAddedAndRemoved(t *testing.
 	if err := os.RemoveAll(projectOnePath); err != nil {
 		t.Fatalf("remove project one path failed: %v", err)
 	}
-	removedHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-removed", 0, collector.Collect(true), time.Now().UTC())
+	removedHeartbeat := buildHeartbeatRequest(cfg, "heartbeat-removed", 0, collector.Collect(true), nil, nil, nil, nil, 0, time.Now().UTC())
 	removedPaths := projectPathsSetFromRequest(removedHeartbeat.GetDiscoveredProjects())
 	if _, exists := removedPaths[filepath.Clean(projectOnePath)]; exists {
 		t.Fatalf("expected heartbeat to exclude removed project %q", projectOnePath)

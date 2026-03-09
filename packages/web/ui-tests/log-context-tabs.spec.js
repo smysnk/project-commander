@@ -235,7 +235,29 @@ async function installGraphqlMocks(page) {
 test('switches tab/log contexts across runtime, master, and host selections', async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
-  await installWebSocketMock(page, WS_EVENTS);
+  await installWebSocketMock(page, WS_EVENTS, {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: 'project',
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: 'merged',
+        lines: [
+          {
+            id: 1,
+            projectPath: PROJECT_PATH,
+            timestamp: new Date(Date.UTC(2026, 2, 5, 1, 0, 0)).toISOString(),
+            serviceName: 'web',
+            stream: 'stdout',
+            level: 'info',
+            message: 'project-log-line',
+          },
+        ],
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {

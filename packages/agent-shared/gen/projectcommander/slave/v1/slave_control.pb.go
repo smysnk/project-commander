@@ -106,17 +106,22 @@ func (x *DiscoveredProject) GetHasMakefile() bool {
 }
 
 type RegisterSlaveRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	RequestId          string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SlaveId            string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
-	HostName           string                 `protobuf:"bytes,3,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
-	Capabilities       []string               `protobuf:"bytes,4,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
-	Port               int32                  `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
-	DiscoveredProjects []*DiscoveredProject   `protobuf:"bytes,6,rep,name=discovered_projects,json=discoveredProjects,proto3" json:"discovered_projects,omitempty"`
-	Version            string                 `protobuf:"bytes,7,opt,name=version,proto3" json:"version,omitempty"`
-	ProtocolVersion    string                 `protobuf:"bytes,8,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	RequestId           string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId             string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	HostName            string                 `protobuf:"bytes,3,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
+	Capabilities        []string               `protobuf:"bytes,4,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Port                int32                  `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
+	DiscoveredProjects  []*DiscoveredProject   `protobuf:"bytes,6,rep,name=discovered_projects,json=discoveredProjects,proto3" json:"discovered_projects,omitempty"`
+	Version             string                 `protobuf:"bytes,7,opt,name=version,proto3" json:"version,omitempty"`
+	ProtocolVersion     string                 `protobuf:"bytes,8,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	BootId              string                 `protobuf:"bytes,9,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	AgentStartedAt      string                 `protobuf:"bytes,10,opt,name=agent_started_at,json=agentStartedAt,proto3" json:"agent_started_at,omitempty"`
+	ProcessLogRoot      string                 `protobuf:"bytes,11,opt,name=process_log_root,json=processLogRoot,proto3" json:"process_log_root,omitempty"`
+	StateRoot           string                 `protobuf:"bytes,12,opt,name=state_root,json=stateRoot,proto3" json:"state_root,omitempty"`
+	RuntimeCapabilities []string               `protobuf:"bytes,13,rep,name=runtime_capabilities,json=runtimeCapabilities,proto3" json:"runtime_capabilities,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RegisterSlaveRequest) Reset() {
@@ -205,13 +210,50 @@ func (x *RegisterSlaveRequest) GetProtocolVersion() string {
 	return ""
 }
 
+func (x *RegisterSlaveRequest) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *RegisterSlaveRequest) GetAgentStartedAt() string {
+	if x != nil {
+		return x.AgentStartedAt
+	}
+	return ""
+}
+
+func (x *RegisterSlaveRequest) GetProcessLogRoot() string {
+	if x != nil {
+		return x.ProcessLogRoot
+	}
+	return ""
+}
+
+func (x *RegisterSlaveRequest) GetStateRoot() string {
+	if x != nil {
+		return x.StateRoot
+	}
+	return ""
+}
+
+func (x *RegisterSlaveRequest) GetRuntimeCapabilities() []string {
+	if x != nil {
+		return x.RuntimeCapabilities
+	}
+	return nil
+}
+
 type RegisterSlaveResponse struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	RequestId       string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	Status          string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	AssignedCluster string                 `protobuf:"bytes,3,opt,name=assigned_cluster,json=assignedCluster,proto3" json:"assigned_cluster,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	RequestId           string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status              string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	AssignedCluster     string                 `protobuf:"bytes,3,opt,name=assigned_cluster,json=assignedCluster,proto3" json:"assigned_cluster,omitempty"`
+	DesiredProcessCount int32                  `protobuf:"varint,4,opt,name=desired_process_count,json=desiredProcessCount,proto3" json:"desired_process_count,omitempty"`
+	ReconcileRequired   bool                   `protobuf:"varint,5,opt,name=reconcile_required,json=reconcileRequired,proto3" json:"reconcile_required,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RegisterSlaveResponse) Reset() {
@@ -265,24 +307,876 @@ func (x *RegisterSlaveResponse) GetAssignedCluster() string {
 	return ""
 }
 
+func (x *RegisterSlaveResponse) GetDesiredProcessCount() int32 {
+	if x != nil {
+		return x.DesiredProcessCount
+	}
+	return 0
+}
+
+func (x *RegisterSlaveResponse) GetReconcileRequired() bool {
+	if x != nil {
+		return x.ReconcileRequired
+	}
+	return false
+}
+
+type ProcessEnvEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessEnvEntry) Reset() {
+	*x = ProcessEnvEntry{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessEnvEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessEnvEntry) ProtoMessage() {}
+
+func (x *ProcessEnvEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessEnvEntry.ProtoReflect.Descriptor instead.
+func (*ProcessEnvEntry) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ProcessEnvEntry) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ProcessEnvEntry) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type DesiredProcess struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	DesiredProcessId    int64                  `protobuf:"varint,1,opt,name=desired_process_id,json=desiredProcessId,proto3" json:"desired_process_id,omitempty"`
+	HostId              int64                  `protobuf:"varint,2,opt,name=host_id,json=hostId,proto3" json:"host_id,omitempty"`
+	ProjectId           int64                  `protobuf:"varint,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	ServiceId           int64                  `protobuf:"varint,4,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	ProcessKey          string                 `protobuf:"bytes,5,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	ProjectPath         string                 `protobuf:"bytes,6,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	PackageKey          string                 `protobuf:"bytes,7,opt,name=package_key,json=packageKey,proto3" json:"package_key,omitempty"`
+	PackageRelativePath string                 `protobuf:"bytes,8,opt,name=package_relative_path,json=packageRelativePath,proto3" json:"package_relative_path,omitempty"`
+	DesiredState        string                 `protobuf:"bytes,9,opt,name=desired_state,json=desiredState,proto3" json:"desired_state,omitempty"`
+	LaunchMode          string                 `protobuf:"bytes,10,opt,name=launch_mode,json=launchMode,proto3" json:"launch_mode,omitempty"`
+	Cwd                 string                 `protobuf:"bytes,11,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	Command             string                 `protobuf:"bytes,12,opt,name=command,proto3" json:"command,omitempty"`
+	Args                []string               `protobuf:"bytes,13,rep,name=args,proto3" json:"args,omitempty"`
+	Env                 []*ProcessEnvEntry     `protobuf:"bytes,14,rep,name=env,proto3" json:"env,omitempty"`
+	EnvHash             string                 `protobuf:"bytes,15,opt,name=env_hash,json=envHash,proto3" json:"env_hash,omitempty"`
+	LaunchFingerprint   string                 `protobuf:"bytes,16,opt,name=launch_fingerprint,json=launchFingerprint,proto3" json:"launch_fingerprint,omitempty"`
+	LogRoot             string                 `protobuf:"bytes,17,opt,name=log_root,json=logRoot,proto3" json:"log_root,omitempty"`
+	RestartPolicy       string                 `protobuf:"bytes,18,opt,name=restart_policy,json=restartPolicy,proto3" json:"restart_policy,omitempty"`
+	UpdatedAt           string                 `protobuf:"bytes,19,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *DesiredProcess) Reset() {
+	*x = DesiredProcess{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DesiredProcess) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DesiredProcess) ProtoMessage() {}
+
+func (x *DesiredProcess) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DesiredProcess.ProtoReflect.Descriptor instead.
+func (*DesiredProcess) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DesiredProcess) GetDesiredProcessId() int64 {
+	if x != nil {
+		return x.DesiredProcessId
+	}
+	return 0
+}
+
+func (x *DesiredProcess) GetHostId() int64 {
+	if x != nil {
+		return x.HostId
+	}
+	return 0
+}
+
+func (x *DesiredProcess) GetProjectId() int64 {
+	if x != nil {
+		return x.ProjectId
+	}
+	return 0
+}
+
+func (x *DesiredProcess) GetServiceId() int64 {
+	if x != nil {
+		return x.ServiceId
+	}
+	return 0
+}
+
+func (x *DesiredProcess) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetPackageKey() string {
+	if x != nil {
+		return x.PackageKey
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetPackageRelativePath() string {
+	if x != nil {
+		return x.PackageRelativePath
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetDesiredState() string {
+	if x != nil {
+		return x.DesiredState
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetLaunchMode() string {
+	if x != nil {
+		return x.LaunchMode
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetCwd() string {
+	if x != nil {
+		return x.Cwd
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *DesiredProcess) GetEnv() []*ProcessEnvEntry {
+	if x != nil {
+		return x.Env
+	}
+	return nil
+}
+
+func (x *DesiredProcess) GetEnvHash() string {
+	if x != nil {
+		return x.EnvHash
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetLaunchFingerprint() string {
+	if x != nil {
+		return x.LaunchFingerprint
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetLogRoot() string {
+	if x != nil {
+		return x.LogRoot
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetRestartPolicy() string {
+	if x != nil {
+		return x.RestartPolicy
+	}
+	return ""
+}
+
+func (x *DesiredProcess) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type ObservedProcessRun struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	RunId                string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	DesiredProcessId     int64                  `protobuf:"varint,2,opt,name=desired_process_id,json=desiredProcessId,proto3" json:"desired_process_id,omitempty"`
+	ProcessKey           string                 `protobuf:"bytes,3,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	ProjectPath          string                 `protobuf:"bytes,4,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	PackageKey           string                 `protobuf:"bytes,5,opt,name=package_key,json=packageKey,proto3" json:"package_key,omitempty"`
+	Pid                  int64                  `protobuf:"varint,6,opt,name=pid,proto3" json:"pid,omitempty"`
+	Pgid                 int64                  `protobuf:"varint,7,opt,name=pgid,proto3" json:"pgid,omitempty"`
+	BootId               string                 `protobuf:"bytes,8,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	LaunchFingerprint    string                 `protobuf:"bytes,9,opt,name=launch_fingerprint,json=launchFingerprint,proto3" json:"launch_fingerprint,omitempty"`
+	Command              string                 `protobuf:"bytes,10,opt,name=command,proto3" json:"command,omitempty"`
+	Args                 []string               `protobuf:"bytes,11,rep,name=args,proto3" json:"args,omitempty"`
+	Cwd                  string                 `protobuf:"bytes,12,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	EnvHash              string                 `protobuf:"bytes,13,opt,name=env_hash,json=envHash,proto3" json:"env_hash,omitempty"`
+	Status               string                 `protobuf:"bytes,14,opt,name=status,proto3" json:"status,omitempty"`
+	StartedAt            string                 `protobuf:"bytes,15,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	LastSeenAt           string                 `protobuf:"bytes,16,opt,name=last_seen_at,json=lastSeenAt,proto3" json:"last_seen_at,omitempty"`
+	ExitedAt             string                 `protobuf:"bytes,17,opt,name=exited_at,json=exitedAt,proto3" json:"exited_at,omitempty"`
+	ExitCode             int32                  `protobuf:"varint,18,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	ExitSignal           string                 `protobuf:"bytes,19,opt,name=exit_signal,json=exitSignal,proto3" json:"exit_signal,omitempty"`
+	LogPath              string                 `protobuf:"bytes,20,opt,name=log_path,json=logPath,proto3" json:"log_path,omitempty"`
+	Adopted              bool                   `protobuf:"varint,21,opt,name=adopted,proto3" json:"adopted,omitempty"`
+	ReconciliationSource string                 `protobuf:"bytes,22,opt,name=reconciliation_source,json=reconciliationSource,proto3" json:"reconciliation_source,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ObservedProcessRun) Reset() {
+	*x = ObservedProcessRun{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ObservedProcessRun) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ObservedProcessRun) ProtoMessage() {}
+
+func (x *ObservedProcessRun) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ObservedProcessRun.ProtoReflect.Descriptor instead.
+func (*ObservedProcessRun) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ObservedProcessRun) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetDesiredProcessId() int64 {
+	if x != nil {
+		return x.DesiredProcessId
+	}
+	return 0
+}
+
+func (x *ObservedProcessRun) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetPackageKey() string {
+	if x != nil {
+		return x.PackageKey
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetPid() int64 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ObservedProcessRun) GetPgid() int64 {
+	if x != nil {
+		return x.Pgid
+	}
+	return 0
+}
+
+func (x *ObservedProcessRun) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetLaunchFingerprint() string {
+	if x != nil {
+		return x.LaunchFingerprint
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *ObservedProcessRun) GetCwd() string {
+	if x != nil {
+		return x.Cwd
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetEnvHash() string {
+	if x != nil {
+		return x.EnvHash
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetStartedAt() string {
+	if x != nil {
+		return x.StartedAt
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetLastSeenAt() string {
+	if x != nil {
+		return x.LastSeenAt
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetExitedAt() string {
+	if x != nil {
+		return x.ExitedAt
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *ObservedProcessRun) GetExitSignal() string {
+	if x != nil {
+		return x.ExitSignal
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetLogPath() string {
+	if x != nil {
+		return x.LogPath
+	}
+	return ""
+}
+
+func (x *ObservedProcessRun) GetAdopted() bool {
+	if x != nil {
+		return x.Adopted
+	}
+	return false
+}
+
+func (x *ObservedProcessRun) GetReconciliationSource() string {
+	if x != nil {
+		return x.ReconciliationSource
+	}
+	return ""
+}
+
+type ProcessTelemetrySample struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ProcessKey    string                 `protobuf:"bytes,2,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	Pid           int64                  `protobuf:"varint,3,opt,name=pid,proto3" json:"pid,omitempty"`
+	SampledAt     string                 `protobuf:"bytes,4,opt,name=sampled_at,json=sampledAt,proto3" json:"sampled_at,omitempty"`
+	CpuPercent    float64                `protobuf:"fixed64,5,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent float64                `protobuf:"fixed64,6,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	RssBytes      int64                  `protobuf:"varint,7,opt,name=rss_bytes,json=rssBytes,proto3" json:"rss_bytes,omitempty"`
+	VmsBytes      int64                  `protobuf:"varint,8,opt,name=vms_bytes,json=vmsBytes,proto3" json:"vms_bytes,omitempty"`
+	ReadBytes     int64                  `protobuf:"varint,9,opt,name=read_bytes,json=readBytes,proto3" json:"read_bytes,omitempty"`
+	WriteBytes    int64                  `protobuf:"varint,10,opt,name=write_bytes,json=writeBytes,proto3" json:"write_bytes,omitempty"`
+	ReadOps       int64                  `protobuf:"varint,11,opt,name=read_ops,json=readOps,proto3" json:"read_ops,omitempty"`
+	WriteOps      int64                  `protobuf:"varint,12,opt,name=write_ops,json=writeOps,proto3" json:"write_ops,omitempty"`
+	OpenFds       int32                  `protobuf:"varint,13,opt,name=open_fds,json=openFds,proto3" json:"open_fds,omitempty"`
+	ThreadCount   int32                  `protobuf:"varint,14,opt,name=thread_count,json=threadCount,proto3" json:"thread_count,omitempty"`
+	Status        string                 `protobuf:"bytes,15,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessTelemetrySample) Reset() {
+	*x = ProcessTelemetrySample{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessTelemetrySample) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessTelemetrySample) ProtoMessage() {}
+
+func (x *ProcessTelemetrySample) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessTelemetrySample.ProtoReflect.Descriptor instead.
+func (*ProcessTelemetrySample) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ProcessTelemetrySample) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ProcessTelemetrySample) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *ProcessTelemetrySample) GetPid() int64 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetSampledAt() string {
+	if x != nil {
+		return x.SampledAt
+	}
+	return ""
+}
+
+func (x *ProcessTelemetrySample) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetRssBytes() int64 {
+	if x != nil {
+		return x.RssBytes
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetVmsBytes() int64 {
+	if x != nil {
+		return x.VmsBytes
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetReadBytes() int64 {
+	if x != nil {
+		return x.ReadBytes
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetWriteBytes() int64 {
+	if x != nil {
+		return x.WriteBytes
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetReadOps() int64 {
+	if x != nil {
+		return x.ReadOps
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetWriteOps() int64 {
+	if x != nil {
+		return x.WriteOps
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetOpenFds() int32 {
+	if x != nil {
+		return x.OpenFds
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetThreadCount() int32 {
+	if x != nil {
+		return x.ThreadCount
+	}
+	return 0
+}
+
+func (x *ProcessTelemetrySample) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type ProcessLogChunk struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ProcessKey    string                 `protobuf:"bytes,2,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	PackageKey    string                 `protobuf:"bytes,3,opt,name=package_key,json=packageKey,proto3" json:"package_key,omitempty"`
+	LogPath       string                 `protobuf:"bytes,4,opt,name=log_path,json=logPath,proto3" json:"log_path,omitempty"`
+	SampledAt     string                 `protobuf:"bytes,5,opt,name=sampled_at,json=sampledAt,proto3" json:"sampled_at,omitempty"`
+	Stream        string                 `protobuf:"bytes,6,opt,name=stream,proto3" json:"stream,omitempty"`
+	Lines         []string               `protobuf:"bytes,7,rep,name=lines,proto3" json:"lines,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessLogChunk) Reset() {
+	*x = ProcessLogChunk{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessLogChunk) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessLogChunk) ProtoMessage() {}
+
+func (x *ProcessLogChunk) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessLogChunk.ProtoReflect.Descriptor instead.
+func (*ProcessLogChunk) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ProcessLogChunk) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetPackageKey() string {
+	if x != nil {
+		return x.PackageKey
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetLogPath() string {
+	if x != nil {
+		return x.LogPath
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetSampledAt() string {
+	if x != nil {
+		return x.SampledAt
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetStream() string {
+	if x != nil {
+		return x.Stream
+	}
+	return ""
+}
+
+func (x *ProcessLogChunk) GetLines() []string {
+	if x != nil {
+		return x.Lines
+	}
+	return nil
+}
+
+type HostTelemetrySample struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	SampledAt            string                 `protobuf:"bytes,1,opt,name=sampled_at,json=sampledAt,proto3" json:"sampled_at,omitempty"`
+	CpuPercent           float64                `protobuf:"fixed64,2,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	Load_1M              float64                `protobuf:"fixed64,3,opt,name=load_1m,json=load1m,proto3" json:"load_1m,omitempty"`
+	Load_5M              float64                `protobuf:"fixed64,4,opt,name=load_5m,json=load5m,proto3" json:"load_5m,omitempty"`
+	Load_15M             float64                `protobuf:"fixed64,5,opt,name=load_15m,json=load15m,proto3" json:"load_15m,omitempty"`
+	MemoryTotalBytes     int64                  `protobuf:"varint,6,opt,name=memory_total_bytes,json=memoryTotalBytes,proto3" json:"memory_total_bytes,omitempty"`
+	MemoryUsedBytes      int64                  `protobuf:"varint,7,opt,name=memory_used_bytes,json=memoryUsedBytes,proto3" json:"memory_used_bytes,omitempty"`
+	MemoryAvailableBytes int64                  `protobuf:"varint,8,opt,name=memory_available_bytes,json=memoryAvailableBytes,proto3" json:"memory_available_bytes,omitempty"`
+	DiskTotalBytes       int64                  `protobuf:"varint,9,opt,name=disk_total_bytes,json=diskTotalBytes,proto3" json:"disk_total_bytes,omitempty"`
+	DiskUsedBytes        int64                  `protobuf:"varint,10,opt,name=disk_used_bytes,json=diskUsedBytes,proto3" json:"disk_used_bytes,omitempty"`
+	DiskAvailableBytes   int64                  `protobuf:"varint,11,opt,name=disk_available_bytes,json=diskAvailableBytes,proto3" json:"disk_available_bytes,omitempty"`
+	DiskMount            string                 `protobuf:"bytes,12,opt,name=disk_mount,json=diskMount,proto3" json:"disk_mount,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *HostTelemetrySample) Reset() {
+	*x = HostTelemetrySample{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HostTelemetrySample) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HostTelemetrySample) ProtoMessage() {}
+
+func (x *HostTelemetrySample) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HostTelemetrySample.ProtoReflect.Descriptor instead.
+func (*HostTelemetrySample) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *HostTelemetrySample) GetSampledAt() string {
+	if x != nil {
+		return x.SampledAt
+	}
+	return ""
+}
+
+func (x *HostTelemetrySample) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetLoad_1M() float64 {
+	if x != nil {
+		return x.Load_1M
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetLoad_5M() float64 {
+	if x != nil {
+		return x.Load_5M
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetLoad_15M() float64 {
+	if x != nil {
+		return x.Load_15M
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetMemoryTotalBytes() int64 {
+	if x != nil {
+		return x.MemoryTotalBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetMemoryUsedBytes() int64 {
+	if x != nil {
+		return x.MemoryUsedBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetMemoryAvailableBytes() int64 {
+	if x != nil {
+		return x.MemoryAvailableBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetDiskTotalBytes() int64 {
+	if x != nil {
+		return x.DiskTotalBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetDiskUsedBytes() int64 {
+	if x != nil {
+		return x.DiskUsedBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetDiskAvailableBytes() int64 {
+	if x != nil {
+		return x.DiskAvailableBytes
+	}
+	return 0
+}
+
+func (x *HostTelemetrySample) GetDiskMount() string {
+	if x != nil {
+		return x.DiskMount
+	}
+	return ""
+}
+
 type HeartbeatRequest struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	RequestId          string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SlaveId            string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
-	RunningServices    int32                  `protobuf:"varint,3,opt,name=running_services,json=runningServices,proto3" json:"running_services,omitempty"`
-	CpuPercent         float64                `protobuf:"fixed64,4,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
-	MemoryPercent      float64                `protobuf:"fixed64,5,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
-	Timestamp          string                 `protobuf:"bytes,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	DiscoveredProjects []*DiscoveredProject   `protobuf:"bytes,7,rep,name=discovered_projects,json=discoveredProjects,proto3" json:"discovered_projects,omitempty"`
-	Version            string                 `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
-	ProtocolVersion    string                 `protobuf:"bytes,9,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	state              protoimpl.MessageState    `protogen:"open.v1"`
+	RequestId          string                    `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId            string                    `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	RunningServices    int32                     `protobuf:"varint,3,opt,name=running_services,json=runningServices,proto3" json:"running_services,omitempty"`
+	CpuPercent         float64                   `protobuf:"fixed64,4,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent      float64                   `protobuf:"fixed64,5,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	Timestamp          string                    `protobuf:"bytes,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	DiscoveredProjects []*DiscoveredProject      `protobuf:"bytes,7,rep,name=discovered_projects,json=discoveredProjects,proto3" json:"discovered_projects,omitempty"`
+	Version            string                    `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
+	ProtocolVersion    string                    `protobuf:"bytes,9,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"`
+	BootId             string                    `protobuf:"bytes,10,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	HostTelemetry      *HostTelemetrySample      `protobuf:"bytes,11,opt,name=host_telemetry,json=hostTelemetry,proto3" json:"host_telemetry,omitempty"`
+	ProcessTelemetry   []*ProcessTelemetrySample `protobuf:"bytes,12,rep,name=process_telemetry,json=processTelemetry,proto3" json:"process_telemetry,omitempty"`
+	ObservedRuns       []*ObservedProcessRun     `protobuf:"bytes,13,rep,name=observed_runs,json=observedRuns,proto3" json:"observed_runs,omitempty"`
+	RuntimeSequence    int64                     `protobuf:"varint,14,opt,name=runtime_sequence,json=runtimeSequence,proto3" json:"runtime_sequence,omitempty"`
+	ProcessLogChunks   []*ProcessLogChunk        `protobuf:"bytes,15,rep,name=process_log_chunks,json=processLogChunks,proto3" json:"process_log_chunks,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[3]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -294,7 +1188,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[3]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -307,7 +1201,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{3}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *HeartbeatRequest) GetRequestId() string {
@@ -373,6 +1267,48 @@ func (x *HeartbeatRequest) GetProtocolVersion() string {
 	return ""
 }
 
+func (x *HeartbeatRequest) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *HeartbeatRequest) GetHostTelemetry() *HostTelemetrySample {
+	if x != nil {
+		return x.HostTelemetry
+	}
+	return nil
+}
+
+func (x *HeartbeatRequest) GetProcessTelemetry() []*ProcessTelemetrySample {
+	if x != nil {
+		return x.ProcessTelemetry
+	}
+	return nil
+}
+
+func (x *HeartbeatRequest) GetObservedRuns() []*ObservedProcessRun {
+	if x != nil {
+		return x.ObservedRuns
+	}
+	return nil
+}
+
+func (x *HeartbeatRequest) GetRuntimeSequence() int64 {
+	if x != nil {
+		return x.RuntimeSequence
+	}
+	return 0
+}
+
+func (x *HeartbeatRequest) GetProcessLogChunks() []*ProcessLogChunk {
+	if x != nil {
+		return x.ProcessLogChunks
+	}
+	return nil
+}
+
 type HeartbeatResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -384,7 +1320,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[4]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -396,7 +1332,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[4]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -409,7 +1345,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{4}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *HeartbeatResponse) GetRequestId() string {
@@ -433,6 +1369,290 @@ func (x *HeartbeatResponse) GetCommands() []*SlaveCommand {
 	return nil
 }
 
+type GitCheckoutCommand struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	RepositoryUrl     string                 `protobuf:"bytes,1,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
+	BaseDirectory     string                 `protobuf:"bytes,2,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
+	DestinationFolder string                 `protobuf:"bytes,3,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
+	TargetPath        string                 `protobuf:"bytes,4,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GitCheckoutCommand) Reset() {
+	*x = GitCheckoutCommand{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GitCheckoutCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GitCheckoutCommand) ProtoMessage() {}
+
+func (x *GitCheckoutCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GitCheckoutCommand.ProtoReflect.Descriptor instead.
+func (*GitCheckoutCommand) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GitCheckoutCommand) GetRepositoryUrl() string {
+	if x != nil {
+		return x.RepositoryUrl
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetBaseDirectory() string {
+	if x != nil {
+		return x.BaseDirectory
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetDestinationFolder() string {
+	if x != nil {
+		return x.DestinationFolder
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetTargetPath() string {
+	if x != nil {
+		return x.TargetPath
+	}
+	return ""
+}
+
+type LaunchProcessCommand struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	RunId               string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ProcessKey          string                 `protobuf:"bytes,2,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	ProjectPath         string                 `protobuf:"bytes,3,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	PackageKey          string                 `protobuf:"bytes,4,opt,name=package_key,json=packageKey,proto3" json:"package_key,omitempty"`
+	PackageRelativePath string                 `protobuf:"bytes,5,opt,name=package_relative_path,json=packageRelativePath,proto3" json:"package_relative_path,omitempty"`
+	Cwd                 string                 `protobuf:"bytes,6,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	Command             string                 `protobuf:"bytes,7,opt,name=command,proto3" json:"command,omitempty"`
+	Args                []string               `protobuf:"bytes,8,rep,name=args,proto3" json:"args,omitempty"`
+	Env                 []*ProcessEnvEntry     `protobuf:"bytes,9,rep,name=env,proto3" json:"env,omitempty"`
+	EnvHash             string                 `protobuf:"bytes,10,opt,name=env_hash,json=envHash,proto3" json:"env_hash,omitempty"`
+	LogRoot             string                 `protobuf:"bytes,11,opt,name=log_root,json=logRoot,proto3" json:"log_root,omitempty"`
+	LaunchFingerprint   string                 `protobuf:"bytes,12,opt,name=launch_fingerprint,json=launchFingerprint,proto3" json:"launch_fingerprint,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *LaunchProcessCommand) Reset() {
+	*x = LaunchProcessCommand{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LaunchProcessCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LaunchProcessCommand) ProtoMessage() {}
+
+func (x *LaunchProcessCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LaunchProcessCommand.ProtoReflect.Descriptor instead.
+func (*LaunchProcessCommand) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LaunchProcessCommand) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetPackageKey() string {
+	if x != nil {
+		return x.PackageKey
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetPackageRelativePath() string {
+	if x != nil {
+		return x.PackageRelativePath
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetCwd() string {
+	if x != nil {
+		return x.Cwd
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *LaunchProcessCommand) GetEnv() []*ProcessEnvEntry {
+	if x != nil {
+		return x.Env
+	}
+	return nil
+}
+
+func (x *LaunchProcessCommand) GetEnvHash() string {
+	if x != nil {
+		return x.EnvHash
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetLogRoot() string {
+	if x != nil {
+		return x.LogRoot
+	}
+	return ""
+}
+
+func (x *LaunchProcessCommand) GetLaunchFingerprint() string {
+	if x != nil {
+		return x.LaunchFingerprint
+	}
+	return ""
+}
+
+type KillProcessCommand struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ProcessKey    string                 `protobuf:"bytes,2,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	Pid           int64                  `protobuf:"varint,3,opt,name=pid,proto3" json:"pid,omitempty"`
+	Pgid          int64                  `protobuf:"varint,4,opt,name=pgid,proto3" json:"pgid,omitempty"`
+	Signal        string                 `protobuf:"bytes,5,opt,name=signal,proto3" json:"signal,omitempty"`
+	Reason        string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KillProcessCommand) Reset() {
+	*x = KillProcessCommand{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KillProcessCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KillProcessCommand) ProtoMessage() {}
+
+func (x *KillProcessCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KillProcessCommand.ProtoReflect.Descriptor instead.
+func (*KillProcessCommand) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KillProcessCommand) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *KillProcessCommand) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *KillProcessCommand) GetPid() int64 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *KillProcessCommand) GetPgid() int64 {
+	if x != nil {
+		return x.Pgid
+	}
+	return 0
+}
+
+func (x *KillProcessCommand) GetSignal() string {
+	if x != nil {
+		return x.Signal
+	}
+	return ""
+}
+
+func (x *KillProcessCommand) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type SlaveCommand struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	CommandId         string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
@@ -442,13 +1662,20 @@ type SlaveCommand struct {
 	DestinationFolder string                 `protobuf:"bytes,5,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
 	TargetPath        string                 `protobuf:"bytes,6,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
 	RequestedAt       string                 `protobuf:"bytes,7,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Types that are valid to be assigned to Payload:
+	//
+	//	*SlaveCommand_GitCheckout
+	//	*SlaveCommand_LaunchProcess
+	//	*SlaveCommand_SoftKillProcess
+	//	*SlaveCommand_HardKillProcess
+	Payload       isSlaveCommand_Payload `protobuf_oneof:"payload"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SlaveCommand) Reset() {
 	*x = SlaveCommand{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[5]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +1687,7 @@ func (x *SlaveCommand) String() string {
 func (*SlaveCommand) ProtoMessage() {}
 
 func (x *SlaveCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[5]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +1700,7 @@ func (x *SlaveCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlaveCommand.ProtoReflect.Descriptor instead.
 func (*SlaveCommand) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{5}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SlaveCommand) GetCommandId() string {
@@ -525,6 +1752,77 @@ func (x *SlaveCommand) GetRequestedAt() string {
 	return ""
 }
 
+func (x *SlaveCommand) GetPayload() isSlaveCommand_Payload {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+func (x *SlaveCommand) GetGitCheckout() *GitCheckoutCommand {
+	if x != nil {
+		if x, ok := x.Payload.(*SlaveCommand_GitCheckout); ok {
+			return x.GitCheckout
+		}
+	}
+	return nil
+}
+
+func (x *SlaveCommand) GetLaunchProcess() *LaunchProcessCommand {
+	if x != nil {
+		if x, ok := x.Payload.(*SlaveCommand_LaunchProcess); ok {
+			return x.LaunchProcess
+		}
+	}
+	return nil
+}
+
+func (x *SlaveCommand) GetSoftKillProcess() *KillProcessCommand {
+	if x != nil {
+		if x, ok := x.Payload.(*SlaveCommand_SoftKillProcess); ok {
+			return x.SoftKillProcess
+		}
+	}
+	return nil
+}
+
+func (x *SlaveCommand) GetHardKillProcess() *KillProcessCommand {
+	if x != nil {
+		if x, ok := x.Payload.(*SlaveCommand_HardKillProcess); ok {
+			return x.HardKillProcess
+		}
+	}
+	return nil
+}
+
+type isSlaveCommand_Payload interface {
+	isSlaveCommand_Payload()
+}
+
+type SlaveCommand_GitCheckout struct {
+	GitCheckout *GitCheckoutCommand `protobuf:"bytes,8,opt,name=git_checkout,json=gitCheckout,proto3,oneof"`
+}
+
+type SlaveCommand_LaunchProcess struct {
+	LaunchProcess *LaunchProcessCommand `protobuf:"bytes,9,opt,name=launch_process,json=launchProcess,proto3,oneof"`
+}
+
+type SlaveCommand_SoftKillProcess struct {
+	SoftKillProcess *KillProcessCommand `protobuf:"bytes,10,opt,name=soft_kill_process,json=softKillProcess,proto3,oneof"`
+}
+
+type SlaveCommand_HardKillProcess struct {
+	HardKillProcess *KillProcessCommand `protobuf:"bytes,11,opt,name=hard_kill_process,json=hardKillProcess,proto3,oneof"`
+}
+
+func (*SlaveCommand_GitCheckout) isSlaveCommand_Payload() {}
+
+func (*SlaveCommand_LaunchProcess) isSlaveCommand_Payload() {}
+
+func (*SlaveCommand_SoftKillProcess) isSlaveCommand_Payload() {}
+
+func (*SlaveCommand_HardKillProcess) isSlaveCommand_Payload() {}
+
 type ReportCommandResultRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -541,7 +1839,7 @@ type ReportCommandResultRequest struct {
 
 func (x *ReportCommandResultRequest) Reset() {
 	*x = ReportCommandResultRequest{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[6]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -553,7 +1851,7 @@ func (x *ReportCommandResultRequest) String() string {
 func (*ReportCommandResultRequest) ProtoMessage() {}
 
 func (x *ReportCommandResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[6]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +1864,7 @@ func (x *ReportCommandResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCommandResultRequest.ProtoReflect.Descriptor instead.
 func (*ReportCommandResultRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{6}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ReportCommandResultRequest) GetRequestId() string {
@@ -635,7 +1933,7 @@ type ReportCommandResultResponse struct {
 
 func (x *ReportCommandResultResponse) Reset() {
 	*x = ReportCommandResultResponse{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[7]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -647,7 +1945,7 @@ func (x *ReportCommandResultResponse) String() string {
 func (*ReportCommandResultResponse) ProtoMessage() {}
 
 func (x *ReportCommandResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[7]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -660,7 +1958,7 @@ func (x *ReportCommandResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCommandResultResponse.ProtoReflect.Descriptor instead.
 func (*ReportCommandResultResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{7}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ReportCommandResultResponse) GetRequestId() string {
@@ -671,6 +1969,322 @@ func (x *ReportCommandResultResponse) GetRequestId() string {
 }
 
 func (x *ReportCommandResultResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type ProcessReconciliationChange struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ChangeType     string                 `protobuf:"bytes,1,opt,name=change_type,json=changeType,proto3" json:"change_type,omitempty"`
+	Reason         string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	DesiredProcess *DesiredProcess        `protobuf:"bytes,3,opt,name=desired_process,json=desiredProcess,proto3" json:"desired_process,omitempty"`
+	ObservedRun    *ObservedProcessRun    `protobuf:"bytes,4,opt,name=observed_run,json=observedRun,proto3" json:"observed_run,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ProcessReconciliationChange) Reset() {
+	*x = ProcessReconciliationChange{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessReconciliationChange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessReconciliationChange) ProtoMessage() {}
+
+func (x *ProcessReconciliationChange) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessReconciliationChange.ProtoReflect.Descriptor instead.
+func (*ProcessReconciliationChange) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ProcessReconciliationChange) GetChangeType() string {
+	if x != nil {
+		return x.ChangeType
+	}
+	return ""
+}
+
+func (x *ProcessReconciliationChange) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ProcessReconciliationChange) GetDesiredProcess() *DesiredProcess {
+	if x != nil {
+		return x.DesiredProcess
+	}
+	return nil
+}
+
+func (x *ProcessReconciliationChange) GetObservedRun() *ObservedProcessRun {
+	if x != nil {
+		return x.ObservedRun
+	}
+	return nil
+}
+
+type GetDesiredProcessesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	BootId        string                 `protobuf:"bytes,3,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDesiredProcessesRequest) Reset() {
+	*x = GetDesiredProcessesRequest{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDesiredProcessesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDesiredProcessesRequest) ProtoMessage() {}
+
+func (x *GetDesiredProcessesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDesiredProcessesRequest.ProtoReflect.Descriptor instead.
+func (*GetDesiredProcessesRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetDesiredProcessesRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetDesiredProcessesRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *GetDesiredProcessesRequest) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+type GetDesiredProcessesResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	RequestId        string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status           string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	DesiredProcesses []*DesiredProcess      `protobuf:"bytes,3,rep,name=desired_processes,json=desiredProcesses,proto3" json:"desired_processes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GetDesiredProcessesResponse) Reset() {
+	*x = GetDesiredProcessesResponse{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDesiredProcessesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDesiredProcessesResponse) ProtoMessage() {}
+
+func (x *GetDesiredProcessesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDesiredProcessesResponse.ProtoReflect.Descriptor instead.
+func (*GetDesiredProcessesResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetDesiredProcessesResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetDesiredProcessesResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *GetDesiredProcessesResponse) GetDesiredProcesses() []*DesiredProcess {
+	if x != nil {
+		return x.DesiredProcesses
+	}
+	return nil
+}
+
+type ReportProcessReconciliationRequest struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	RequestId     string                         `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                         `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	BootId        string                         `protobuf:"bytes,3,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	Changes       []*ProcessReconciliationChange `protobuf:"bytes,4,rep,name=changes,proto3" json:"changes,omitempty"`
+	ObservedRuns  []*ObservedProcessRun          `protobuf:"bytes,5,rep,name=observed_runs,json=observedRuns,proto3" json:"observed_runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportProcessReconciliationRequest) Reset() {
+	*x = ReportProcessReconciliationRequest{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportProcessReconciliationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportProcessReconciliationRequest) ProtoMessage() {}
+
+func (x *ReportProcessReconciliationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportProcessReconciliationRequest.ProtoReflect.Descriptor instead.
+func (*ReportProcessReconciliationRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ReportProcessReconciliationRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ReportProcessReconciliationRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *ReportProcessReconciliationRequest) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *ReportProcessReconciliationRequest) GetChanges() []*ProcessReconciliationChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+func (x *ReportProcessReconciliationRequest) GetObservedRuns() []*ObservedProcessRun {
+	if x != nil {
+		return x.ObservedRuns
+	}
+	return nil
+}
+
+type ReportProcessReconciliationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportProcessReconciliationResponse) Reset() {
+	*x = ReportProcessReconciliationResponse{}
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportProcessReconciliationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportProcessReconciliationResponse) ProtoMessage() {}
+
+func (x *ReportProcessReconciliationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportProcessReconciliationResponse.ProtoReflect.Descriptor instead.
+func (*ReportProcessReconciliationResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ReportProcessReconciliationResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ReportProcessReconciliationResponse) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
@@ -690,7 +2304,7 @@ type AssignWorkloadRequest struct {
 
 func (x *AssignWorkloadRequest) Reset() {
 	*x = AssignWorkloadRequest{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[8]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -702,7 +2316,7 @@ func (x *AssignWorkloadRequest) String() string {
 func (*AssignWorkloadRequest) ProtoMessage() {}
 
 func (x *AssignWorkloadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[8]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,7 +2329,7 @@ func (x *AssignWorkloadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignWorkloadRequest.ProtoReflect.Descriptor instead.
 func (*AssignWorkloadRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{8}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AssignWorkloadRequest) GetRequestId() string {
@@ -763,7 +2377,7 @@ type AssignWorkloadResponse struct {
 
 func (x *AssignWorkloadResponse) Reset() {
 	*x = AssignWorkloadResponse{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[9]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -775,7 +2389,7 @@ func (x *AssignWorkloadResponse) String() string {
 func (*AssignWorkloadResponse) ProtoMessage() {}
 
 func (x *AssignWorkloadResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[9]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +2402,7 @@ func (x *AssignWorkloadResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignWorkloadResponse.ProtoReflect.Descriptor instead.
 func (*AssignWorkloadResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{9}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AssignWorkloadResponse) GetRequestId() string {
@@ -816,7 +2430,7 @@ type DrainRequest struct {
 
 func (x *DrainRequest) Reset() {
 	*x = DrainRequest{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[10]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -828,7 +2442,7 @@ func (x *DrainRequest) String() string {
 func (*DrainRequest) ProtoMessage() {}
 
 func (x *DrainRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[10]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +2455,7 @@ func (x *DrainRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DrainRequest.ProtoReflect.Descriptor instead.
 func (*DrainRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{10}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DrainRequest) GetRequestId() string {
@@ -875,7 +2489,7 @@ type DrainResponse struct {
 
 func (x *DrainResponse) Reset() {
 	*x = DrainResponse{}
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[11]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +2501,7 @@ func (x *DrainResponse) String() string {
 func (*DrainResponse) ProtoMessage() {}
 
 func (x *DrainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[11]
+	mi := &file_projectcommander_slave_v1_slave_control_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +2514,7 @@ func (x *DrainResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DrainResponse.ProtoReflect.Descriptor instead.
 func (*DrainResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{11}
+	return file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DrainResponse) GetRequestId() string {
@@ -928,7 +2542,7 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\rrelative_path\x18\x03 \x01(\tR\frelativePath\x12\x14\n" +
 	"\x05types\x18\x04 \x03(\tR\x05types\x12\x1a\n" +
 	"\bservices\x18\x05 \x03(\tR\bservices\x12!\n" +
-	"\fhas_makefile\x18\x06 \x01(\bR\vhasMakefile\"\xc9\x02\n" +
+	"\fhas_makefile\x18\x06 \x01(\bR\vhasMakefile\"\x88\x04\n" +
 	"\x14RegisterSlaveRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
@@ -938,12 +2552,130 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\x04port\x18\x05 \x01(\x05R\x04port\x12]\n" +
 	"\x13discovered_projects\x18\x06 \x03(\v2,.projectcommander.slave.v1.DiscoveredProjectR\x12discoveredProjects\x12\x18\n" +
 	"\aversion\x18\a \x01(\tR\aversion\x12)\n" +
-	"\x10protocol_version\x18\b \x01(\tR\x0fprotocolVersion\"y\n" +
+	"\x10protocol_version\x18\b \x01(\tR\x0fprotocolVersion\x12\x17\n" +
+	"\aboot_id\x18\t \x01(\tR\x06bootId\x12(\n" +
+	"\x10agent_started_at\x18\n" +
+	" \x01(\tR\x0eagentStartedAt\x12(\n" +
+	"\x10process_log_root\x18\v \x01(\tR\x0eprocessLogRoot\x12\x1d\n" +
+	"\n" +
+	"state_root\x18\f \x01(\tR\tstateRoot\x121\n" +
+	"\x14runtime_capabilities\x18\r \x03(\tR\x13runtimeCapabilities\"\xdc\x01\n" +
 	"\x15RegisterSlaveResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12)\n" +
-	"\x10assigned_cluster\x18\x03 \x01(\tR\x0fassignedCluster\"\x81\x03\n" +
+	"\x10assigned_cluster\x18\x03 \x01(\tR\x0fassignedCluster\x122\n" +
+	"\x15desired_process_count\x18\x04 \x01(\x05R\x13desiredProcessCount\x12-\n" +
+	"\x12reconcile_required\x18\x05 \x01(\bR\x11reconcileRequired\"9\n" +
+	"\x0fProcessEnvEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\x9d\x05\n" +
+	"\x0eDesiredProcess\x12,\n" +
+	"\x12desired_process_id\x18\x01 \x01(\x03R\x10desiredProcessId\x12\x17\n" +
+	"\ahost_id\x18\x02 \x01(\x03R\x06hostId\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x03 \x01(\x03R\tprojectId\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x04 \x01(\x03R\tserviceId\x12\x1f\n" +
+	"\vprocess_key\x18\x05 \x01(\tR\n" +
+	"processKey\x12!\n" +
+	"\fproject_path\x18\x06 \x01(\tR\vprojectPath\x12\x1f\n" +
+	"\vpackage_key\x18\a \x01(\tR\n" +
+	"packageKey\x122\n" +
+	"\x15package_relative_path\x18\b \x01(\tR\x13packageRelativePath\x12#\n" +
+	"\rdesired_state\x18\t \x01(\tR\fdesiredState\x12\x1f\n" +
+	"\vlaunch_mode\x18\n" +
+	" \x01(\tR\n" +
+	"launchMode\x12\x10\n" +
+	"\x03cwd\x18\v \x01(\tR\x03cwd\x12\x18\n" +
+	"\acommand\x18\f \x01(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\r \x03(\tR\x04args\x12<\n" +
+	"\x03env\x18\x0e \x03(\v2*.projectcommander.slave.v1.ProcessEnvEntryR\x03env\x12\x19\n" +
+	"\benv_hash\x18\x0f \x01(\tR\aenvHash\x12-\n" +
+	"\x12launch_fingerprint\x18\x10 \x01(\tR\x11launchFingerprint\x12\x19\n" +
+	"\blog_root\x18\x11 \x01(\tR\alogRoot\x12%\n" +
+	"\x0erestart_policy\x18\x12 \x01(\tR\rrestartPolicy\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x13 \x01(\tR\tupdatedAt\"\xa5\x05\n" +
+	"\x12ObservedProcessRun\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12,\n" +
+	"\x12desired_process_id\x18\x02 \x01(\x03R\x10desiredProcessId\x12\x1f\n" +
+	"\vprocess_key\x18\x03 \x01(\tR\n" +
+	"processKey\x12!\n" +
+	"\fproject_path\x18\x04 \x01(\tR\vprojectPath\x12\x1f\n" +
+	"\vpackage_key\x18\x05 \x01(\tR\n" +
+	"packageKey\x12\x10\n" +
+	"\x03pid\x18\x06 \x01(\x03R\x03pid\x12\x12\n" +
+	"\x04pgid\x18\a \x01(\x03R\x04pgid\x12\x17\n" +
+	"\aboot_id\x18\b \x01(\tR\x06bootId\x12-\n" +
+	"\x12launch_fingerprint\x18\t \x01(\tR\x11launchFingerprint\x12\x18\n" +
+	"\acommand\x18\n" +
+	" \x01(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\v \x03(\tR\x04args\x12\x10\n" +
+	"\x03cwd\x18\f \x01(\tR\x03cwd\x12\x19\n" +
+	"\benv_hash\x18\r \x01(\tR\aenvHash\x12\x16\n" +
+	"\x06status\x18\x0e \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"started_at\x18\x0f \x01(\tR\tstartedAt\x12 \n" +
+	"\flast_seen_at\x18\x10 \x01(\tR\n" +
+	"lastSeenAt\x12\x1b\n" +
+	"\texited_at\x18\x11 \x01(\tR\bexitedAt\x12\x1b\n" +
+	"\texit_code\x18\x12 \x01(\x05R\bexitCode\x12\x1f\n" +
+	"\vexit_signal\x18\x13 \x01(\tR\n" +
+	"exitSignal\x12\x19\n" +
+	"\blog_path\x18\x14 \x01(\tR\alogPath\x12\x18\n" +
+	"\aadopted\x18\x15 \x01(\bR\aadopted\x123\n" +
+	"\x15reconciliation_source\x18\x16 \x01(\tR\x14reconciliationSource\"\xd1\x03\n" +
+	"\x16ProcessTelemetrySample\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vprocess_key\x18\x02 \x01(\tR\n" +
+	"processKey\x12\x10\n" +
+	"\x03pid\x18\x03 \x01(\x03R\x03pid\x12\x1d\n" +
+	"\n" +
+	"sampled_at\x18\x04 \x01(\tR\tsampledAt\x12\x1f\n" +
+	"\vcpu_percent\x18\x05 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x06 \x01(\x01R\rmemoryPercent\x12\x1b\n" +
+	"\trss_bytes\x18\a \x01(\x03R\brssBytes\x12\x1b\n" +
+	"\tvms_bytes\x18\b \x01(\x03R\bvmsBytes\x12\x1d\n" +
+	"\n" +
+	"read_bytes\x18\t \x01(\x03R\treadBytes\x12\x1f\n" +
+	"\vwrite_bytes\x18\n" +
+	" \x01(\x03R\n" +
+	"writeBytes\x12\x19\n" +
+	"\bread_ops\x18\v \x01(\x03R\areadOps\x12\x1b\n" +
+	"\twrite_ops\x18\f \x01(\x03R\bwriteOps\x12\x19\n" +
+	"\bopen_fds\x18\r \x01(\x05R\aopenFds\x12!\n" +
+	"\fthread_count\x18\x0e \x01(\x05R\vthreadCount\x12\x16\n" +
+	"\x06status\x18\x0f \x01(\tR\x06status\"\xd2\x01\n" +
+	"\x0fProcessLogChunk\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vprocess_key\x18\x02 \x01(\tR\n" +
+	"processKey\x12\x1f\n" +
+	"\vpackage_key\x18\x03 \x01(\tR\n" +
+	"packageKey\x12\x19\n" +
+	"\blog_path\x18\x04 \x01(\tR\alogPath\x12\x1d\n" +
+	"\n" +
+	"sampled_at\x18\x05 \x01(\tR\tsampledAt\x12\x16\n" +
+	"\x06stream\x18\x06 \x01(\tR\x06stream\x12\x14\n" +
+	"\x05lines\x18\a \x03(\tR\x05lines\"\xd5\x03\n" +
+	"\x13HostTelemetrySample\x12\x1d\n" +
+	"\n" +
+	"sampled_at\x18\x01 \x01(\tR\tsampledAt\x12\x1f\n" +
+	"\vcpu_percent\x18\x02 \x01(\x01R\n" +
+	"cpuPercent\x12\x17\n" +
+	"\aload_1m\x18\x03 \x01(\x01R\x06load1m\x12\x17\n" +
+	"\aload_5m\x18\x04 \x01(\x01R\x06load5m\x12\x19\n" +
+	"\bload_15m\x18\x05 \x01(\x01R\aload15m\x12,\n" +
+	"\x12memory_total_bytes\x18\x06 \x01(\x03R\x10memoryTotalBytes\x12*\n" +
+	"\x11memory_used_bytes\x18\a \x01(\x03R\x0fmemoryUsedBytes\x124\n" +
+	"\x16memory_available_bytes\x18\b \x01(\x03R\x14memoryAvailableBytes\x12(\n" +
+	"\x10disk_total_bytes\x18\t \x01(\x03R\x0ediskTotalBytes\x12&\n" +
+	"\x0fdisk_used_bytes\x18\n" +
+	" \x01(\x03R\rdiskUsedBytes\x120\n" +
+	"\x14disk_available_bytes\x18\v \x01(\x03R\x12diskAvailableBytes\x12\x1d\n" +
+	"\n" +
+	"disk_mount\x18\f \x01(\tR\tdiskMount\"\xaa\x06\n" +
 	"\x10HeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
@@ -955,12 +2687,49 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\ttimestamp\x18\x06 \x01(\tR\ttimestamp\x12]\n" +
 	"\x13discovered_projects\x18\a \x03(\v2,.projectcommander.slave.v1.DiscoveredProjectR\x12discoveredProjects\x12\x18\n" +
 	"\aversion\x18\b \x01(\tR\aversion\x12)\n" +
-	"\x10protocol_version\x18\t \x01(\tR\x0fprotocolVersion\"\x8f\x01\n" +
+	"\x10protocol_version\x18\t \x01(\tR\x0fprotocolVersion\x12\x17\n" +
+	"\aboot_id\x18\n" +
+	" \x01(\tR\x06bootId\x12U\n" +
+	"\x0ehost_telemetry\x18\v \x01(\v2..projectcommander.slave.v1.HostTelemetrySampleR\rhostTelemetry\x12^\n" +
+	"\x11process_telemetry\x18\f \x03(\v21.projectcommander.slave.v1.ProcessTelemetrySampleR\x10processTelemetry\x12R\n" +
+	"\robserved_runs\x18\r \x03(\v2-.projectcommander.slave.v1.ObservedProcessRunR\fobservedRuns\x12)\n" +
+	"\x10runtime_sequence\x18\x0e \x01(\x03R\x0fruntimeSequence\x12X\n" +
+	"\x12process_log_chunks\x18\x0f \x03(\v2*.projectcommander.slave.v1.ProcessLogChunkR\x10processLogChunks\"\x8f\x01\n" +
 	"\x11HeartbeatResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12C\n" +
-	"\bcommands\x18\x03 \x03(\v2'.projectcommander.slave.v1.SlaveCommandR\bcommands\"\x91\x02\n" +
+	"\bcommands\x18\x03 \x03(\v2'.projectcommander.slave.v1.SlaveCommandR\bcommands\"\xb2\x01\n" +
+	"\x12GitCheckoutCommand\x12%\n" +
+	"\x0erepository_url\x18\x01 \x01(\tR\rrepositoryUrl\x12%\n" +
+	"\x0ebase_directory\x18\x02 \x01(\tR\rbaseDirectory\x12-\n" +
+	"\x12destination_folder\x18\x03 \x01(\tR\x11destinationFolder\x12\x1f\n" +
+	"\vtarget_path\x18\x04 \x01(\tR\n" +
+	"targetPath\"\xa9\x03\n" +
+	"\x14LaunchProcessCommand\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vprocess_key\x18\x02 \x01(\tR\n" +
+	"processKey\x12!\n" +
+	"\fproject_path\x18\x03 \x01(\tR\vprojectPath\x12\x1f\n" +
+	"\vpackage_key\x18\x04 \x01(\tR\n" +
+	"packageKey\x122\n" +
+	"\x15package_relative_path\x18\x05 \x01(\tR\x13packageRelativePath\x12\x10\n" +
+	"\x03cwd\x18\x06 \x01(\tR\x03cwd\x12\x18\n" +
+	"\acommand\x18\a \x01(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\b \x03(\tR\x04args\x12<\n" +
+	"\x03env\x18\t \x03(\v2*.projectcommander.slave.v1.ProcessEnvEntryR\x03env\x12\x19\n" +
+	"\benv_hash\x18\n" +
+	" \x01(\tR\aenvHash\x12\x19\n" +
+	"\blog_root\x18\v \x01(\tR\alogRoot\x12-\n" +
+	"\x12launch_fingerprint\x18\f \x01(\tR\x11launchFingerprint\"\xa2\x01\n" +
+	"\x12KillProcessCommand\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vprocess_key\x18\x02 \x01(\tR\n" +
+	"processKey\x12\x10\n" +
+	"\x03pid\x18\x03 \x01(\x03R\x03pid\x12\x12\n" +
+	"\x04pgid\x18\x04 \x01(\x03R\x04pgid\x12\x16\n" +
+	"\x06signal\x18\x05 \x01(\tR\x06signal\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\"\x84\x05\n" +
 	"\fSlaveCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12!\n" +
@@ -970,7 +2739,13 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\x12destination_folder\x18\x05 \x01(\tR\x11destinationFolder\x12\x1f\n" +
 	"\vtarget_path\x18\x06 \x01(\tR\n" +
 	"targetPath\x12!\n" +
-	"\frequested_at\x18\a \x01(\tR\vrequestedAt\"\x90\x02\n" +
+	"\frequested_at\x18\a \x01(\tR\vrequestedAt\x12R\n" +
+	"\fgit_checkout\x18\b \x01(\v2-.projectcommander.slave.v1.GitCheckoutCommandH\x00R\vgitCheckout\x12X\n" +
+	"\x0elaunch_process\x18\t \x01(\v2/.projectcommander.slave.v1.LaunchProcessCommandH\x00R\rlaunchProcess\x12[\n" +
+	"\x11soft_kill_process\x18\n" +
+	" \x01(\v2-.projectcommander.slave.v1.KillProcessCommandH\x00R\x0fsoftKillProcess\x12[\n" +
+	"\x11hard_kill_process\x18\v \x01(\v2-.projectcommander.slave.v1.KillProcessCommandH\x00R\x0fhardKillProcessB\t\n" +
+	"\apayload\"\x90\x02\n" +
 	"\x1aReportCommandResultRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
@@ -983,6 +2758,33 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\foutput_lines\x18\a \x03(\tR\voutputLines\x12!\n" +
 	"\fcompleted_at\x18\b \x01(\tR\vcompletedAt\"T\n" +
 	"\x1bReportCommandResultResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\xfc\x01\n" +
+	"\x1bProcessReconciliationChange\x12\x1f\n" +
+	"\vchange_type\x18\x01 \x01(\tR\n" +
+	"changeType\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12R\n" +
+	"\x0fdesired_process\x18\x03 \x01(\v2).projectcommander.slave.v1.DesiredProcessR\x0edesiredProcess\x12P\n" +
+	"\fobserved_run\x18\x04 \x01(\v2-.projectcommander.slave.v1.ObservedProcessRunR\vobservedRun\"o\n" +
+	"\x1aGetDesiredProcessesRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12\x17\n" +
+	"\aboot_id\x18\x03 \x01(\tR\x06bootId\"\xac\x01\n" +
+	"\x1bGetDesiredProcessesResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12V\n" +
+	"\x11desired_processes\x18\x03 \x03(\v2).projectcommander.slave.v1.DesiredProcessR\x10desiredProcesses\"\x9d\x02\n" +
+	"\"ReportProcessReconciliationRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12\x17\n" +
+	"\aboot_id\x18\x03 \x01(\tR\x06bootId\x12P\n" +
+	"\achanges\x18\x04 \x03(\v26.projectcommander.slave.v1.ProcessReconciliationChangeR\achanges\x12R\n" +
+	"\robserved_runs\x18\x05 \x03(\v2-.projectcommander.slave.v1.ObservedProcessRunR\fobservedRuns\"\\\n" +
+	"#ReportProcessReconciliationResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\"\xb6\x01\n" +
@@ -1007,11 +2809,13 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\rDrainResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status2\xc4\x04\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status2\xea\x06\n" +
 	"\fSlaveControl\x12r\n" +
 	"\rRegisterSlave\x12/.projectcommander.slave.v1.RegisterSlaveRequest\x1a0.projectcommander.slave.v1.RegisterSlaveResponse\x12f\n" +
 	"\tHeartbeat\x12+.projectcommander.slave.v1.HeartbeatRequest\x1a,.projectcommander.slave.v1.HeartbeatResponse\x12\x84\x01\n" +
-	"\x13ReportCommandResult\x125.projectcommander.slave.v1.ReportCommandResultRequest\x1a6.projectcommander.slave.v1.ReportCommandResultResponse\x12u\n" +
+	"\x13ReportCommandResult\x125.projectcommander.slave.v1.ReportCommandResultRequest\x1a6.projectcommander.slave.v1.ReportCommandResultResponse\x12\x84\x01\n" +
+	"\x13GetDesiredProcesses\x125.projectcommander.slave.v1.GetDesiredProcessesRequest\x1a6.projectcommander.slave.v1.GetDesiredProcessesResponse\x12\x9c\x01\n" +
+	"\x1bReportProcessReconciliation\x12=.projectcommander.slave.v1.ReportProcessReconciliationRequest\x1a>.projectcommander.slave.v1.ReportProcessReconciliationResponse\x12u\n" +
 	"\x0eAssignWorkload\x120.projectcommander.slave.v1.AssignWorkloadRequest\x1a1.projectcommander.slave.v1.AssignWorkloadResponse\x12Z\n" +
 	"\x05Drain\x12'.projectcommander.slave.v1.DrainRequest\x1a(.projectcommander.slave.v1.DrainResponseB_Z]github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/slave/v1;slavev1b\x06proto3"
 
@@ -1027,40 +2831,73 @@ func file_projectcommander_slave_v1_slave_control_proto_rawDescGZIP() []byte {
 	return file_projectcommander_slave_v1_slave_control_proto_rawDescData
 }
 
-var file_projectcommander_slave_v1_slave_control_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_projectcommander_slave_v1_slave_control_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_projectcommander_slave_v1_slave_control_proto_goTypes = []any{
-	(*DiscoveredProject)(nil),           // 0: projectcommander.slave.v1.DiscoveredProject
-	(*RegisterSlaveRequest)(nil),        // 1: projectcommander.slave.v1.RegisterSlaveRequest
-	(*RegisterSlaveResponse)(nil),       // 2: projectcommander.slave.v1.RegisterSlaveResponse
-	(*HeartbeatRequest)(nil),            // 3: projectcommander.slave.v1.HeartbeatRequest
-	(*HeartbeatResponse)(nil),           // 4: projectcommander.slave.v1.HeartbeatResponse
-	(*SlaveCommand)(nil),                // 5: projectcommander.slave.v1.SlaveCommand
-	(*ReportCommandResultRequest)(nil),  // 6: projectcommander.slave.v1.ReportCommandResultRequest
-	(*ReportCommandResultResponse)(nil), // 7: projectcommander.slave.v1.ReportCommandResultResponse
-	(*AssignWorkloadRequest)(nil),       // 8: projectcommander.slave.v1.AssignWorkloadRequest
-	(*AssignWorkloadResponse)(nil),      // 9: projectcommander.slave.v1.AssignWorkloadResponse
-	(*DrainRequest)(nil),                // 10: projectcommander.slave.v1.DrainRequest
-	(*DrainResponse)(nil),               // 11: projectcommander.slave.v1.DrainResponse
+	(*DiscoveredProject)(nil),                   // 0: projectcommander.slave.v1.DiscoveredProject
+	(*RegisterSlaveRequest)(nil),                // 1: projectcommander.slave.v1.RegisterSlaveRequest
+	(*RegisterSlaveResponse)(nil),               // 2: projectcommander.slave.v1.RegisterSlaveResponse
+	(*ProcessEnvEntry)(nil),                     // 3: projectcommander.slave.v1.ProcessEnvEntry
+	(*DesiredProcess)(nil),                      // 4: projectcommander.slave.v1.DesiredProcess
+	(*ObservedProcessRun)(nil),                  // 5: projectcommander.slave.v1.ObservedProcessRun
+	(*ProcessTelemetrySample)(nil),              // 6: projectcommander.slave.v1.ProcessTelemetrySample
+	(*ProcessLogChunk)(nil),                     // 7: projectcommander.slave.v1.ProcessLogChunk
+	(*HostTelemetrySample)(nil),                 // 8: projectcommander.slave.v1.HostTelemetrySample
+	(*HeartbeatRequest)(nil),                    // 9: projectcommander.slave.v1.HeartbeatRequest
+	(*HeartbeatResponse)(nil),                   // 10: projectcommander.slave.v1.HeartbeatResponse
+	(*GitCheckoutCommand)(nil),                  // 11: projectcommander.slave.v1.GitCheckoutCommand
+	(*LaunchProcessCommand)(nil),                // 12: projectcommander.slave.v1.LaunchProcessCommand
+	(*KillProcessCommand)(nil),                  // 13: projectcommander.slave.v1.KillProcessCommand
+	(*SlaveCommand)(nil),                        // 14: projectcommander.slave.v1.SlaveCommand
+	(*ReportCommandResultRequest)(nil),          // 15: projectcommander.slave.v1.ReportCommandResultRequest
+	(*ReportCommandResultResponse)(nil),         // 16: projectcommander.slave.v1.ReportCommandResultResponse
+	(*ProcessReconciliationChange)(nil),         // 17: projectcommander.slave.v1.ProcessReconciliationChange
+	(*GetDesiredProcessesRequest)(nil),          // 18: projectcommander.slave.v1.GetDesiredProcessesRequest
+	(*GetDesiredProcessesResponse)(nil),         // 19: projectcommander.slave.v1.GetDesiredProcessesResponse
+	(*ReportProcessReconciliationRequest)(nil),  // 20: projectcommander.slave.v1.ReportProcessReconciliationRequest
+	(*ReportProcessReconciliationResponse)(nil), // 21: projectcommander.slave.v1.ReportProcessReconciliationResponse
+	(*AssignWorkloadRequest)(nil),               // 22: projectcommander.slave.v1.AssignWorkloadRequest
+	(*AssignWorkloadResponse)(nil),              // 23: projectcommander.slave.v1.AssignWorkloadResponse
+	(*DrainRequest)(nil),                        // 24: projectcommander.slave.v1.DrainRequest
+	(*DrainResponse)(nil),                       // 25: projectcommander.slave.v1.DrainResponse
 }
 var file_projectcommander_slave_v1_slave_control_proto_depIdxs = []int32{
 	0,  // 0: projectcommander.slave.v1.RegisterSlaveRequest.discovered_projects:type_name -> projectcommander.slave.v1.DiscoveredProject
-	0,  // 1: projectcommander.slave.v1.HeartbeatRequest.discovered_projects:type_name -> projectcommander.slave.v1.DiscoveredProject
-	5,  // 2: projectcommander.slave.v1.HeartbeatResponse.commands:type_name -> projectcommander.slave.v1.SlaveCommand
-	1,  // 3: projectcommander.slave.v1.SlaveControl.RegisterSlave:input_type -> projectcommander.slave.v1.RegisterSlaveRequest
-	3,  // 4: projectcommander.slave.v1.SlaveControl.Heartbeat:input_type -> projectcommander.slave.v1.HeartbeatRequest
-	6,  // 5: projectcommander.slave.v1.SlaveControl.ReportCommandResult:input_type -> projectcommander.slave.v1.ReportCommandResultRequest
-	8,  // 6: projectcommander.slave.v1.SlaveControl.AssignWorkload:input_type -> projectcommander.slave.v1.AssignWorkloadRequest
-	10, // 7: projectcommander.slave.v1.SlaveControl.Drain:input_type -> projectcommander.slave.v1.DrainRequest
-	2,  // 8: projectcommander.slave.v1.SlaveControl.RegisterSlave:output_type -> projectcommander.slave.v1.RegisterSlaveResponse
-	4,  // 9: projectcommander.slave.v1.SlaveControl.Heartbeat:output_type -> projectcommander.slave.v1.HeartbeatResponse
-	7,  // 10: projectcommander.slave.v1.SlaveControl.ReportCommandResult:output_type -> projectcommander.slave.v1.ReportCommandResultResponse
-	9,  // 11: projectcommander.slave.v1.SlaveControl.AssignWorkload:output_type -> projectcommander.slave.v1.AssignWorkloadResponse
-	11, // 12: projectcommander.slave.v1.SlaveControl.Drain:output_type -> projectcommander.slave.v1.DrainResponse
-	8,  // [8:13] is the sub-list for method output_type
-	3,  // [3:8] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	3,  // 1: projectcommander.slave.v1.DesiredProcess.env:type_name -> projectcommander.slave.v1.ProcessEnvEntry
+	0,  // 2: projectcommander.slave.v1.HeartbeatRequest.discovered_projects:type_name -> projectcommander.slave.v1.DiscoveredProject
+	8,  // 3: projectcommander.slave.v1.HeartbeatRequest.host_telemetry:type_name -> projectcommander.slave.v1.HostTelemetrySample
+	6,  // 4: projectcommander.slave.v1.HeartbeatRequest.process_telemetry:type_name -> projectcommander.slave.v1.ProcessTelemetrySample
+	5,  // 5: projectcommander.slave.v1.HeartbeatRequest.observed_runs:type_name -> projectcommander.slave.v1.ObservedProcessRun
+	7,  // 6: projectcommander.slave.v1.HeartbeatRequest.process_log_chunks:type_name -> projectcommander.slave.v1.ProcessLogChunk
+	14, // 7: projectcommander.slave.v1.HeartbeatResponse.commands:type_name -> projectcommander.slave.v1.SlaveCommand
+	3,  // 8: projectcommander.slave.v1.LaunchProcessCommand.env:type_name -> projectcommander.slave.v1.ProcessEnvEntry
+	11, // 9: projectcommander.slave.v1.SlaveCommand.git_checkout:type_name -> projectcommander.slave.v1.GitCheckoutCommand
+	12, // 10: projectcommander.slave.v1.SlaveCommand.launch_process:type_name -> projectcommander.slave.v1.LaunchProcessCommand
+	13, // 11: projectcommander.slave.v1.SlaveCommand.soft_kill_process:type_name -> projectcommander.slave.v1.KillProcessCommand
+	13, // 12: projectcommander.slave.v1.SlaveCommand.hard_kill_process:type_name -> projectcommander.slave.v1.KillProcessCommand
+	4,  // 13: projectcommander.slave.v1.ProcessReconciliationChange.desired_process:type_name -> projectcommander.slave.v1.DesiredProcess
+	5,  // 14: projectcommander.slave.v1.ProcessReconciliationChange.observed_run:type_name -> projectcommander.slave.v1.ObservedProcessRun
+	4,  // 15: projectcommander.slave.v1.GetDesiredProcessesResponse.desired_processes:type_name -> projectcommander.slave.v1.DesiredProcess
+	17, // 16: projectcommander.slave.v1.ReportProcessReconciliationRequest.changes:type_name -> projectcommander.slave.v1.ProcessReconciliationChange
+	5,  // 17: projectcommander.slave.v1.ReportProcessReconciliationRequest.observed_runs:type_name -> projectcommander.slave.v1.ObservedProcessRun
+	1,  // 18: projectcommander.slave.v1.SlaveControl.RegisterSlave:input_type -> projectcommander.slave.v1.RegisterSlaveRequest
+	9,  // 19: projectcommander.slave.v1.SlaveControl.Heartbeat:input_type -> projectcommander.slave.v1.HeartbeatRequest
+	15, // 20: projectcommander.slave.v1.SlaveControl.ReportCommandResult:input_type -> projectcommander.slave.v1.ReportCommandResultRequest
+	18, // 21: projectcommander.slave.v1.SlaveControl.GetDesiredProcesses:input_type -> projectcommander.slave.v1.GetDesiredProcessesRequest
+	20, // 22: projectcommander.slave.v1.SlaveControl.ReportProcessReconciliation:input_type -> projectcommander.slave.v1.ReportProcessReconciliationRequest
+	22, // 23: projectcommander.slave.v1.SlaveControl.AssignWorkload:input_type -> projectcommander.slave.v1.AssignWorkloadRequest
+	24, // 24: projectcommander.slave.v1.SlaveControl.Drain:input_type -> projectcommander.slave.v1.DrainRequest
+	2,  // 25: projectcommander.slave.v1.SlaveControl.RegisterSlave:output_type -> projectcommander.slave.v1.RegisterSlaveResponse
+	10, // 26: projectcommander.slave.v1.SlaveControl.Heartbeat:output_type -> projectcommander.slave.v1.HeartbeatResponse
+	16, // 27: projectcommander.slave.v1.SlaveControl.ReportCommandResult:output_type -> projectcommander.slave.v1.ReportCommandResultResponse
+	19, // 28: projectcommander.slave.v1.SlaveControl.GetDesiredProcesses:output_type -> projectcommander.slave.v1.GetDesiredProcessesResponse
+	21, // 29: projectcommander.slave.v1.SlaveControl.ReportProcessReconciliation:output_type -> projectcommander.slave.v1.ReportProcessReconciliationResponse
+	23, // 30: projectcommander.slave.v1.SlaveControl.AssignWorkload:output_type -> projectcommander.slave.v1.AssignWorkloadResponse
+	25, // 31: projectcommander.slave.v1.SlaveControl.Drain:output_type -> projectcommander.slave.v1.DrainResponse
+	25, // [25:32] is the sub-list for method output_type
+	18, // [18:25] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_projectcommander_slave_v1_slave_control_proto_init() }
@@ -1068,13 +2905,19 @@ func file_projectcommander_slave_v1_slave_control_proto_init() {
 	if File_projectcommander_slave_v1_slave_control_proto != nil {
 		return
 	}
+	file_projectcommander_slave_v1_slave_control_proto_msgTypes[14].OneofWrappers = []any{
+		(*SlaveCommand_GitCheckout)(nil),
+		(*SlaveCommand_LaunchProcess)(nil),
+		(*SlaveCommand_SoftKillProcess)(nil),
+		(*SlaveCommand_HardKillProcess)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_projectcommander_slave_v1_slave_control_proto_rawDesc), len(file_projectcommander_slave_v1_slave_control_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

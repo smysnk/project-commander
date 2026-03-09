@@ -29,6 +29,10 @@ test('buildLogsQueryMessage produces websocket-compatible payload with sanitized
       hostName: null,
       hostIp: null,
       hostAgentUuid: null,
+      runId: null,
+      processKey: null,
+      packageKey: null,
+      logPath: null,
     },
     streams: [
       { streamId: 'merged', offset: 10, limit: 80 },

@@ -46,6 +46,10 @@ const buildLogsQueryMessage = ({
       hostAgentUuid: context?.hostAgentUuid
         ? String(context.hostAgentUuid).trim() || null
         : null,
+      runId: context?.runId ? String(context.runId).trim() || null : null,
+      processKey: context?.processKey ? String(context.processKey).trim() || null : null,
+      packageKey: context?.packageKey ? String(context.packageKey).trim() || null : null,
+      logPath: context?.logPath ? String(context.logPath).trim() || null : null,
     },
     streams: normalizedStreams,
   };

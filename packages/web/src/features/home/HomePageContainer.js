@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   connectHomeRealtime,
@@ -24,6 +24,7 @@ import {
   resolveClientThemePreference,
 } from '../../store';
 import { graphqlRequest } from '../../lib/graphqlClient';
+import TagChip from '../../components/TagChip';
 import { findServiceIcon, getUniqueServiceIconMap } from '../../lib/serviceIconFinder';
 import {
   MUTATION_SET_PROJECT_PORT_RANGE_SETTINGS,
@@ -55,8 +56,10 @@ import {
 import {
   useDashboardQueries,
   useProjectQueries,
+  useRuntimeRegistryQueries,
   useRuntimeQueries,
 } from './hooks/useHomeQueries';
+import useRuntimeRegistryActions from './hooks/useRuntimeRegistryActions';
 import { useTerminalActions } from './hooks/useTerminalActions';
 import useHomeLayoutController from './controllers/useHomeLayoutController';
 import useHostsSidebarController from './controllers/useHostsSidebarController';
@@ -173,15 +176,15 @@ const renderLogTagRow = (
       </span>
       <span className="logTimestamp">{timestamp}</span>
       {showHostTag && hostLabel ? (
-        <span className="logHostTag" title={hostLabel}>
+        <TagChip className="logHostTag" title={hostLabel} fullWidth>
           {hostLabel}
-        </span>
+        </TagChip>
       ) : (
         <span className="logHostPlaceholder" aria-hidden />
       )}
-      <span className="logServiceTag" style={serviceTagStyle} title={rawServiceName || '-'}>
+      <TagChip className="logServiceTag" style={serviceTagStyle} title={rawServiceName || '-'} fullWidth>
         {rawServiceName || '-'}
-      </span>
+      </TagChip>
       <span className="logServiceIconCol" aria-hidden>
         <ServiceChipIcon className="logServiceTagIcon" />
       </span>
@@ -402,6 +405,10 @@ export default function HomePageContainer() {
   const slaveTargetVersion = useSelector(selectSlaveTargetVersion);
   const isGoMasterBackend = useSelector(selectIsGoMasterBackend);
   const masterAgentInfo = useSelector(selectMasterAgent);
+  const [runtimeRegistryByHostId, setRuntimeRegistryByHostId] = useState({});
+  const [runtimeRegistryLoadingByHostId, setRuntimeRegistryLoadingByHostId] = useState({});
+  const [runtimeActionBusyByHostId, setRuntimeActionBusyByHostId] = useState({});
+  const [selectedProcessLogTarget, setSelectedProcessLogTarget] = useState(null);
 
   const graphqlEndpoint = runtimeConfig?.graphqlEndpoint || '/graphql';
   const wsEndpoint = runtimeConfig?.wsEndpoint || getDefaultWsEndpoint();
@@ -662,6 +669,12 @@ export default function HomePageContainer() {
     setRuntimeBackendInfo,
     setRuntimeBackendInfoLoading,
   });
+  const { loadSlaveRuntimeBundle } = useRuntimeRegistryQueries({
+    graphqlEndpoint,
+    setError,
+    setRuntimeRegistryByHostId,
+    setRuntimeRegistryLoadingByHostId,
+  });
   const { loadDashboard } = useDashboardQueries({
     setLoading,
     setProjects,
@@ -707,6 +720,16 @@ export default function HomePageContainer() {
     setTerminalOutputBySessionId,
     setError,
   });
+  const {
+    ensureDesiredProcess,
+    softKillProcess,
+    hardKillProcess,
+  } = useRuntimeRegistryActions({
+    graphqlEndpoint,
+    setError,
+    setRuntimeActionBusyByHostId,
+    loadSlaveRuntimeBundle,
+  });
 
   useEffect(() => {
     let active = true;
@@ -747,6 +770,90 @@ export default function HomePageContainer() {
     window.__RUNTIME_CONFIG__ = runtimeConfig;
   }, [runtimeConfig]);
 
+  useEffect(() => {
+    const validHostIds = new Set(
+      (Array.isArray(hosts) ? hosts : [])
+        .map((host) => Number(host?.id))
+        .filter((hostId) => Number.isInteger(hostId) && hostId > 0),
+    );
+
+    setRuntimeRegistryByHostId((current) => (
+      Object.fromEntries(
+        Object.entries(current || {}).filter(([hostId]) => validHostIds.has(Number(hostId))),
+      )
+    ));
+    setRuntimeRegistryLoadingByHostId((current) => (
+      Object.fromEntries(
+        Object.entries(current || {}).filter(([hostId, loadingValue]) => (
+          Boolean(loadingValue) && validHostIds.has(Number(hostId))
+        )),
+      )
+    ));
+    setRuntimeActionBusyByHostId((current) => (
+      Object.fromEntries(
+        Object.entries(current || {}).filter(([hostId, busy]) => (
+          Boolean(busy) && validHostIds.has(Number(hostId))
+        )),
+      )
+    ));
+  }, [hosts]);
+
+  useEffect(() => {
+    if (!selectedProcessLogTarget) {
+      return;
+    }
+    const targetHostId = Number(selectedProcessLogTarget?.hostId || 0);
+    const selectedId = Number(selectedHost?.id || 0);
+    if (leftPanelMode === LEFT_PANEL_MODE.PROJECTS || !Number.isInteger(selectedId) || selectedId <= 0) {
+      setSelectedProcessLogTarget(null);
+      return;
+    }
+    if (Number.isInteger(targetHostId) && targetHostId > 0 && targetHostId !== selectedId) {
+      setSelectedProcessLogTarget(null);
+    }
+  }, [leftPanelMode, selectedHost, selectedProcessLogTarget]);
+
+  useEffect(() => {
+    if (!isGoMasterBackend || !selectedHost) {
+      return undefined;
+    }
+    const hostId = Number(selectedHost?.id || 0);
+    if (!Number.isInteger(hostId) || hostId <= 0) {
+      return undefined;
+    }
+    const agentUuid = String(selectedHost?.agentUuid || '').trim() || null;
+    let active = true;
+    let intervalId = null;
+
+    const refresh = async () => {
+      try {
+        await loadSlaveRuntimeBundle({
+          hostId,
+          agentUuid,
+        });
+      } catch {
+        // errors are surfaced through setError inside the hook
+      }
+    };
+
+    refresh();
+    if (typeof window !== 'undefined') {
+      intervalId = window.setInterval(() => {
+        if (!active) {
+          return;
+        }
+        refresh();
+      }, 1000);
+    }
+
+    return () => {
+      active = false;
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [isGoMasterBackend, loadSlaveRuntimeBundle, selectedHost]);
+
   const layoutState = useHomeLayoutController({
     dispatch,
     hostsSidebarCollapsed,
@@ -763,6 +870,33 @@ export default function HomePageContainer() {
     [selectedProject],
   );
   const hasActiveTerminalSession = selectedTerminalSession?.status === 'active';
+  const selectedHostRuntimeBundle = useMemo(() => {
+    if (!Number.isInteger(selectedHostNumericId) || selectedHostNumericId <= 0) {
+      return null;
+    }
+    const bundle = runtimeRegistryByHostId?.[selectedHostNumericId];
+    return bundle && typeof bundle === 'object' ? bundle : null;
+  }, [runtimeRegistryByHostId, selectedHostNumericId]);
+  const selectedHostSlaveRuntimeState = selectedHostRuntimeBundle?.slaveRuntimeState || null;
+  const selectedHostDesiredProcesses = Array.isArray(selectedHostRuntimeBundle?.desiredProcesses)
+    ? selectedHostRuntimeBundle.desiredProcesses
+    : [];
+  const selectedHostObservedProcessRuns = Array.isArray(selectedHostRuntimeBundle?.observedProcessRuns)
+    ? selectedHostRuntimeBundle.observedProcessRuns
+    : [];
+  const selectedHostHostRuntimeState = selectedHostSlaveRuntimeState?.hostRuntimeState
+    || selectedHostRuntimeBundle?.hostRuntimeState
+    || null;
+  const selectedHostRuntimeLoading = Boolean(
+    Number.isInteger(selectedHostNumericId) && selectedHostNumericId > 0
+      ? runtimeRegistryLoadingByHostId?.[selectedHostNumericId]
+      : false,
+  );
+  const selectedHostRuntimeActionBusy = Boolean(
+    Number.isInteger(selectedHostNumericId) && selectedHostNumericId > 0
+      ? runtimeActionBusyByHostId?.[selectedHostNumericId]
+      : false,
+  );
 
   useEffect(() => {
     if (rightTab !== RIGHT_PANE_TAB.TERMINAL) {
@@ -970,6 +1104,12 @@ export default function HomePageContainer() {
     terminalSessionByHostId,
     slaveTargetVersion,
     upgradingHostId,
+    runtimeRegistryByHostId,
+    runtimeRegistryLoadingByHostId,
+    runtimeActionBusyByHostId,
+    onViewManagedProcessLogs,
+    onSoftKillObservedProcess,
+    onHardKillObservedProcess,
     toHostHealthClassName,
     normalizeHostDirectories,
     isHostVersionOutOfDate,
@@ -1016,6 +1156,7 @@ export default function HomePageContainer() {
     disabledLogLevels,
     seenLogServicesByProject,
     setSeenLogServicesByProject,
+    selectedProcessLogTarget,
     loadProjectLogs,
     setProjectLogs,
     setProjectEnvironment,
@@ -1129,17 +1270,102 @@ export default function HomePageContainer() {
     });
   }, [selectedHost, setError, startTerminalSessionForHost]);
 
+  const onRefreshSelectedHostRuntime = useCallback(() => {
+    if (!selectedHost) {
+      return Promise.resolve(null);
+    }
+    return loadSlaveRuntimeBundle({
+      hostId: selectedHost.id,
+      agentUuid: selectedHost.agentUuid,
+    });
+  }, [loadSlaveRuntimeBundle, selectedHost]);
+
+  const onViewManagedProcessLogs = useCallback((host, observedRun) => {
+    const hostId = Number(host?.id || 0);
+    const runId = String(observedRun?.runId || '').trim();
+    if (!Number.isInteger(hostId) || hostId <= 0 || !runId) {
+      setError('Unable to open managed process logs: missing host or run id.');
+      return;
+    }
+    setError('');
+    setSelectedProcessLogTarget({
+      hostId,
+      hostName: String(host?.name || '').trim() || null,
+      hostIp: String(host?.ip || '').trim() || null,
+      hostAgentUuid: String(host?.agentUuid || observedRun?.slaveId || '').trim() || null,
+      runId,
+      processKey: String(observedRun?.processKey || '').trim() || null,
+      packageKey: String(observedRun?.packageKey || observedRun?.processKey || '').trim() || null,
+      logPath: String(observedRun?.logPath || '').trim() || null,
+    });
+    dispatch(setPanelProjectExplorerMode(RIGHT_PANE_TAB.LOGS));
+  }, [dispatch, setError]);
+
+  const onSoftKillObservedProcess = useCallback((host, observedRun) => {
+    if (!host || !observedRun) {
+      return Promise.resolve(null);
+    }
+    return softKillProcess({
+      hostId: host.id,
+      agentUuid: host.agentUuid,
+      runId: observedRun.runId,
+      processKey: observedRun.processKey,
+      pid: observedRun.pid,
+      reason: 'Requested from runtime UI',
+    });
+  }, [softKillProcess]);
+
+  const onHardKillObservedProcess = useCallback((host, observedRun) => {
+    if (!host || !observedRun) {
+      return Promise.resolve(null);
+    }
+    return hardKillProcess({
+      hostId: host.id,
+      agentUuid: host.agentUuid,
+      runId: observedRun.runId,
+      processKey: observedRun.processKey,
+      pid: observedRun.pid,
+      reason: 'Requested from runtime UI',
+    });
+  }, [hardKillProcess]);
+
   const runtimePanelState = useMemo(() => ({
     runtimeConfig,
     runtimeBackendInfo,
     runtimeBackendInfoLoading,
     masterAgentInfo,
     isGoMasterBackend,
+    selectedHost,
+    selectedProject,
+    slaveRuntimeState: selectedHostSlaveRuntimeState,
+    desiredProcesses: selectedHostDesiredProcesses,
+    observedProcessRuns: selectedHostObservedProcessRuns,
+    hostRuntimeState: selectedHostHostRuntimeState,
+    runtimeLoading: selectedHostRuntimeLoading,
+    runtimeActionBusy: selectedHostRuntimeActionBusy,
+    onRefreshSelectedHostRuntime,
+    onEnsureDesiredProcess: ensureDesiredProcess,
+    onSoftKillObservedProcess,
+    onHardKillObservedProcess,
+    onViewManagedProcessLogs,
     formatRuntimeDateTime,
     formatVersionWithProtocol,
   }), [
+    ensureDesiredProcess,
     isGoMasterBackend,
+    onHardKillObservedProcess,
+    onRefreshSelectedHostRuntime,
+    onSoftKillObservedProcess,
+    onViewManagedProcessLogs,
     masterAgentInfo,
+    selectedHost,
+    selectedHostDesiredProcesses,
+    selectedHostHostRuntimeState,
+    selectedHostObservedProcessRuns,
+    selectedHostRuntimeActionBusy,
+    selectedHostRuntimeLoading,
+    selectedHostSlaveRuntimeState,
+    selectedProject,
     runtimeBackendInfo,
     runtimeBackendInfoLoading,
     runtimeConfig,

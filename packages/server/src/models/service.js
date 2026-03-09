@@ -26,6 +26,8 @@ Service.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       field: 'process_id',
+      // Legacy compatibility field. Runtime process identity now belongs in
+      // desired_processes/process_runs rather than the service row itself.
     },
     relativePath: {
       type: DataTypes.STRING,

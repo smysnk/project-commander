@@ -17,6 +17,8 @@ const MASTER_EVENT_TYPE_SLAVE_DRAINED = 'slave.drained';
 const MASTER_EVENT_TYPE_SLAVE_COMMAND_QUEUED = 'slave.command_queued';
 const MASTER_EVENT_TYPE_SLAVE_COMMAND_DISPATCHED = 'slave.command_dispatched';
 const MASTER_EVENT_TYPE_SLAVE_COMMAND_RESULT = 'slave.command_result';
+const MASTER_EVENT_TYPE_SLAVE_PROCESS_RECONCILIATION = 'slave.process_reconciliation';
+const MASTER_EVENT_TYPE_SLAVE_RUNTIME_TELEMETRY = 'slave.runtime_telemetry';
 const EVENT_STREAM_RECONNECT_MS = 1000;
 const MASTER_CONNECT_RETRY_MS = 1000;
 const MASTER_CONNECT_TIMEOUT_MS = 900;
@@ -407,6 +409,181 @@ const normalizeRegisteredSlave = (slave) => {
     version,
     protocolVersion,
     discoveredProjects: normalizedDiscoveredProjects,
+  };
+};
+
+const normalizeProcessEnvEntries = (entries) => (
+  Array.isArray(entries)
+    ? entries
+      .map((entry) => ({
+        key: String(entry?.key || '').trim(),
+        value: entry?.value == null ? '' : String(entry.value),
+      }))
+      .filter((entry) => entry.key)
+      .sort((left, right) => left.key.localeCompare(right.key))
+    : []
+);
+
+const normalizeDesiredProcess = (desiredProcess) => {
+  const processKey = String(desiredProcess?.processKey || '').trim();
+  if (!processKey) {
+    return null;
+  }
+  const packageKey = String(desiredProcess?.packageKey || processKey).trim() || processKey;
+  return {
+    desiredProcessId: toPositiveIntOrNull(desiredProcess?.desiredProcessId) || 0,
+    hostId: toPositiveIntOrNull(desiredProcess?.hostId) || 0,
+    projectId: toPositiveIntOrNull(desiredProcess?.projectId) || 0,
+    serviceId: toPositiveIntOrNull(desiredProcess?.serviceId) || 0,
+    processKey,
+    projectPath: String(desiredProcess?.projectPath || '').trim(),
+    packageKey,
+    packageRelativePath: String(desiredProcess?.packageRelativePath || '').trim() || '',
+    desiredState: String(desiredProcess?.desiredState || 'running').trim() || 'running',
+    launchMode: String(desiredProcess?.launchMode || 'exec').trim() || 'exec',
+    cwd: String(desiredProcess?.cwd || '').trim(),
+    command: String(desiredProcess?.command || '').trim(),
+    args: Array.isArray(desiredProcess?.args)
+      ? desiredProcess.args.map((value) => String(value || ''))
+      : [],
+    env: normalizeProcessEnvEntries(desiredProcess?.env),
+    envHash: String(desiredProcess?.envHash || '').trim(),
+    launchFingerprint: String(desiredProcess?.launchFingerprint || '').trim(),
+    logRoot: String(desiredProcess?.logRoot || '').trim(),
+    restartPolicy: String(desiredProcess?.restartPolicy || '').trim() || 'manual',
+    updatedAt: String(desiredProcess?.updatedAt || '').trim() || null,
+  };
+};
+
+const normalizeObservedProcessRun = (observedRun) => {
+  const runId = String(observedRun?.runId || '').trim();
+  const processKey = String(observedRun?.processKey || '').trim();
+  if (!runId && !processKey) {
+    return null;
+  }
+  return {
+    runId,
+    desiredProcessId: toPositiveIntOrNull(observedRun?.desiredProcessId) || 0,
+    processKey,
+    projectPath: String(observedRun?.projectPath || '').trim(),
+    packageKey: String(observedRun?.packageKey || '').trim(),
+    pid: toPositiveIntOrNull(observedRun?.pid) || 0,
+    pgid: toPositiveIntOrNull(observedRun?.pgid) || 0,
+    bootId: String(observedRun?.bootId || '').trim() || null,
+    launchFingerprint: String(observedRun?.launchFingerprint || '').trim() || null,
+    command: String(observedRun?.command || '').trim(),
+    args: Array.isArray(observedRun?.args)
+      ? observedRun.args.map((value) => String(value || ''))
+      : [],
+    cwd: String(observedRun?.cwd || '').trim() || null,
+    envHash: String(observedRun?.envHash || '').trim() || null,
+    status: String(observedRun?.status || '').trim() || 'unknown',
+    startedAt: String(observedRun?.startedAt || '').trim() || null,
+    lastSeenAt: String(observedRun?.lastSeenAt || '').trim() || null,
+    exitedAt: String(observedRun?.exitedAt || '').trim() || null,
+    exitCode: Number.isInteger(Number(observedRun?.exitCode)) ? Number(observedRun.exitCode) : null,
+    exitSignal: String(observedRun?.exitSignal || '').trim() || null,
+    logPath: String(observedRun?.logPath || '').trim() || null,
+    adopted: Boolean(observedRun?.adopted),
+    reconciliationSource: String(observedRun?.reconciliationSource || '').trim() || null,
+  };
+};
+
+const normalizeProcessTelemetrySample = (sample) => {
+  const runId = String(sample?.runId || '').trim();
+  const processKey = String(sample?.processKey || '').trim();
+  if (!runId && !processKey) {
+    return null;
+  }
+  return {
+    runId,
+    processKey,
+    pid: toPositiveIntOrNull(sample?.pid) || 0,
+    sampledAt: String(sample?.sampledAt || '').trim() || null,
+    cpuPercent: Number(sample?.cpuPercent || 0),
+    memoryPercent: Number(sample?.memoryPercent || 0),
+    rssBytes: Number(sample?.rssBytes || 0),
+    vmsBytes: Number(sample?.vmsBytes || 0),
+    readBytes: Number(sample?.readBytes || 0),
+    writeBytes: Number(sample?.writeBytes || 0),
+    readOps: Number(sample?.readOps || 0),
+    writeOps: Number(sample?.writeOps || 0),
+    openFds: Number.isInteger(Number(sample?.openFds)) ? Number(sample.openFds) : null,
+    threadCount: Number.isInteger(Number(sample?.threadCount)) ? Number(sample.threadCount) : null,
+    status: String(sample?.status || '').trim() || 'unknown',
+  };
+};
+
+const normalizeHostTelemetrySample = (sample) => {
+  if (!sample || typeof sample !== 'object') {
+    return null;
+  }
+  return {
+    sampledAt: String(sample?.sampledAt || '').trim() || null,
+    cpuPercent: Number(sample?.cpuPercent || 0),
+    load1m: sample?.load1m == null ? null : Number(sample.load1m),
+    load5m: sample?.load5m == null ? null : Number(sample.load5m),
+    load15m: sample?.load15m == null ? null : Number(sample.load15m),
+    memoryTotalBytes: Number(sample?.memoryTotalBytes || 0),
+    memoryUsedBytes: Number(sample?.memoryUsedBytes || 0),
+    memoryAvailableBytes: Number(sample?.memoryAvailableBytes || 0),
+    diskTotalBytes: Number(sample?.diskTotalBytes || 0),
+    diskUsedBytes: Number(sample?.diskUsedBytes || 0),
+    diskAvailableBytes: Number(sample?.diskAvailableBytes || 0),
+    diskMount: String(sample?.diskMount || '').trim() || null,
+  };
+};
+
+const normalizeSlaveRuntimeState = (runtimeState) => {
+  const slaveId = String(runtimeState?.slaveId || '').trim();
+  if (!slaveId) {
+    return null;
+  }
+  return {
+    slaveId,
+    bootId: String(runtimeState?.bootId || '').trim() || null,
+    status: String(runtimeState?.status || '').trim().toLowerCase() || 'unknown',
+    hostTelemetry: normalizeHostTelemetrySample(runtimeState?.hostTelemetry),
+    desiredProcesses: Array.isArray(runtimeState?.desiredProcesses)
+      ? runtimeState.desiredProcesses.map((value) => normalizeDesiredProcess(value)).filter(Boolean)
+      : [],
+    observedRuns: Array.isArray(runtimeState?.observedRuns)
+      ? runtimeState.observedRuns.map((value) => normalizeObservedProcessRun(value)).filter(Boolean)
+      : [],
+    processTelemetry: Array.isArray(runtimeState?.processTelemetry)
+      ? runtimeState.processTelemetry.map((value) => normalizeProcessTelemetrySample(value)).filter(Boolean)
+      : [],
+    updatedAt: String(runtimeState?.updatedAt || '').trim() || null,
+  };
+};
+
+const normalizeReconciliationChange = (change) => {
+  if (!change || typeof change !== 'object') {
+    return null;
+  }
+  return {
+    changeType: String(change?.changeType || '').trim() || 'unknown',
+    reason: String(change?.reason || '').trim() || null,
+    desiredProcess: normalizeDesiredProcess(change?.desiredProcess),
+    observedRun: normalizeObservedProcessRun(change?.observedRun),
+  };
+};
+
+const normalizeSlaveReconciliation = (payload) => {
+  const slaveId = String(payload?.slaveId || '').trim();
+  if (!slaveId) {
+    return null;
+  }
+  return {
+    slaveId,
+    bootId: String(payload?.bootId || '').trim() || null,
+    changes: Array.isArray(payload?.changes)
+      ? payload.changes.map((value) => normalizeReconciliationChange(value)).filter(Boolean)
+      : [],
+    observedRuns: Array.isArray(payload?.observedRuns)
+      ? payload.observedRuns.map((value) => normalizeObservedProcessRun(value)).filter(Boolean)
+      : [],
+    updatedAt: String(payload?.updatedAt || '').trim() || null,
   };
 };
 
@@ -1038,6 +1215,41 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
     }
   };
 
+  const handleMasterSlaveRuntimeEvent = (eventType, event) => {
+    if (typeof eventSink !== 'function') {
+      return;
+    }
+    const payload = parseJsonObject(event?.payloadJson);
+    if (!payload) {
+      return;
+    }
+
+    if (eventType === MASTER_EVENT_TYPE_SLAVE_RUNTIME_TELEMETRY) {
+      const runtimeState = normalizeSlaveRuntimeState(payload);
+      if (!runtimeState) {
+        return;
+      }
+      eventSink({
+        type: 'slave-runtime-state',
+        source: 'master-agent',
+        runtimeState,
+      });
+      return;
+    }
+
+    if (eventType === MASTER_EVENT_TYPE_SLAVE_PROCESS_RECONCILIATION) {
+      const report = normalizeSlaveReconciliation(payload);
+      if (!report) {
+        return;
+      }
+      eventSink({
+        type: 'slave-process-reconciliation',
+        source: 'master-agent',
+        report,
+      });
+    }
+  };
+
   const handleMasterEvent = (event) => {
     const eventType = String(event?.type || '').trim().toLowerCase();
     if (eventType === MASTER_EVENT_TYPE_RUNTIME_SNAPSHOT) {
@@ -1063,6 +1275,13 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
       eventType === MASTER_EVENT_TYPE_SLAVE_COMMAND_RESULT
     ) {
       handleMasterSlaveCommandEvent(eventType, event);
+      return;
+    }
+    if (
+      eventType === MASTER_EVENT_TYPE_SLAVE_RUNTIME_TELEMETRY ||
+      eventType === MASTER_EVENT_TYPE_SLAVE_PROCESS_RECONCILIATION
+    ) {
+      handleMasterSlaveRuntimeEvent(eventType, event);
     }
   };
 
@@ -1381,6 +1600,37 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
       });
     },
 
+    async getManagedProcessLogs({
+      slaveId,
+      runId,
+      limit,
+      afterId,
+      serviceNames,
+    }) {
+      const normalizedSlaveId = normalizeSlaveId(slaveId);
+      const normalizedRunId = String(runId || '').trim();
+      if (!normalizedSlaveId || !normalizedRunId) {
+        return [];
+      }
+      const trackedSlave = findTrackedSlaveById(normalizedSlaveId);
+      const response = await master.getLogs({
+        slaveId: normalizedSlaveId,
+        runId: normalizedRunId,
+        limit,
+        afterId,
+        serviceNames,
+      });
+      return formatSlaveLogs(response, {
+        slaveId: normalizedSlaveId,
+        hostName: String(trackedSlave?.hostName || '').trim() || null,
+        hostIp: String(trackedSlave?.ip || '').trim() || null,
+      }).map((entry) => ({
+        ...entry,
+        projectPath: `@process:${normalizedSlaveId}:${normalizedRunId}`,
+        runId: normalizedRunId,
+      }));
+    },
+
     async getProjectLaunchEnvironment(projectPath) {
       const normalizedProjectPath = rememberProject(projectPath);
       const response = await master.getLaunchEnvironment({ projectPath: normalizedProjectPath });
@@ -1497,6 +1747,37 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
         status: String(response?.status || '').trim().toLowerCase() || 'unknown',
         message: String(response?.message || '').trim() || null,
       };
+    },
+
+    async upsertDesiredProcess({ slaveId, desiredProcess }) {
+      return master.upsertDesiredProcess({ slaveId, desiredProcess });
+    },
+
+    async deleteDesiredProcess({ slaveId, processKey }) {
+      return master.deleteDesiredProcess({ slaveId, processKey });
+    },
+
+    async listDesiredProcesses({ slaveId }) {
+      const response = await master.listDesiredProcesses({ slaveId });
+      return Array.isArray(response?.desiredProcesses)
+        ? response.desiredProcesses.map((value) => normalizeDesiredProcess(value)).filter(Boolean)
+        : [];
+    },
+
+    async getSlaveRuntimeState({ slaveId }) {
+      const response = await master.getSlaveRuntimeState({ slaveId });
+      return normalizeSlaveRuntimeState(response?.runtimeState);
+    },
+
+    async queueSlaveKill({ slaveId, runId, processKey, pid, hard, reason }) {
+      return master.queueSlaveKill({
+        slaveId,
+        runId,
+        processKey,
+        pid,
+        hard,
+        reason,
+      });
     },
 
     async stopServiceByProcessId(processId) {

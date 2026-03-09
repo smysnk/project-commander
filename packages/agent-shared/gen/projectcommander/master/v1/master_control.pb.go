@@ -802,6 +802,690 @@ func (x *CheckoutProjectOnSlaveResponse) GetMessage() string {
 	return ""
 }
 
+type UpsertDesiredProcessRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	RequestId      string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId        string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	DesiredProcess *v1.DesiredProcess     `protobuf:"bytes,3,opt,name=desired_process,json=desiredProcess,proto3" json:"desired_process,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UpsertDesiredProcessRequest) Reset() {
+	*x = UpsertDesiredProcessRequest{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertDesiredProcessRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertDesiredProcessRequest) ProtoMessage() {}
+
+func (x *UpsertDesiredProcessRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertDesiredProcessRequest.ProtoReflect.Descriptor instead.
+func (*UpsertDesiredProcessRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpsertDesiredProcessRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *UpsertDesiredProcessRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *UpsertDesiredProcessRequest) GetDesiredProcess() *v1.DesiredProcess {
+	if x != nil {
+		return x.DesiredProcess
+	}
+	return nil
+}
+
+type UpsertDesiredProcessResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpsertDesiredProcessResponse) Reset() {
+	*x = UpsertDesiredProcessResponse{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpsertDesiredProcessResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpsertDesiredProcessResponse) ProtoMessage() {}
+
+func (x *UpsertDesiredProcessResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpsertDesiredProcessResponse.ProtoReflect.Descriptor instead.
+func (*UpsertDesiredProcessResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpsertDesiredProcessResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *UpsertDesiredProcessResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type DeleteDesiredProcessRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	ProcessKey    string                 `protobuf:"bytes,3,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDesiredProcessRequest) Reset() {
+	*x = DeleteDesiredProcessRequest{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDesiredProcessRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDesiredProcessRequest) ProtoMessage() {}
+
+func (x *DeleteDesiredProcessRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDesiredProcessRequest.ProtoReflect.Descriptor instead.
+func (*DeleteDesiredProcessRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DeleteDesiredProcessRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *DeleteDesiredProcessRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *DeleteDesiredProcessRequest) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+type DeleteDesiredProcessResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteDesiredProcessResponse) Reset() {
+	*x = DeleteDesiredProcessResponse{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteDesiredProcessResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteDesiredProcessResponse) ProtoMessage() {}
+
+func (x *DeleteDesiredProcessResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteDesiredProcessResponse.ProtoReflect.Descriptor instead.
+func (*DeleteDesiredProcessResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *DeleteDesiredProcessResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *DeleteDesiredProcessResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type ListDesiredProcessesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListDesiredProcessesRequest) Reset() {
+	*x = ListDesiredProcessesRequest{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDesiredProcessesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDesiredProcessesRequest) ProtoMessage() {}
+
+func (x *ListDesiredProcessesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDesiredProcessesRequest.ProtoReflect.Descriptor instead.
+func (*ListDesiredProcessesRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListDesiredProcessesRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ListDesiredProcessesRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+type ListDesiredProcessesResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	RequestId        string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	DesiredProcesses []*v1.DesiredProcess   `protobuf:"bytes,2,rep,name=desired_processes,json=desiredProcesses,proto3" json:"desired_processes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ListDesiredProcessesResponse) Reset() {
+	*x = ListDesiredProcessesResponse{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListDesiredProcessesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListDesiredProcessesResponse) ProtoMessage() {}
+
+func (x *ListDesiredProcessesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListDesiredProcessesResponse.ProtoReflect.Descriptor instead.
+func (*ListDesiredProcessesResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListDesiredProcessesResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ListDesiredProcessesResponse) GetDesiredProcesses() []*v1.DesiredProcess {
+	if x != nil {
+		return x.DesiredProcesses
+	}
+	return nil
+}
+
+type SlaveRuntimeState struct {
+	state            protoimpl.MessageState       `protogen:"open.v1"`
+	SlaveId          string                       `protobuf:"bytes,1,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	BootId           string                       `protobuf:"bytes,2,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	Status           string                       `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	HostTelemetry    *v1.HostTelemetrySample      `protobuf:"bytes,4,opt,name=host_telemetry,json=hostTelemetry,proto3" json:"host_telemetry,omitempty"`
+	DesiredProcesses []*v1.DesiredProcess         `protobuf:"bytes,5,rep,name=desired_processes,json=desiredProcesses,proto3" json:"desired_processes,omitempty"`
+	ObservedRuns     []*v1.ObservedProcessRun     `protobuf:"bytes,6,rep,name=observed_runs,json=observedRuns,proto3" json:"observed_runs,omitempty"`
+	ProcessTelemetry []*v1.ProcessTelemetrySample `protobuf:"bytes,7,rep,name=process_telemetry,json=processTelemetry,proto3" json:"process_telemetry,omitempty"`
+	UpdatedAt        string                       `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SlaveRuntimeState) Reset() {
+	*x = SlaveRuntimeState{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SlaveRuntimeState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SlaveRuntimeState) ProtoMessage() {}
+
+func (x *SlaveRuntimeState) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SlaveRuntimeState.ProtoReflect.Descriptor instead.
+func (*SlaveRuntimeState) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SlaveRuntimeState) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *SlaveRuntimeState) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *SlaveRuntimeState) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *SlaveRuntimeState) GetHostTelemetry() *v1.HostTelemetrySample {
+	if x != nil {
+		return x.HostTelemetry
+	}
+	return nil
+}
+
+func (x *SlaveRuntimeState) GetDesiredProcesses() []*v1.DesiredProcess {
+	if x != nil {
+		return x.DesiredProcesses
+	}
+	return nil
+}
+
+func (x *SlaveRuntimeState) GetObservedRuns() []*v1.ObservedProcessRun {
+	if x != nil {
+		return x.ObservedRuns
+	}
+	return nil
+}
+
+func (x *SlaveRuntimeState) GetProcessTelemetry() []*v1.ProcessTelemetrySample {
+	if x != nil {
+		return x.ProcessTelemetry
+	}
+	return nil
+}
+
+func (x *SlaveRuntimeState) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type GetSlaveRuntimeStateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSlaveRuntimeStateRequest) Reset() {
+	*x = GetSlaveRuntimeStateRequest{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSlaveRuntimeStateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSlaveRuntimeStateRequest) ProtoMessage() {}
+
+func (x *GetSlaveRuntimeStateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSlaveRuntimeStateRequest.ProtoReflect.Descriptor instead.
+func (*GetSlaveRuntimeStateRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetSlaveRuntimeStateRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetSlaveRuntimeStateRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+type GetSlaveRuntimeStateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	RuntimeState  *SlaveRuntimeState     `protobuf:"bytes,2,opt,name=runtime_state,json=runtimeState,proto3" json:"runtime_state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSlaveRuntimeStateResponse) Reset() {
+	*x = GetSlaveRuntimeStateResponse{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSlaveRuntimeStateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSlaveRuntimeStateResponse) ProtoMessage() {}
+
+func (x *GetSlaveRuntimeStateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSlaveRuntimeStateResponse.ProtoReflect.Descriptor instead.
+func (*GetSlaveRuntimeStateResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetSlaveRuntimeStateResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *GetSlaveRuntimeStateResponse) GetRuntimeState() *SlaveRuntimeState {
+	if x != nil {
+		return x.RuntimeState
+	}
+	return nil
+}
+
+type QueueSlaveKillRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId       string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	RunId         string                 `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	ProcessKey    string                 `protobuf:"bytes,4,opt,name=process_key,json=processKey,proto3" json:"process_key,omitempty"`
+	Pid           int64                  `protobuf:"varint,5,opt,name=pid,proto3" json:"pid,omitempty"`
+	Hard          bool                   `protobuf:"varint,6,opt,name=hard,proto3" json:"hard,omitempty"`
+	Reason        string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueueSlaveKillRequest) Reset() {
+	*x = QueueSlaveKillRequest{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueueSlaveKillRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueueSlaveKillRequest) ProtoMessage() {}
+
+func (x *QueueSlaveKillRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueueSlaveKillRequest.ProtoReflect.Descriptor instead.
+func (*QueueSlaveKillRequest) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *QueueSlaveKillRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillRequest) GetSlaveId() string {
+	if x != nil {
+		return x.SlaveId
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillRequest) GetProcessKey() string {
+	if x != nil {
+		return x.ProcessKey
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillRequest) GetPid() int64 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *QueueSlaveKillRequest) GetHard() bool {
+	if x != nil {
+		return x.Hard
+	}
+	return false
+}
+
+func (x *QueueSlaveKillRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type QueueSlaveKillResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	CommandId     string                 `protobuf:"bytes,2,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *QueueSlaveKillResponse) Reset() {
+	*x = QueueSlaveKillResponse{}
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *QueueSlaveKillResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*QueueSlaveKillResponse) ProtoMessage() {}
+
+func (x *QueueSlaveKillResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use QueueSlaveKillResponse.ProtoReflect.Descriptor instead.
+func (*QueueSlaveKillResponse) Descriptor() ([]byte, []int) {
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *QueueSlaveKillResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillResponse) GetCommandId() string {
+	if x != nil {
+		return x.CommandId
+	}
+	return ""
+}
+
+func (x *QueueSlaveKillResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 type RuntimeServiceState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ServiceKey    string                 `protobuf:"bytes,1,opt,name=service_key,json=serviceKey,proto3" json:"service_key,omitempty"`
@@ -816,7 +1500,7 @@ type RuntimeServiceState struct {
 
 func (x *RuntimeServiceState) Reset() {
 	*x = RuntimeServiceState{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[11]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -828,7 +1512,7 @@ func (x *RuntimeServiceState) String() string {
 func (*RuntimeServiceState) ProtoMessage() {}
 
 func (x *RuntimeServiceState) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[11]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -841,7 +1525,7 @@ func (x *RuntimeServiceState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeServiceState.ProtoReflect.Descriptor instead.
 func (*RuntimeServiceState) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{11}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *RuntimeServiceState) GetServiceKey() string {
@@ -900,7 +1584,7 @@ type RuntimeSnapshot struct {
 
 func (x *RuntimeSnapshot) Reset() {
 	*x = RuntimeSnapshot{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[12]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -912,7 +1596,7 @@ func (x *RuntimeSnapshot) String() string {
 func (*RuntimeSnapshot) ProtoMessage() {}
 
 func (x *RuntimeSnapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[12]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -925,7 +1609,7 @@ func (x *RuntimeSnapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeSnapshot.ProtoReflect.Descriptor instead.
 func (*RuntimeSnapshot) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{12}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RuntimeSnapshot) GetProjectPath() string {
@@ -980,7 +1664,7 @@ type GetRuntimeSnapshotRequest struct {
 
 func (x *GetRuntimeSnapshotRequest) Reset() {
 	*x = GetRuntimeSnapshotRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[13]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -992,7 +1676,7 @@ func (x *GetRuntimeSnapshotRequest) String() string {
 func (*GetRuntimeSnapshotRequest) ProtoMessage() {}
 
 func (x *GetRuntimeSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[13]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1005,7 +1689,7 @@ func (x *GetRuntimeSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRuntimeSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*GetRuntimeSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{13}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetRuntimeSnapshotRequest) GetRequestId() string {
@@ -1032,7 +1716,7 @@ type GetRuntimeSnapshotResponse struct {
 
 func (x *GetRuntimeSnapshotResponse) Reset() {
 	*x = GetRuntimeSnapshotResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[14]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1044,7 +1728,7 @@ func (x *GetRuntimeSnapshotResponse) String() string {
 func (*GetRuntimeSnapshotResponse) ProtoMessage() {}
 
 func (x *GetRuntimeSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[14]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1057,7 +1741,7 @@ func (x *GetRuntimeSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRuntimeSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*GetRuntimeSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{14}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetRuntimeSnapshotResponse) GetRequestId() string {
@@ -1085,7 +1769,7 @@ type StartServiceRequest struct {
 
 func (x *StartServiceRequest) Reset() {
 	*x = StartServiceRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[15]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +1781,7 @@ func (x *StartServiceRequest) String() string {
 func (*StartServiceRequest) ProtoMessage() {}
 
 func (x *StartServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[15]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1794,7 @@ func (x *StartServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartServiceRequest.ProtoReflect.Descriptor instead.
 func (*StartServiceRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{15}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *StartServiceRequest) GetRequestId() string {
@@ -1146,7 +1830,7 @@ type StartServiceResponse struct {
 
 func (x *StartServiceResponse) Reset() {
 	*x = StartServiceResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[16]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1158,7 +1842,7 @@ func (x *StartServiceResponse) String() string {
 func (*StartServiceResponse) ProtoMessage() {}
 
 func (x *StartServiceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[16]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1171,7 +1855,7 @@ func (x *StartServiceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartServiceResponse.ProtoReflect.Descriptor instead.
 func (*StartServiceResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{16}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *StartServiceResponse) GetRequestId() string {
@@ -1212,7 +1896,7 @@ type StartProjectRequest struct {
 
 func (x *StartProjectRequest) Reset() {
 	*x = StartProjectRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[17]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1224,7 +1908,7 @@ func (x *StartProjectRequest) String() string {
 func (*StartProjectRequest) ProtoMessage() {}
 
 func (x *StartProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[17]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1237,7 +1921,7 @@ func (x *StartProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartProjectRequest.ProtoReflect.Descriptor instead.
 func (*StartProjectRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{17}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *StartProjectRequest) GetRequestId() string {
@@ -1264,7 +1948,7 @@ type StartProjectResponse struct {
 
 func (x *StartProjectResponse) Reset() {
 	*x = StartProjectResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[18]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1960,7 @@ func (x *StartProjectResponse) String() string {
 func (*StartProjectResponse) ProtoMessage() {}
 
 func (x *StartProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[18]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1973,7 @@ func (x *StartProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartProjectResponse.ProtoReflect.Descriptor instead.
 func (*StartProjectResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{18}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *StartProjectResponse) GetRequestId() string {
@@ -1317,7 +2001,7 @@ type StopServiceRequest struct {
 
 func (x *StopServiceRequest) Reset() {
 	*x = StopServiceRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[19]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1329,7 +2013,7 @@ func (x *StopServiceRequest) String() string {
 func (*StopServiceRequest) ProtoMessage() {}
 
 func (x *StopServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[19]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1342,7 +2026,7 @@ func (x *StopServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopServiceRequest.ProtoReflect.Descriptor instead.
 func (*StopServiceRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{19}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *StopServiceRequest) GetRequestId() string {
@@ -1377,7 +2061,7 @@ type StopServiceResponse struct {
 
 func (x *StopServiceResponse) Reset() {
 	*x = StopServiceResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[20]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1389,7 +2073,7 @@ func (x *StopServiceResponse) String() string {
 func (*StopServiceResponse) ProtoMessage() {}
 
 func (x *StopServiceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[20]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1402,7 +2086,7 @@ func (x *StopServiceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopServiceResponse.ProtoReflect.Descriptor instead.
 func (*StopServiceResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{20}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *StopServiceResponse) GetRequestId() string {
@@ -1436,7 +2120,7 @@ type StopProjectRequest struct {
 
 func (x *StopProjectRequest) Reset() {
 	*x = StopProjectRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[21]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1448,7 +2132,7 @@ func (x *StopProjectRequest) String() string {
 func (*StopProjectRequest) ProtoMessage() {}
 
 func (x *StopProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[21]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1461,7 +2145,7 @@ func (x *StopProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopProjectRequest.ProtoReflect.Descriptor instead.
 func (*StopProjectRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{21}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *StopProjectRequest) GetRequestId() string {
@@ -1488,7 +2172,7 @@ type StopProjectResponse struct {
 
 func (x *StopProjectResponse) Reset() {
 	*x = StopProjectResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[22]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1500,7 +2184,7 @@ func (x *StopProjectResponse) String() string {
 func (*StopProjectResponse) ProtoMessage() {}
 
 func (x *StopProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[22]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1513,7 +2197,7 @@ func (x *StopProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopProjectResponse.ProtoReflect.Descriptor instead.
 func (*StopProjectResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{22}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *StopProjectResponse) GetRequestId() string {
@@ -1541,7 +2225,7 @@ type RestartServiceRequest struct {
 
 func (x *RestartServiceRequest) Reset() {
 	*x = RestartServiceRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[23]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1553,7 +2237,7 @@ func (x *RestartServiceRequest) String() string {
 func (*RestartServiceRequest) ProtoMessage() {}
 
 func (x *RestartServiceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[23]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1566,7 +2250,7 @@ func (x *RestartServiceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestartServiceRequest.ProtoReflect.Descriptor instead.
 func (*RestartServiceRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{23}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RestartServiceRequest) GetRequestId() string {
@@ -1603,7 +2287,7 @@ type RestartServiceResponse struct {
 
 func (x *RestartServiceResponse) Reset() {
 	*x = RestartServiceResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[24]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1615,7 +2299,7 @@ func (x *RestartServiceResponse) String() string {
 func (*RestartServiceResponse) ProtoMessage() {}
 
 func (x *RestartServiceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[24]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1628,7 +2312,7 @@ func (x *RestartServiceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestartServiceResponse.ProtoReflect.Descriptor instead.
 func (*RestartServiceResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{24}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RestartServiceResponse) GetRequestId() string {
@@ -1681,7 +2365,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[25]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1693,7 +2377,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[25]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1706,7 +2390,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{25}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *LogEntry) GetId() int64 {
@@ -1766,13 +2450,14 @@ type GetLogsRequest struct {
 	AfterId       int64                  `protobuf:"varint,4,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`
 	ServiceNames  []string               `protobuf:"bytes,5,rep,name=service_names,json=serviceNames,proto3" json:"service_names,omitempty"`
 	SlaveId       string                 `protobuf:"bytes,6,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	RunId         string                 `protobuf:"bytes,7,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetLogsRequest) Reset() {
 	*x = GetLogsRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[26]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1784,7 +2469,7 @@ func (x *GetLogsRequest) String() string {
 func (*GetLogsRequest) ProtoMessage() {}
 
 func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[26]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1797,7 +2482,7 @@ func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetLogsRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{26}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GetLogsRequest) GetRequestId() string {
@@ -1842,6 +2527,13 @@ func (x *GetLogsRequest) GetSlaveId() string {
 	return ""
 }
 
+func (x *GetLogsRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
 type GetLogsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
@@ -1852,7 +2544,7 @@ type GetLogsResponse struct {
 
 func (x *GetLogsResponse) Reset() {
 	*x = GetLogsResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[27]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1864,7 +2556,7 @@ func (x *GetLogsResponse) String() string {
 func (*GetLogsResponse) ProtoMessage() {}
 
 func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[27]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1877,7 +2569,7 @@ func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetLogsResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{27}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *GetLogsResponse) GetRequestId() string {
@@ -1914,7 +2606,7 @@ type ProcessStat struct {
 
 func (x *ProcessStat) Reset() {
 	*x = ProcessStat{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[28]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1926,7 +2618,7 @@ func (x *ProcessStat) String() string {
 func (*ProcessStat) ProtoMessage() {}
 
 func (x *ProcessStat) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[28]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1939,7 +2631,7 @@ func (x *ProcessStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessStat.ProtoReflect.Descriptor instead.
 func (*ProcessStat) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{28}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ProcessStat) GetServiceId() int64 {
@@ -2036,7 +2728,7 @@ type GetProcessStatsRequest struct {
 
 func (x *GetProcessStatsRequest) Reset() {
 	*x = GetProcessStatsRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[29]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2048,7 +2740,7 @@ func (x *GetProcessStatsRequest) String() string {
 func (*GetProcessStatsRequest) ProtoMessage() {}
 
 func (x *GetProcessStatsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[29]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2061,7 +2753,7 @@ func (x *GetProcessStatsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProcessStatsRequest.ProtoReflect.Descriptor instead.
 func (*GetProcessStatsRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{29}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetProcessStatsRequest) GetRequestId() string {
@@ -2088,7 +2780,7 @@ type GetProcessStatsResponse struct {
 
 func (x *GetProcessStatsResponse) Reset() {
 	*x = GetProcessStatsResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[30]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2100,7 +2792,7 @@ func (x *GetProcessStatsResponse) String() string {
 func (*GetProcessStatsResponse) ProtoMessage() {}
 
 func (x *GetProcessStatsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[30]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2113,7 +2805,7 @@ func (x *GetProcessStatsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProcessStatsResponse.ProtoReflect.Descriptor instead.
 func (*GetProcessStatsResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{30}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *GetProcessStatsResponse) GetRequestId() string {
@@ -2140,7 +2832,7 @@ type PortRangeSettings struct {
 
 func (x *PortRangeSettings) Reset() {
 	*x = PortRangeSettings{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[31]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2152,7 +2844,7 @@ func (x *PortRangeSettings) String() string {
 func (*PortRangeSettings) ProtoMessage() {}
 
 func (x *PortRangeSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[31]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2165,7 +2857,7 @@ func (x *PortRangeSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PortRangeSettings.ProtoReflect.Descriptor instead.
 func (*PortRangeSettings) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{31}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *PortRangeSettings) GetMode() string {
@@ -2192,7 +2884,7 @@ type GetPortRangeSettingsRequest struct {
 
 func (x *GetPortRangeSettingsRequest) Reset() {
 	*x = GetPortRangeSettingsRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[32]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2204,7 +2896,7 @@ func (x *GetPortRangeSettingsRequest) String() string {
 func (*GetPortRangeSettingsRequest) ProtoMessage() {}
 
 func (x *GetPortRangeSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[32]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2217,7 +2909,7 @@ func (x *GetPortRangeSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPortRangeSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetPortRangeSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{32}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *GetPortRangeSettingsRequest) GetRequestId() string {
@@ -2244,7 +2936,7 @@ type GetPortRangeSettingsResponse struct {
 
 func (x *GetPortRangeSettingsResponse) Reset() {
 	*x = GetPortRangeSettingsResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[33]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2256,7 +2948,7 @@ func (x *GetPortRangeSettingsResponse) String() string {
 func (*GetPortRangeSettingsResponse) ProtoMessage() {}
 
 func (x *GetPortRangeSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[33]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2269,7 +2961,7 @@ func (x *GetPortRangeSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPortRangeSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetPortRangeSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{33}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetPortRangeSettingsResponse) GetRequestId() string {
@@ -2297,7 +2989,7 @@ type SetPortRangeSettingsRequest struct {
 
 func (x *SetPortRangeSettingsRequest) Reset() {
 	*x = SetPortRangeSettingsRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[34]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2309,7 +3001,7 @@ func (x *SetPortRangeSettingsRequest) String() string {
 func (*SetPortRangeSettingsRequest) ProtoMessage() {}
 
 func (x *SetPortRangeSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[34]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2322,7 +3014,7 @@ func (x *SetPortRangeSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPortRangeSettingsRequest.ProtoReflect.Descriptor instead.
 func (*SetPortRangeSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{34}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SetPortRangeSettingsRequest) GetRequestId() string {
@@ -2356,7 +3048,7 @@ type SetPortRangeSettingsResponse struct {
 
 func (x *SetPortRangeSettingsResponse) Reset() {
 	*x = SetPortRangeSettingsResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[35]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2368,7 +3060,7 @@ func (x *SetPortRangeSettingsResponse) String() string {
 func (*SetPortRangeSettingsResponse) ProtoMessage() {}
 
 func (x *SetPortRangeSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[35]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2381,7 +3073,7 @@ func (x *SetPortRangeSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPortRangeSettingsResponse.ProtoReflect.Descriptor instead.
 func (*SetPortRangeSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{35}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *SetPortRangeSettingsResponse) GetRequestId() string {
@@ -2408,7 +3100,7 @@ type LaunchEnvEntry struct {
 
 func (x *LaunchEnvEntry) Reset() {
 	*x = LaunchEnvEntry{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[36]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2420,7 +3112,7 @@ func (x *LaunchEnvEntry) String() string {
 func (*LaunchEnvEntry) ProtoMessage() {}
 
 func (x *LaunchEnvEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[36]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2433,7 +3125,7 @@ func (x *LaunchEnvEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LaunchEnvEntry.ProtoReflect.Descriptor instead.
 func (*LaunchEnvEntry) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{36}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *LaunchEnvEntry) GetKey() string {
@@ -2460,7 +3152,7 @@ type GetLaunchEnvironmentRequest struct {
 
 func (x *GetLaunchEnvironmentRequest) Reset() {
 	*x = GetLaunchEnvironmentRequest{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[37]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2472,7 +3164,7 @@ func (x *GetLaunchEnvironmentRequest) String() string {
 func (*GetLaunchEnvironmentRequest) ProtoMessage() {}
 
 func (x *GetLaunchEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[37]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2485,7 +3177,7 @@ func (x *GetLaunchEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLaunchEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*GetLaunchEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{37}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetLaunchEnvironmentRequest) GetRequestId() string {
@@ -2512,7 +3204,7 @@ type GetLaunchEnvironmentResponse struct {
 
 func (x *GetLaunchEnvironmentResponse) Reset() {
 	*x = GetLaunchEnvironmentResponse{}
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[38]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2524,7 +3216,7 @@ func (x *GetLaunchEnvironmentResponse) String() string {
 func (*GetLaunchEnvironmentResponse) ProtoMessage() {}
 
 func (x *GetLaunchEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[38]
+	mi := &file_projectcommander_master_v1_master_control_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2537,7 +3229,7 @@ func (x *GetLaunchEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLaunchEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*GetLaunchEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{38}
+	return file_projectcommander_master_v1_master_control_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetLaunchEnvironmentResponse) GetRequestId() string {
@@ -2635,7 +3327,68 @@ const file_projectcommander_master_v1_master_control_proto_rawDesc = "" +
 	"\n" +
 	"command_id\x18\x02 \x01(\tR\tcommandId\x12\x16\n" +
 	"\x06status\x18\x03 \x01(\tR\x06status\x12\x18\n" +
-	"\amessage\x18\x04 \x01(\tR\amessage\"\xac\x01\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"\xab\x01\n" +
+	"\x1bUpsertDesiredProcessRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12R\n" +
+	"\x0fdesired_process\x18\x03 \x01(\v2).projectcommander.slave.v1.DesiredProcessR\x0edesiredProcess\"U\n" +
+	"\x1cUpsertDesiredProcessResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"x\n" +
+	"\x1bDeleteDesiredProcessRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12\x1f\n" +
+	"\vprocess_key\x18\x03 \x01(\tR\n" +
+	"processKey\"U\n" +
+	"\x1cDeleteDesiredProcessResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"W\n" +
+	"\x1bListDesiredProcessesRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\"\x95\x01\n" +
+	"\x1cListDesiredProcessesResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12V\n" +
+	"\x11desired_processes\x18\x02 \x03(\v2).projectcommander.slave.v1.DesiredProcessR\x10desiredProcesses\"\xe1\x03\n" +
+	"\x11SlaveRuntimeState\x12\x19\n" +
+	"\bslave_id\x18\x01 \x01(\tR\aslaveId\x12\x17\n" +
+	"\aboot_id\x18\x02 \x01(\tR\x06bootId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12U\n" +
+	"\x0ehost_telemetry\x18\x04 \x01(\v2..projectcommander.slave.v1.HostTelemetrySampleR\rhostTelemetry\x12V\n" +
+	"\x11desired_processes\x18\x05 \x03(\v2).projectcommander.slave.v1.DesiredProcessR\x10desiredProcesses\x12R\n" +
+	"\robserved_runs\x18\x06 \x03(\v2-.projectcommander.slave.v1.ObservedProcessRunR\fobservedRuns\x12^\n" +
+	"\x11process_telemetry\x18\a \x03(\v21.projectcommander.slave.v1.ProcessTelemetrySampleR\x10processTelemetry\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\"W\n" +
+	"\x1bGetSlaveRuntimeStateRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\"\x91\x01\n" +
+	"\x1cGetSlaveRuntimeStateResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12R\n" +
+	"\rruntime_state\x18\x02 \x01(\v2-.projectcommander.master.v1.SlaveRuntimeStateR\fruntimeState\"\xc7\x01\n" +
+	"\x15QueueSlaveKillRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
+	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\x12\x1f\n" +
+	"\vprocess_key\x18\x04 \x01(\tR\n" +
+	"processKey\x12\x10\n" +
+	"\x03pid\x18\x05 \x01(\x03R\x03pid\x12\x12\n" +
+	"\x04hard\x18\x06 \x01(\bR\x04hard\x12\x16\n" +
+	"\x06reason\x18\a \x01(\tR\x06reason\"n\n" +
+	"\x16QueueSlaveKillResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1d\n" +
+	"\n" +
+	"command_id\x18\x02 \x01(\tR\tcommandId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\"\xac\x01\n" +
 	"\x13RuntimeServiceState\x12\x1f\n" +
 	"\vservice_key\x18\x01 \x01(\tR\n" +
 	"serviceKey\x12!\n" +
@@ -2720,7 +3473,7 @@ const file_projectcommander_master_v1_master_control_proto_rawDesc = "" +
 	"\fservice_name\x18\x04 \x01(\tR\vserviceName\x12\x16\n" +
 	"\x06stream\x18\x05 \x01(\tR\x06stream\x12\x18\n" +
 	"\amessage\x18\x06 \x01(\tR\amessage\x12\x15\n" +
-	"\x06run_id\x18\a \x01(\tR\x05runId\"\xc3\x01\n" +
+	"\x06run_id\x18\a \x01(\tR\x05runId\"\xda\x01\n" +
 	"\x0eGetLogsRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12!\n" +
@@ -2728,7 +3481,8 @@ const file_projectcommander_master_v1_master_control_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x19\n" +
 	"\bafter_id\x18\x04 \x01(\x03R\aafterId\x12#\n" +
 	"\rservice_names\x18\x05 \x03(\tR\fserviceNames\x12\x19\n" +
-	"\bslave_id\x18\x06 \x01(\tR\aslaveId\"p\n" +
+	"\bslave_id\x18\x06 \x01(\tR\aslaveId\x12\x15\n" +
+	"\x06run_id\x18\a \x01(\tR\x05runId\"p\n" +
 	"\x0fGetLogsResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12>\n" +
@@ -2789,14 +3543,19 @@ const file_projectcommander_master_v1_master_control_proto_rawDesc = "" +
 	"\x1cGetLaunchEnvironmentResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12D\n" +
-	"\aentries\x18\x02 \x03(\v2*.projectcommander.master.v1.LaunchEnvEntryR\aentries2\xa8\x0f\n" +
+	"\aentries\x18\x02 \x03(\v2*.projectcommander.master.v1.LaunchEnvEntryR\aentries2\xd1\x14\n" +
 	"\rMasterControl\x12_\n" +
 	"\x06Health\x12).projectcommander.master.v1.HealthRequest\x1a*.projectcommander.master.v1.HealthResponse\x12e\n" +
 	"\n" +
 	"GetVersion\x12*.projectcommander.master.v1.VersionRequest\x1a+.projectcommander.master.v1.VersionResponse\x12h\n" +
 	"\tHandshake\x12,.projectcommander.master.v1.HandshakeRequest\x1a-.projectcommander.master.v1.HandshakeResponse\x12\x89\x01\n" +
 	"\x14ListRegisteredSlaves\x127.projectcommander.master.v1.ListRegisteredSlavesRequest\x1a8.projectcommander.master.v1.ListRegisteredSlavesResponse\x12\x8f\x01\n" +
-	"\x16CheckoutProjectOnSlave\x129.projectcommander.master.v1.CheckoutProjectOnSlaveRequest\x1a:.projectcommander.master.v1.CheckoutProjectOnSlaveResponse\x12\x83\x01\n" +
+	"\x16CheckoutProjectOnSlave\x129.projectcommander.master.v1.CheckoutProjectOnSlaveRequest\x1a:.projectcommander.master.v1.CheckoutProjectOnSlaveResponse\x12\x89\x01\n" +
+	"\x14UpsertDesiredProcess\x127.projectcommander.master.v1.UpsertDesiredProcessRequest\x1a8.projectcommander.master.v1.UpsertDesiredProcessResponse\x12\x89\x01\n" +
+	"\x14DeleteDesiredProcess\x127.projectcommander.master.v1.DeleteDesiredProcessRequest\x1a8.projectcommander.master.v1.DeleteDesiredProcessResponse\x12\x89\x01\n" +
+	"\x14ListDesiredProcesses\x127.projectcommander.master.v1.ListDesiredProcessesRequest\x1a8.projectcommander.master.v1.ListDesiredProcessesResponse\x12\x89\x01\n" +
+	"\x14GetSlaveRuntimeState\x127.projectcommander.master.v1.GetSlaveRuntimeStateRequest\x1a8.projectcommander.master.v1.GetSlaveRuntimeStateResponse\x12w\n" +
+	"\x0eQueueSlaveKill\x121.projectcommander.master.v1.QueueSlaveKillRequest\x1a2.projectcommander.master.v1.QueueSlaveKillResponse\x12\x83\x01\n" +
 	"\x12GetRuntimeSnapshot\x125.projectcommander.master.v1.GetRuntimeSnapshotRequest\x1a6.projectcommander.master.v1.GetRuntimeSnapshotResponse\x12q\n" +
 	"\fStartService\x12/.projectcommander.master.v1.StartServiceRequest\x1a0.projectcommander.master.v1.StartServiceResponse\x12q\n" +
 	"\fStartProject\x12/.projectcommander.master.v1.StartProjectRequest\x1a0.projectcommander.master.v1.StartProjectResponse\x12n\n" +
@@ -2821,7 +3580,7 @@ func file_projectcommander_master_v1_master_control_proto_rawDescGZIP() []byte {
 	return file_projectcommander_master_v1_master_control_proto_rawDescData
 }
 
-var file_projectcommander_master_v1_master_control_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_projectcommander_master_v1_master_control_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
 var file_projectcommander_master_v1_master_control_proto_goTypes = []any{
 	(*HealthRequest)(nil),                  // 0: projectcommander.master.v1.HealthRequest
 	(*HealthResponse)(nil),                 // 1: projectcommander.master.v1.HealthResponse
@@ -2834,86 +3593,118 @@ var file_projectcommander_master_v1_master_control_proto_goTypes = []any{
 	(*ListRegisteredSlavesResponse)(nil),   // 8: projectcommander.master.v1.ListRegisteredSlavesResponse
 	(*CheckoutProjectOnSlaveRequest)(nil),  // 9: projectcommander.master.v1.CheckoutProjectOnSlaveRequest
 	(*CheckoutProjectOnSlaveResponse)(nil), // 10: projectcommander.master.v1.CheckoutProjectOnSlaveResponse
-	(*RuntimeServiceState)(nil),            // 11: projectcommander.master.v1.RuntimeServiceState
-	(*RuntimeSnapshot)(nil),                // 12: projectcommander.master.v1.RuntimeSnapshot
-	(*GetRuntimeSnapshotRequest)(nil),      // 13: projectcommander.master.v1.GetRuntimeSnapshotRequest
-	(*GetRuntimeSnapshotResponse)(nil),     // 14: projectcommander.master.v1.GetRuntimeSnapshotResponse
-	(*StartServiceRequest)(nil),            // 15: projectcommander.master.v1.StartServiceRequest
-	(*StartServiceResponse)(nil),           // 16: projectcommander.master.v1.StartServiceResponse
-	(*StartProjectRequest)(nil),            // 17: projectcommander.master.v1.StartProjectRequest
-	(*StartProjectResponse)(nil),           // 18: projectcommander.master.v1.StartProjectResponse
-	(*StopServiceRequest)(nil),             // 19: projectcommander.master.v1.StopServiceRequest
-	(*StopServiceResponse)(nil),            // 20: projectcommander.master.v1.StopServiceResponse
-	(*StopProjectRequest)(nil),             // 21: projectcommander.master.v1.StopProjectRequest
-	(*StopProjectResponse)(nil),            // 22: projectcommander.master.v1.StopProjectResponse
-	(*RestartServiceRequest)(nil),          // 23: projectcommander.master.v1.RestartServiceRequest
-	(*RestartServiceResponse)(nil),         // 24: projectcommander.master.v1.RestartServiceResponse
-	(*LogEntry)(nil),                       // 25: projectcommander.master.v1.LogEntry
-	(*GetLogsRequest)(nil),                 // 26: projectcommander.master.v1.GetLogsRequest
-	(*GetLogsResponse)(nil),                // 27: projectcommander.master.v1.GetLogsResponse
-	(*ProcessStat)(nil),                    // 28: projectcommander.master.v1.ProcessStat
-	(*GetProcessStatsRequest)(nil),         // 29: projectcommander.master.v1.GetProcessStatsRequest
-	(*GetProcessStatsResponse)(nil),        // 30: projectcommander.master.v1.GetProcessStatsResponse
-	(*PortRangeSettings)(nil),              // 31: projectcommander.master.v1.PortRangeSettings
-	(*GetPortRangeSettingsRequest)(nil),    // 32: projectcommander.master.v1.GetPortRangeSettingsRequest
-	(*GetPortRangeSettingsResponse)(nil),   // 33: projectcommander.master.v1.GetPortRangeSettingsResponse
-	(*SetPortRangeSettingsRequest)(nil),    // 34: projectcommander.master.v1.SetPortRangeSettingsRequest
-	(*SetPortRangeSettingsResponse)(nil),   // 35: projectcommander.master.v1.SetPortRangeSettingsResponse
-	(*LaunchEnvEntry)(nil),                 // 36: projectcommander.master.v1.LaunchEnvEntry
-	(*GetLaunchEnvironmentRequest)(nil),    // 37: projectcommander.master.v1.GetLaunchEnvironmentRequest
-	(*GetLaunchEnvironmentResponse)(nil),   // 38: projectcommander.master.v1.GetLaunchEnvironmentResponse
-	(*v1.DiscoveredProject)(nil),           // 39: projectcommander.slave.v1.DiscoveredProject
+	(*UpsertDesiredProcessRequest)(nil),    // 11: projectcommander.master.v1.UpsertDesiredProcessRequest
+	(*UpsertDesiredProcessResponse)(nil),   // 12: projectcommander.master.v1.UpsertDesiredProcessResponse
+	(*DeleteDesiredProcessRequest)(nil),    // 13: projectcommander.master.v1.DeleteDesiredProcessRequest
+	(*DeleteDesiredProcessResponse)(nil),   // 14: projectcommander.master.v1.DeleteDesiredProcessResponse
+	(*ListDesiredProcessesRequest)(nil),    // 15: projectcommander.master.v1.ListDesiredProcessesRequest
+	(*ListDesiredProcessesResponse)(nil),   // 16: projectcommander.master.v1.ListDesiredProcessesResponse
+	(*SlaveRuntimeState)(nil),              // 17: projectcommander.master.v1.SlaveRuntimeState
+	(*GetSlaveRuntimeStateRequest)(nil),    // 18: projectcommander.master.v1.GetSlaveRuntimeStateRequest
+	(*GetSlaveRuntimeStateResponse)(nil),   // 19: projectcommander.master.v1.GetSlaveRuntimeStateResponse
+	(*QueueSlaveKillRequest)(nil),          // 20: projectcommander.master.v1.QueueSlaveKillRequest
+	(*QueueSlaveKillResponse)(nil),         // 21: projectcommander.master.v1.QueueSlaveKillResponse
+	(*RuntimeServiceState)(nil),            // 22: projectcommander.master.v1.RuntimeServiceState
+	(*RuntimeSnapshot)(nil),                // 23: projectcommander.master.v1.RuntimeSnapshot
+	(*GetRuntimeSnapshotRequest)(nil),      // 24: projectcommander.master.v1.GetRuntimeSnapshotRequest
+	(*GetRuntimeSnapshotResponse)(nil),     // 25: projectcommander.master.v1.GetRuntimeSnapshotResponse
+	(*StartServiceRequest)(nil),            // 26: projectcommander.master.v1.StartServiceRequest
+	(*StartServiceResponse)(nil),           // 27: projectcommander.master.v1.StartServiceResponse
+	(*StartProjectRequest)(nil),            // 28: projectcommander.master.v1.StartProjectRequest
+	(*StartProjectResponse)(nil),           // 29: projectcommander.master.v1.StartProjectResponse
+	(*StopServiceRequest)(nil),             // 30: projectcommander.master.v1.StopServiceRequest
+	(*StopServiceResponse)(nil),            // 31: projectcommander.master.v1.StopServiceResponse
+	(*StopProjectRequest)(nil),             // 32: projectcommander.master.v1.StopProjectRequest
+	(*StopProjectResponse)(nil),            // 33: projectcommander.master.v1.StopProjectResponse
+	(*RestartServiceRequest)(nil),          // 34: projectcommander.master.v1.RestartServiceRequest
+	(*RestartServiceResponse)(nil),         // 35: projectcommander.master.v1.RestartServiceResponse
+	(*LogEntry)(nil),                       // 36: projectcommander.master.v1.LogEntry
+	(*GetLogsRequest)(nil),                 // 37: projectcommander.master.v1.GetLogsRequest
+	(*GetLogsResponse)(nil),                // 38: projectcommander.master.v1.GetLogsResponse
+	(*ProcessStat)(nil),                    // 39: projectcommander.master.v1.ProcessStat
+	(*GetProcessStatsRequest)(nil),         // 40: projectcommander.master.v1.GetProcessStatsRequest
+	(*GetProcessStatsResponse)(nil),        // 41: projectcommander.master.v1.GetProcessStatsResponse
+	(*PortRangeSettings)(nil),              // 42: projectcommander.master.v1.PortRangeSettings
+	(*GetPortRangeSettingsRequest)(nil),    // 43: projectcommander.master.v1.GetPortRangeSettingsRequest
+	(*GetPortRangeSettingsResponse)(nil),   // 44: projectcommander.master.v1.GetPortRangeSettingsResponse
+	(*SetPortRangeSettingsRequest)(nil),    // 45: projectcommander.master.v1.SetPortRangeSettingsRequest
+	(*SetPortRangeSettingsResponse)(nil),   // 46: projectcommander.master.v1.SetPortRangeSettingsResponse
+	(*LaunchEnvEntry)(nil),                 // 47: projectcommander.master.v1.LaunchEnvEntry
+	(*GetLaunchEnvironmentRequest)(nil),    // 48: projectcommander.master.v1.GetLaunchEnvironmentRequest
+	(*GetLaunchEnvironmentResponse)(nil),   // 49: projectcommander.master.v1.GetLaunchEnvironmentResponse
+	(*v1.DiscoveredProject)(nil),           // 50: projectcommander.slave.v1.DiscoveredProject
+	(*v1.DesiredProcess)(nil),              // 51: projectcommander.slave.v1.DesiredProcess
+	(*v1.HostTelemetrySample)(nil),         // 52: projectcommander.slave.v1.HostTelemetrySample
+	(*v1.ObservedProcessRun)(nil),          // 53: projectcommander.slave.v1.ObservedProcessRun
+	(*v1.ProcessTelemetrySample)(nil),      // 54: projectcommander.slave.v1.ProcessTelemetrySample
 }
 var file_projectcommander_master_v1_master_control_proto_depIdxs = []int32{
-	39, // 0: projectcommander.master.v1.RegisteredSlave.discovered_projects:type_name -> projectcommander.slave.v1.DiscoveredProject
+	50, // 0: projectcommander.master.v1.RegisteredSlave.discovered_projects:type_name -> projectcommander.slave.v1.DiscoveredProject
 	7,  // 1: projectcommander.master.v1.ListRegisteredSlavesResponse.slaves:type_name -> projectcommander.master.v1.RegisteredSlave
-	11, // 2: projectcommander.master.v1.RuntimeSnapshot.services:type_name -> projectcommander.master.v1.RuntimeServiceState
-	12, // 3: projectcommander.master.v1.GetRuntimeSnapshotResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
-	12, // 4: projectcommander.master.v1.StartProjectResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
-	12, // 5: projectcommander.master.v1.StopProjectResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
-	25, // 6: projectcommander.master.v1.GetLogsResponse.entries:type_name -> projectcommander.master.v1.LogEntry
-	28, // 7: projectcommander.master.v1.GetProcessStatsResponse.stats:type_name -> projectcommander.master.v1.ProcessStat
-	31, // 8: projectcommander.master.v1.GetPortRangeSettingsResponse.settings:type_name -> projectcommander.master.v1.PortRangeSettings
-	31, // 9: projectcommander.master.v1.SetPortRangeSettingsRequest.settings:type_name -> projectcommander.master.v1.PortRangeSettings
-	31, // 10: projectcommander.master.v1.SetPortRangeSettingsResponse.settings:type_name -> projectcommander.master.v1.PortRangeSettings
-	36, // 11: projectcommander.master.v1.GetLaunchEnvironmentResponse.entries:type_name -> projectcommander.master.v1.LaunchEnvEntry
-	0,  // 12: projectcommander.master.v1.MasterControl.Health:input_type -> projectcommander.master.v1.HealthRequest
-	2,  // 13: projectcommander.master.v1.MasterControl.GetVersion:input_type -> projectcommander.master.v1.VersionRequest
-	4,  // 14: projectcommander.master.v1.MasterControl.Handshake:input_type -> projectcommander.master.v1.HandshakeRequest
-	6,  // 15: projectcommander.master.v1.MasterControl.ListRegisteredSlaves:input_type -> projectcommander.master.v1.ListRegisteredSlavesRequest
-	9,  // 16: projectcommander.master.v1.MasterControl.CheckoutProjectOnSlave:input_type -> projectcommander.master.v1.CheckoutProjectOnSlaveRequest
-	13, // 17: projectcommander.master.v1.MasterControl.GetRuntimeSnapshot:input_type -> projectcommander.master.v1.GetRuntimeSnapshotRequest
-	15, // 18: projectcommander.master.v1.MasterControl.StartService:input_type -> projectcommander.master.v1.StartServiceRequest
-	17, // 19: projectcommander.master.v1.MasterControl.StartProject:input_type -> projectcommander.master.v1.StartProjectRequest
-	19, // 20: projectcommander.master.v1.MasterControl.StopService:input_type -> projectcommander.master.v1.StopServiceRequest
-	21, // 21: projectcommander.master.v1.MasterControl.StopProject:input_type -> projectcommander.master.v1.StopProjectRequest
-	23, // 22: projectcommander.master.v1.MasterControl.RestartService:input_type -> projectcommander.master.v1.RestartServiceRequest
-	26, // 23: projectcommander.master.v1.MasterControl.GetLogs:input_type -> projectcommander.master.v1.GetLogsRequest
-	29, // 24: projectcommander.master.v1.MasterControl.GetProcessStats:input_type -> projectcommander.master.v1.GetProcessStatsRequest
-	32, // 25: projectcommander.master.v1.MasterControl.GetPortRangeSettings:input_type -> projectcommander.master.v1.GetPortRangeSettingsRequest
-	34, // 26: projectcommander.master.v1.MasterControl.SetPortRangeSettings:input_type -> projectcommander.master.v1.SetPortRangeSettingsRequest
-	37, // 27: projectcommander.master.v1.MasterControl.GetLaunchEnvironment:input_type -> projectcommander.master.v1.GetLaunchEnvironmentRequest
-	1,  // 28: projectcommander.master.v1.MasterControl.Health:output_type -> projectcommander.master.v1.HealthResponse
-	3,  // 29: projectcommander.master.v1.MasterControl.GetVersion:output_type -> projectcommander.master.v1.VersionResponse
-	5,  // 30: projectcommander.master.v1.MasterControl.Handshake:output_type -> projectcommander.master.v1.HandshakeResponse
-	8,  // 31: projectcommander.master.v1.MasterControl.ListRegisteredSlaves:output_type -> projectcommander.master.v1.ListRegisteredSlavesResponse
-	10, // 32: projectcommander.master.v1.MasterControl.CheckoutProjectOnSlave:output_type -> projectcommander.master.v1.CheckoutProjectOnSlaveResponse
-	14, // 33: projectcommander.master.v1.MasterControl.GetRuntimeSnapshot:output_type -> projectcommander.master.v1.GetRuntimeSnapshotResponse
-	16, // 34: projectcommander.master.v1.MasterControl.StartService:output_type -> projectcommander.master.v1.StartServiceResponse
-	18, // 35: projectcommander.master.v1.MasterControl.StartProject:output_type -> projectcommander.master.v1.StartProjectResponse
-	20, // 36: projectcommander.master.v1.MasterControl.StopService:output_type -> projectcommander.master.v1.StopServiceResponse
-	22, // 37: projectcommander.master.v1.MasterControl.StopProject:output_type -> projectcommander.master.v1.StopProjectResponse
-	24, // 38: projectcommander.master.v1.MasterControl.RestartService:output_type -> projectcommander.master.v1.RestartServiceResponse
-	27, // 39: projectcommander.master.v1.MasterControl.GetLogs:output_type -> projectcommander.master.v1.GetLogsResponse
-	30, // 40: projectcommander.master.v1.MasterControl.GetProcessStats:output_type -> projectcommander.master.v1.GetProcessStatsResponse
-	33, // 41: projectcommander.master.v1.MasterControl.GetPortRangeSettings:output_type -> projectcommander.master.v1.GetPortRangeSettingsResponse
-	35, // 42: projectcommander.master.v1.MasterControl.SetPortRangeSettings:output_type -> projectcommander.master.v1.SetPortRangeSettingsResponse
-	38, // 43: projectcommander.master.v1.MasterControl.GetLaunchEnvironment:output_type -> projectcommander.master.v1.GetLaunchEnvironmentResponse
-	28, // [28:44] is the sub-list for method output_type
-	12, // [12:28] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	51, // 2: projectcommander.master.v1.UpsertDesiredProcessRequest.desired_process:type_name -> projectcommander.slave.v1.DesiredProcess
+	51, // 3: projectcommander.master.v1.ListDesiredProcessesResponse.desired_processes:type_name -> projectcommander.slave.v1.DesiredProcess
+	52, // 4: projectcommander.master.v1.SlaveRuntimeState.host_telemetry:type_name -> projectcommander.slave.v1.HostTelemetrySample
+	51, // 5: projectcommander.master.v1.SlaveRuntimeState.desired_processes:type_name -> projectcommander.slave.v1.DesiredProcess
+	53, // 6: projectcommander.master.v1.SlaveRuntimeState.observed_runs:type_name -> projectcommander.slave.v1.ObservedProcessRun
+	54, // 7: projectcommander.master.v1.SlaveRuntimeState.process_telemetry:type_name -> projectcommander.slave.v1.ProcessTelemetrySample
+	17, // 8: projectcommander.master.v1.GetSlaveRuntimeStateResponse.runtime_state:type_name -> projectcommander.master.v1.SlaveRuntimeState
+	22, // 9: projectcommander.master.v1.RuntimeSnapshot.services:type_name -> projectcommander.master.v1.RuntimeServiceState
+	23, // 10: projectcommander.master.v1.GetRuntimeSnapshotResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
+	23, // 11: projectcommander.master.v1.StartProjectResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
+	23, // 12: projectcommander.master.v1.StopProjectResponse.snapshot:type_name -> projectcommander.master.v1.RuntimeSnapshot
+	36, // 13: projectcommander.master.v1.GetLogsResponse.entries:type_name -> projectcommander.master.v1.LogEntry
+	39, // 14: projectcommander.master.v1.GetProcessStatsResponse.stats:type_name -> projectcommander.master.v1.ProcessStat
+	42, // 15: projectcommander.master.v1.GetPortRangeSettingsResponse.settings:type_name -> projectcommander.master.v1.PortRangeSettings
+	42, // 16: projectcommander.master.v1.SetPortRangeSettingsRequest.settings:type_name -> projectcommander.master.v1.PortRangeSettings
+	42, // 17: projectcommander.master.v1.SetPortRangeSettingsResponse.settings:type_name -> projectcommander.master.v1.PortRangeSettings
+	47, // 18: projectcommander.master.v1.GetLaunchEnvironmentResponse.entries:type_name -> projectcommander.master.v1.LaunchEnvEntry
+	0,  // 19: projectcommander.master.v1.MasterControl.Health:input_type -> projectcommander.master.v1.HealthRequest
+	2,  // 20: projectcommander.master.v1.MasterControl.GetVersion:input_type -> projectcommander.master.v1.VersionRequest
+	4,  // 21: projectcommander.master.v1.MasterControl.Handshake:input_type -> projectcommander.master.v1.HandshakeRequest
+	6,  // 22: projectcommander.master.v1.MasterControl.ListRegisteredSlaves:input_type -> projectcommander.master.v1.ListRegisteredSlavesRequest
+	9,  // 23: projectcommander.master.v1.MasterControl.CheckoutProjectOnSlave:input_type -> projectcommander.master.v1.CheckoutProjectOnSlaveRequest
+	11, // 24: projectcommander.master.v1.MasterControl.UpsertDesiredProcess:input_type -> projectcommander.master.v1.UpsertDesiredProcessRequest
+	13, // 25: projectcommander.master.v1.MasterControl.DeleteDesiredProcess:input_type -> projectcommander.master.v1.DeleteDesiredProcessRequest
+	15, // 26: projectcommander.master.v1.MasterControl.ListDesiredProcesses:input_type -> projectcommander.master.v1.ListDesiredProcessesRequest
+	18, // 27: projectcommander.master.v1.MasterControl.GetSlaveRuntimeState:input_type -> projectcommander.master.v1.GetSlaveRuntimeStateRequest
+	20, // 28: projectcommander.master.v1.MasterControl.QueueSlaveKill:input_type -> projectcommander.master.v1.QueueSlaveKillRequest
+	24, // 29: projectcommander.master.v1.MasterControl.GetRuntimeSnapshot:input_type -> projectcommander.master.v1.GetRuntimeSnapshotRequest
+	26, // 30: projectcommander.master.v1.MasterControl.StartService:input_type -> projectcommander.master.v1.StartServiceRequest
+	28, // 31: projectcommander.master.v1.MasterControl.StartProject:input_type -> projectcommander.master.v1.StartProjectRequest
+	30, // 32: projectcommander.master.v1.MasterControl.StopService:input_type -> projectcommander.master.v1.StopServiceRequest
+	32, // 33: projectcommander.master.v1.MasterControl.StopProject:input_type -> projectcommander.master.v1.StopProjectRequest
+	34, // 34: projectcommander.master.v1.MasterControl.RestartService:input_type -> projectcommander.master.v1.RestartServiceRequest
+	37, // 35: projectcommander.master.v1.MasterControl.GetLogs:input_type -> projectcommander.master.v1.GetLogsRequest
+	40, // 36: projectcommander.master.v1.MasterControl.GetProcessStats:input_type -> projectcommander.master.v1.GetProcessStatsRequest
+	43, // 37: projectcommander.master.v1.MasterControl.GetPortRangeSettings:input_type -> projectcommander.master.v1.GetPortRangeSettingsRequest
+	45, // 38: projectcommander.master.v1.MasterControl.SetPortRangeSettings:input_type -> projectcommander.master.v1.SetPortRangeSettingsRequest
+	48, // 39: projectcommander.master.v1.MasterControl.GetLaunchEnvironment:input_type -> projectcommander.master.v1.GetLaunchEnvironmentRequest
+	1,  // 40: projectcommander.master.v1.MasterControl.Health:output_type -> projectcommander.master.v1.HealthResponse
+	3,  // 41: projectcommander.master.v1.MasterControl.GetVersion:output_type -> projectcommander.master.v1.VersionResponse
+	5,  // 42: projectcommander.master.v1.MasterControl.Handshake:output_type -> projectcommander.master.v1.HandshakeResponse
+	8,  // 43: projectcommander.master.v1.MasterControl.ListRegisteredSlaves:output_type -> projectcommander.master.v1.ListRegisteredSlavesResponse
+	10, // 44: projectcommander.master.v1.MasterControl.CheckoutProjectOnSlave:output_type -> projectcommander.master.v1.CheckoutProjectOnSlaveResponse
+	12, // 45: projectcommander.master.v1.MasterControl.UpsertDesiredProcess:output_type -> projectcommander.master.v1.UpsertDesiredProcessResponse
+	14, // 46: projectcommander.master.v1.MasterControl.DeleteDesiredProcess:output_type -> projectcommander.master.v1.DeleteDesiredProcessResponse
+	16, // 47: projectcommander.master.v1.MasterControl.ListDesiredProcesses:output_type -> projectcommander.master.v1.ListDesiredProcessesResponse
+	19, // 48: projectcommander.master.v1.MasterControl.GetSlaveRuntimeState:output_type -> projectcommander.master.v1.GetSlaveRuntimeStateResponse
+	21, // 49: projectcommander.master.v1.MasterControl.QueueSlaveKill:output_type -> projectcommander.master.v1.QueueSlaveKillResponse
+	25, // 50: projectcommander.master.v1.MasterControl.GetRuntimeSnapshot:output_type -> projectcommander.master.v1.GetRuntimeSnapshotResponse
+	27, // 51: projectcommander.master.v1.MasterControl.StartService:output_type -> projectcommander.master.v1.StartServiceResponse
+	29, // 52: projectcommander.master.v1.MasterControl.StartProject:output_type -> projectcommander.master.v1.StartProjectResponse
+	31, // 53: projectcommander.master.v1.MasterControl.StopService:output_type -> projectcommander.master.v1.StopServiceResponse
+	33, // 54: projectcommander.master.v1.MasterControl.StopProject:output_type -> projectcommander.master.v1.StopProjectResponse
+	35, // 55: projectcommander.master.v1.MasterControl.RestartService:output_type -> projectcommander.master.v1.RestartServiceResponse
+	38, // 56: projectcommander.master.v1.MasterControl.GetLogs:output_type -> projectcommander.master.v1.GetLogsResponse
+	41, // 57: projectcommander.master.v1.MasterControl.GetProcessStats:output_type -> projectcommander.master.v1.GetProcessStatsResponse
+	44, // 58: projectcommander.master.v1.MasterControl.GetPortRangeSettings:output_type -> projectcommander.master.v1.GetPortRangeSettingsResponse
+	46, // 59: projectcommander.master.v1.MasterControl.SetPortRangeSettings:output_type -> projectcommander.master.v1.SetPortRangeSettingsResponse
+	49, // 60: projectcommander.master.v1.MasterControl.GetLaunchEnvironment:output_type -> projectcommander.master.v1.GetLaunchEnvironmentResponse
+	40, // [40:61] is the sub-list for method output_type
+	19, // [19:40] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_projectcommander_master_v1_master_control_proto_init() }
@@ -2927,7 +3718,7 @@ func file_projectcommander_master_v1_master_control_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_projectcommander_master_v1_master_control_proto_rawDesc), len(file_projectcommander_master_v1_master_control_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   39,
+			NumMessages:   50,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

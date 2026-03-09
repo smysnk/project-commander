@@ -4,8 +4,17 @@ async function installWebSocketMock(page, events, options = {}) {
   const captureActions = Array.isArray(options.captureActions)
     ? options.captureActions.map((value) => String(value || "").trim()).filter(Boolean)
     : [];
+  const logQueryFixtures = Array.isArray(options.logQueryFixtures)
+    ? options.logQueryFixtures
+    : [];
   await page.addInitScript(
-    ({ initialEvents, socketTargetPath, messageCaptureStorageKey, messageCaptureActions }) => {
+    ({
+      initialEvents,
+      socketTargetPath,
+      messageCaptureStorageKey,
+      messageCaptureActions,
+      initialLogQueryFixtures,
+    }) => {
       const NativeWebSocket = window.WebSocket;
       if (typeof NativeWebSocket !== "function") {
         return;
@@ -13,6 +22,80 @@ async function installWebSocketMock(page, events, options = {}) {
       if (messageCaptureStorageKey) {
         window[messageCaptureStorageKey] = [];
       }
+      const normalizeText = (value) => {
+        const normalized = typeof value === "string" ? value.trim() : String(value || "").trim();
+        return normalized || null;
+      };
+      const logQueryFixtures = Array.isArray(initialLogQueryFixtures)
+        ? initialLogQueryFixtures.map((fixture, fixtureIndex) => ({
+          streamId: normalizeText(fixture?.streamId) || "merged",
+          lines: Array.isArray(fixture?.lines) ? fixture.lines : [],
+          context: {
+            scope: normalizeText(fixture?.context?.scope) || "runtime",
+            contextKey: normalizeText(fixture?.context?.contextKey),
+            projectPath: normalizeText(fixture?.context?.projectPath),
+            hostId: fixture?.context?.hostId === null || fixture?.context?.hostId === undefined || fixture?.context?.hostId === ""
+              ? null
+              : Number.parseInt(fixture.context.hostId, 10),
+            hostName: normalizeText(fixture?.context?.hostName),
+            hostIp: normalizeText(fixture?.context?.hostIp),
+            hostAgentUuid: normalizeText(fixture?.context?.hostAgentUuid),
+          },
+          fixtureIndex,
+        }))
+        : [];
+
+      const findLogQueryFixture = (requestContext, requestedStreamId) => {
+        const normalizedStreamId = normalizeText(requestedStreamId) || "merged";
+        return logQueryFixtures.find((fixture) => {
+          if ((fixture.streamId || "merged") !== normalizedStreamId) {
+            return false;
+          }
+          if (fixture.context.contextKey) {
+            return fixture.context.contextKey === normalizeText(requestContext?.contextKey);
+          }
+          if ((fixture.context.scope || "runtime") !== (normalizeText(requestContext?.scope) || "runtime")) {
+            return false;
+          }
+          if (fixture.context.projectPath && fixture.context.projectPath !== normalizeText(requestContext?.projectPath)) {
+            return false;
+          }
+          if (fixture.context.hostId !== null) {
+            const requestedHostId = requestContext?.hostId === null || requestContext?.hostId === undefined || requestContext?.hostId === ""
+              ? null
+              : Number.parseInt(requestContext.hostId, 10);
+            if (requestedHostId !== fixture.context.hostId) {
+              return false;
+            }
+          }
+          if (fixture.context.hostName && fixture.context.hostName !== normalizeText(requestContext?.hostName)) {
+            return false;
+          }
+          if (fixture.context.hostIp && fixture.context.hostIp !== normalizeText(requestContext?.hostIp)) {
+            return false;
+          }
+          if (fixture.context.hostAgentUuid && fixture.context.hostAgentUuid !== normalizeText(requestContext?.hostAgentUuid)) {
+            return false;
+          }
+          return true;
+        }) || null;
+      };
+
+      const buildLogQueryResultStream = (requestedStream, fixture) => {
+        const sourceLines = Array.isArray(fixture?.lines) ? fixture.lines : [];
+        const totalLines = sourceLines.length;
+        const limit = Math.max(0, Number.parseInt(requestedStream?.limit, 10) || 0);
+        const rawOffset = Number.parseInt(requestedStream?.offset, 10) || 0;
+        const resolvedOffset = rawOffset < 0
+          ? Math.max(0, totalLines + rawOffset)
+          : Math.max(0, rawOffset);
+        return {
+          streamId: normalizeText(requestedStream?.streamId) || normalizeText(fixture?.streamId) || "merged",
+          totalLines,
+          offset: resolvedOffset,
+          lines: sourceLines.slice(resolvedOffset, resolvedOffset + limit),
+        };
+      };
 
       class MockWebSocket {
         static CONNECTING = 0;
@@ -105,6 +188,31 @@ async function installWebSocketMock(page, events, options = {}) {
           }
 
           if (parsed.action !== "subscribe") {
+            if (parsed.action === "logs.query") {
+              const requestedStreams = Array.isArray(parsed.streams) ? parsed.streams : [];
+              const resultStreams = requestedStreams.map((requestedStream) => {
+                const fixture = findLogQueryFixture(parsed.context, requestedStream?.streamId);
+                if (!fixture) {
+                  return null;
+                }
+                return buildLogQueryResultStream(requestedStream, fixture);
+              }).filter(Boolean);
+              if (resultStreams.length === 0) {
+                return;
+              }
+              setTimeout(() => {
+                this._emit("message", {
+                  data: JSON.stringify({
+                    kind: "logs.query.result",
+                    requestId: normalizeText(parsed.requestId),
+                    contextKey: normalizeText(parsed?.context?.contextKey),
+                    scope: normalizeText(parsed?.context?.scope) || "runtime",
+                    streams: resultStreams,
+                    serverTime: new Date().toISOString(),
+                  }),
+                });
+              }, 0);
+            }
             return;
           }
 
@@ -152,6 +260,7 @@ async function installWebSocketMock(page, events, options = {}) {
       socketTargetPath: targetPath,
       messageCaptureStorageKey: captureStorageKey,
       messageCaptureActions: captureActions,
+      initialLogQueryFixtures: logQueryFixtures,
     },
   );
 }

@@ -6,13 +6,16 @@ import {
 } from '../../../store';
 import {
   QUERY_DISCOVERY_DASHBOARD,
+  QUERY_DESIRED_PROCESSES,
   QUERY_HOSTS,
+  QUERY_OBSERVED_PROCESS_RUNS,
   QUERY_PROJECT_ENVIRONMENT,
   QUERY_PROJECT_LOGS,
   QUERY_PROJECT_PORT_RANGE_SETTINGS,
   QUERY_PROJECT_PROCESS_STATS,
   QUERY_RUNTIME_BACKEND_INFO,
   QUERY_RUNTIME_CONFIG,
+  QUERY_SLAVE_RUNTIME_STATE,
 } from '../graphql/documents';
 import { normalizeHostRecord } from '../lib/homeUtils';
 import {
@@ -375,5 +378,97 @@ export const useProjectQueries = ({
     loadProjectPortRangeSettings,
     loadProjectEnvironment,
     loadProjectProcessStats,
+  };
+};
+
+export const useRuntimeRegistryQueries = ({
+  graphqlEndpoint,
+  setError,
+  setRuntimeRegistryByHostId,
+  setRuntimeRegistryLoadingByHostId,
+}) => {
+  const loadSlaveRuntimeBundle = useCallback(async ({
+    hostId,
+    agentUuid,
+  } = {}) => {
+    const parsedHostId = Number.parseInt(String(hostId ?? '').trim(), 10);
+    const normalizedAgentUuid = String(agentUuid || '').trim();
+    if ((!Number.isInteger(parsedHostId) || parsedHostId <= 0) && !normalizedAgentUuid) {
+      return null;
+    }
+
+    const variables = {
+      hostId: Number.isInteger(parsedHostId) && parsedHostId > 0 ? parsedHostId : null,
+      agentUuid: normalizedAgentUuid || null,
+    };
+    const hostKey = Number.isInteger(parsedHostId) && parsedHostId > 0
+      ? parsedHostId
+      : normalizedAgentUuid;
+
+    setRuntimeRegistryLoadingByHostId((current) => ({
+      ...(current || {}),
+      [hostKey]: true,
+    }));
+
+    try {
+      const [runtimeStateData, desiredProcessesData, observedRunsData] = await Promise.all([
+        graphqlRequest({
+          query: QUERY_SLAVE_RUNTIME_STATE,
+          variables,
+          endpoint: graphqlEndpoint,
+        }),
+        graphqlRequest({
+          query: QUERY_DESIRED_PROCESSES,
+          variables,
+          endpoint: graphqlEndpoint,
+        }),
+        graphqlRequest({
+          query: QUERY_OBSERVED_PROCESS_RUNS,
+          variables,
+          endpoint: graphqlEndpoint,
+        }),
+      ]);
+
+      const runtimeState = runtimeStateData?.slaveRuntimeState || null;
+      const desiredProcesses = Array.isArray(desiredProcessesData?.desiredProcesses)
+        ? desiredProcessesData.desiredProcesses
+        : [];
+      const observedProcessRuns = Array.isArray(observedRunsData?.observedProcessRuns)
+        ? observedRunsData.observedProcessRuns
+        : [];
+      const resolvedHostId = Number(runtimeState?.host?.id || parsedHostId || 0);
+      const resolvedHostKey = Number.isInteger(resolvedHostId) && resolvedHostId > 0
+        ? resolvedHostId
+        : hostKey;
+
+      const bundle = {
+        slaveRuntimeState: runtimeState,
+        desiredProcesses,
+        observedProcessRuns,
+        loadedAt: new Date().toISOString(),
+      };
+      setRuntimeRegistryByHostId((current) => ({
+        ...(current || {}),
+        [resolvedHostKey]: bundle,
+      }));
+      return bundle;
+    } catch (runtimeRegistryError) {
+      setError(runtimeRegistryError.message || 'Unable to load slave runtime state');
+      return null;
+    } finally {
+      setRuntimeRegistryLoadingByHostId((current) => ({
+        ...(current || {}),
+        [hostKey]: false,
+      }));
+    }
+  }, [
+    graphqlEndpoint,
+    setError,
+    setRuntimeRegistryByHostId,
+    setRuntimeRegistryLoadingByHostId,
+  ]);
+
+  return {
+    loadSlaveRuntimeBundle,
   };
 };

@@ -1,4 +1,7 @@
+import { useMemo, useRef } from 'react';
 import { findServiceIcon } from '../../../lib/serviceIconFinder';
+import TagChip from '../../../components/TagChip';
+import useTagColumnWidth from '../../../components/useTagColumnWidth';
 import { useProjectsPaneContext } from '../context/ProjectsPaneContext';
 
 export default function ProjectListPane() {
@@ -20,9 +23,25 @@ export default function ProjectListPane() {
     onToggleServiceRuntime,
     onToggleRuntime,
   } = useProjectsPaneContext();
+  const tableWrapRef = useRef(null);
+  const hostLabels = useMemo(() => projects.map((project) => (
+    String(project.hostName || project.hostIp || 'local').trim() || 'local'
+  )), [projects]);
+  const projectHostColumnWidth = useTagColumnWidth({
+    values: ['Host', ...hostLabels],
+    minWidth: 56,
+    maxWidth: 180,
+    fallbackWidth: 72,
+    containerRef: tableWrapRef,
+    maxFraction: 0.22,
+  });
   return (
     <section className="leftPanel" style={{ width: `${leftWidthPct}%` }}>
-      <div className="projectTableWrap">
+      <div
+        ref={tableWrapRef}
+        className="projectTableWrap"
+        style={{ '--project-host-col-width': `${projectHostColumnWidth}px` }}
+      >
         {projects.length === 0 && !loading ? (
           <p className="emptyState">No projects matched the current scan settings.</p>
         ) : null}
@@ -30,12 +49,14 @@ export default function ProjectListPane() {
         {projects.length > 0 ? (
           <table>
             <colgroup>
+              <col className="hostCol" />
               <col className="nameCol" />
               <col className="servicesCol" />
               <col className="typesCol" />
             </colgroup>
             <thead>
               <tr>
+                <th>Host</th>
                 <th>Name</th>
                 <th className="iconsHeader servicesCol">Packages</th>
                 <th className="iconsHeader typesCol">Stack</th>
@@ -45,6 +66,7 @@ export default function ProjectListPane() {
               {projects.map((project) => {
                 const selected = project.path === selectedProjectPath;
                 const isAppRunning = project.runtimeStatus === 'started' || project.runtimeStatus === 'starting';
+                const hostLabel = String(project.hostName || project.hostIp || 'local').trim() || 'local';
                 const runtimeServicePorts = project.runtimeServicePorts || {};
                 const runtimeServiceStates = project.runtimeServiceStates || {};
                 const runtimeServiceEntryMap = new Map(
@@ -71,6 +93,11 @@ export default function ProjectListPane() {
                     className={`projectRow ${selected ? 'selected' : ''}`}
                     onClick={() => onSelectProject(project.path)}
                   >
+                    <td className="projectHostCell" title={hostLabel}>
+                      <TagChip className="projectHostChip" title={hostLabel} fullWidth>
+                        {hostLabel}
+                      </TagChip>
+                    </td>
                     <td className={`appNameCell ${isAppRunning ? '' : 'stopped'}`}>{project.name}</td>
                     <td className="iconsCell servicesCol">
                       <div className="serviceIcons">

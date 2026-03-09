@@ -332,6 +332,9 @@ func (s *Server) sweepSlaveConnectionHealth(now time.Time) {
 	s.slaveMu.Lock()
 	for _, slave := range s.slaves {
 		changed := evaluateSlaveConnectionState(slave, now, s.slaveHeartbeatTimeout)
+		if changed && strings.TrimSpace(slave.Status) == slaveStatusDisconnected {
+			s.setSlaveRuntimeStatusLocked(slave.SlaveID, runtimeStateStatusDisconnected, now)
+		}
 		if !changed || strings.TrimSpace(slave.Status) != slaveStatusDisconnected {
 			continue
 		}
@@ -389,6 +392,7 @@ func (s *Server) RegisterSlave(ctx context.Context, req *slavev1.RegisterSlaveRe
 	protocolVersion := strings.TrimSpace(req.GetProtocolVersion())
 
 	now := time.Now().UTC()
+	var desiredProcessCount int32
 	s.slaveMu.Lock()
 	registeredAt := now
 	if existing := s.slaves[slaveID]; existing != nil {
@@ -416,6 +420,13 @@ func (s *Server) RegisterSlave(ctx context.Context, req *slavev1.RegisterSlaveRe
 		LastSeenAt:         now,
 	}
 	s.slaves[slaveID] = registeredState
+	runtimeState := s.ensureSlaveRuntimeStateLocked(slaveID)
+	if runtimeState != nil {
+		runtimeState.BootID = strings.TrimSpace(req.GetBootId())
+		runtimeState.Status = runtimeStateStatusRegistered
+		runtimeState.UpdatedAt = now
+	}
+	desiredProcessCount = int32(len(s.desiredProcessesForSlaveLocked(slaveID)))
 	registeredEventState := cloneRegisteredSlaveState(registeredState)
 	s.slaveMu.Unlock()
 
@@ -452,9 +463,11 @@ func (s *Server) RegisterSlave(ctx context.Context, req *slavev1.RegisterSlaveRe
 	)
 
 	return &slavev1.RegisterSlaveResponse{
-		RequestId:       requestID,
-		Status:          slaveStatusRegistered,
-		AssignedCluster: defaultSlaveCluster,
+		RequestId:           requestID,
+		Status:              slaveStatusRegistered,
+		AssignedCluster:     defaultSlaveCluster,
+		DesiredProcessCount: desiredProcessCount,
+		ReconcileRequired:   desiredProcessCount > 0,
 	}, nil
 }
 
@@ -473,6 +486,8 @@ func (s *Server) Heartbeat(ctx context.Context, req *slavev1.HeartbeatRequest) (
 	version := strings.TrimSpace(req.GetVersion())
 	protocolVersion := strings.TrimSpace(req.GetProtocolVersion())
 	var pendingCommands []*slavev1.SlaveCommand
+	var runtimePayload map[string]any
+	processLogChunks := req.GetProcessLogChunks()
 	s.slaveMu.Lock()
 	state := s.slaves[slaveID]
 	if state == nil {
@@ -503,10 +518,36 @@ func (s *Server) Heartbeat(ctx context.Context, req *slavev1.HeartbeatRequest) (
 	state.Health = slaveHealthHealthy
 	state.Error = ""
 	state.DiscoveredProjects = normalizeDiscoveredProjects(req.GetDiscoveredProjects())
+	runtimeState := s.ensureSlaveRuntimeStateLocked(slaveID)
+	if runtimeState != nil {
+		if bootID := strings.TrimSpace(req.GetBootId()); bootID != "" {
+			runtimeState.BootID = bootID
+		}
+		runtimeState.Status = runtimeStateStatusConnected
+		runtimeState.HostTelemetry = coarseHostTelemetryFromHeartbeat(req)
+		s.replaceObservedRunsLocked(runtimeState, req.GetObservedRuns())
+		if len(req.GetProcessTelemetry()) > 0 {
+			s.replaceProcessTelemetryLocked(runtimeState, req.GetProcessTelemetry())
+		}
+		runtimeState.UpdatedAt = now
+		runtimePayload = runtimeStatePayload(slaveID, runtimeState, s.desiredProcessesForSlaveLocked(slaveID))
+	}
 	pendingCommands = s.dequeuePendingSlaveCommandsLocked(slaveID, now)
 	heartbeatEventState := cloneRegisteredSlaveState(state)
 	s.slaveMu.Unlock()
 	s.emitSlaveStateEvent(eventTypeSlaveHeartbeat, heartbeatEventState, "")
+	if len(runtimePayload) > 0 {
+		s.publishEvent(
+			eventTypeSlaveRuntimeTelemetry,
+			"",
+			"",
+			"",
+			runtimePayload,
+		)
+	}
+	if len(processLogChunks) > 0 {
+		s.appendSlaveProcessLogChunks(slaveID, processLogChunks)
+	}
 	s.appendSlaveLogLine(
 		slaveID,
 		heartbeatEventState.HostName,
@@ -805,6 +846,7 @@ func (s *Server) Drain(ctx context.Context, req *slavev1.DrainRequest) (*slavev1
 		drainedState.Status = slaveStatusDrained
 		drainedState.LastSeenAt = time.Now().UTC()
 	}
+	s.setSlaveRuntimeStatusLocked(slaveID, runtimeStateStatusDrained, time.Now().UTC())
 	delete(s.slaveAssignments, slaveID)
 	delete(s.slavePendingCommands, slaveID)
 	if len(s.slaveCommandsByID) > 0 {

@@ -47,6 +47,11 @@ func supportedCapabilities() []string {
 		"slave.list",
 		"slave.projects",
 		"slave.checkout.project",
+		"slave.runtime.desired_processes",
+		"slave.runtime.reconciliation",
+		"slave.runtime.telemetry",
+		"slave.runtime.kill",
+		"slave.runtime.process_logs",
 	}
 }
 
@@ -78,6 +83,10 @@ type Server struct {
 
 	slaveMu sync.Mutex
 	slaves  map[string]*registeredSlaveState
+	// keyed by slave_id -> process_key
+	slaveDesiredProcesses map[string]map[string]*slavev1.DesiredProcess
+	// keyed by slave_id
+	slaveRuntimeState map[string]*slaveRuntimeState
 	// keyed by slave_id -> workload_id
 	slaveAssignments map[string]map[string]*assignedWorkloadState
 	// keyed by slave_id -> queued commands awaiting heartbeat dispatch
@@ -118,6 +127,8 @@ func NewServer(logger *slog.Logger, version string, socketPath string, slaveShar
 		portRangeSettingsByProject: map[string]portRangeSettings{},
 		logRoot:                    logRoot,
 		slaves:                     map[string]*registeredSlaveState{},
+		slaveDesiredProcesses:      map[string]map[string]*slavev1.DesiredProcess{},
+		slaveRuntimeState:          map[string]*slaveRuntimeState{},
 		slaveAssignments:           map[string]map[string]*assignedWorkloadState{},
 		slavePendingCommands:       map[string][]*slavev1.SlaveCommand{},
 		slaveCommandsByID:          map[string]*slaveCommandState{},

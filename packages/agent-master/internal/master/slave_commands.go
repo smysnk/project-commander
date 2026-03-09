@@ -14,7 +14,10 @@ import (
 )
 
 const (
-	slaveCommandTypeGitCheckout = "git_checkout"
+	slaveCommandTypeGitCheckout     = "git_checkout"
+	slaveCommandTypeLaunchProcess   = "launch_process"
+	slaveCommandTypeSoftKillProcess = "soft_kill_process"
+	slaveCommandTypeHardKillProcess = "hard_kill_process"
 
 	slaveCommandStatusQueued     = "queued"
 	slaveCommandStatusDispatched = "dispatched"
@@ -77,7 +80,7 @@ func cloneSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveCommand {
 	if command == nil {
 		return nil
 	}
-	return &slavev1.SlaveCommand{
+	cloned := &slavev1.SlaveCommand{
 		CommandId:         strings.TrimSpace(command.GetCommandId()),
 		CommandType:       strings.TrimSpace(command.GetCommandType()),
 		RepositoryUrl:     strings.TrimSpace(command.GetRepositoryUrl()),
@@ -86,6 +89,65 @@ func cloneSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveCommand {
 		TargetPath:        strings.TrimSpace(command.GetTargetPath()),
 		RequestedAt:       strings.TrimSpace(command.GetRequestedAt()),
 	}
+	switch payload := command.GetPayload().(type) {
+	case *slavev1.SlaveCommand_GitCheckout:
+		if payload != nil && payload.GitCheckout != nil {
+			cloned.Payload = &slavev1.SlaveCommand_GitCheckout{
+				GitCheckout: &slavev1.GitCheckoutCommand{
+					RepositoryUrl:     strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
+					BaseDirectory:     strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
+					DestinationFolder: strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
+					TargetPath:        strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_LaunchProcess:
+		if payload != nil && payload.LaunchProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_LaunchProcess{
+				LaunchProcess: &slavev1.LaunchProcessCommand{
+					RunId:               strings.TrimSpace(payload.LaunchProcess.GetRunId()),
+					ProcessKey:          strings.TrimSpace(payload.LaunchProcess.GetProcessKey()),
+					ProjectPath:         strings.TrimSpace(payload.LaunchProcess.GetProjectPath()),
+					PackageKey:          strings.TrimSpace(payload.LaunchProcess.GetPackageKey()),
+					PackageRelativePath: strings.TrimSpace(payload.LaunchProcess.GetPackageRelativePath()),
+					Cwd:                 strings.TrimSpace(payload.LaunchProcess.GetCwd()),
+					Command:             strings.TrimSpace(payload.LaunchProcess.GetCommand()),
+					Args:                append([]string{}, payload.LaunchProcess.GetArgs()...),
+					Env:                 cloneProcessEnvEntries(payload.LaunchProcess.GetEnv()),
+					EnvHash:             strings.TrimSpace(payload.LaunchProcess.GetEnvHash()),
+					LogRoot:             strings.TrimSpace(payload.LaunchProcess.GetLogRoot()),
+					LaunchFingerprint:   strings.TrimSpace(payload.LaunchProcess.GetLaunchFingerprint()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_SoftKillProcess:
+		if payload != nil && payload.SoftKillProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_SoftKillProcess{
+				SoftKillProcess: &slavev1.KillProcessCommand{
+					RunId:      strings.TrimSpace(payload.SoftKillProcess.GetRunId()),
+					ProcessKey: strings.TrimSpace(payload.SoftKillProcess.GetProcessKey()),
+					Pid:        payload.SoftKillProcess.GetPid(),
+					Pgid:       payload.SoftKillProcess.GetPgid(),
+					Signal:     strings.TrimSpace(payload.SoftKillProcess.GetSignal()),
+					Reason:     strings.TrimSpace(payload.SoftKillProcess.GetReason()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_HardKillProcess:
+		if payload != nil && payload.HardKillProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_HardKillProcess{
+				HardKillProcess: &slavev1.KillProcessCommand{
+					RunId:      strings.TrimSpace(payload.HardKillProcess.GetRunId()),
+					ProcessKey: strings.TrimSpace(payload.HardKillProcess.GetProcessKey()),
+					Pid:        payload.HardKillProcess.GetPid(),
+					Pgid:       payload.HardKillProcess.GetPgid(),
+					Signal:     strings.TrimSpace(payload.HardKillProcess.GetSignal()),
+					Reason:     strings.TrimSpace(payload.HardKillProcess.GetReason()),
+				},
+			}
+		}
+	}
+	return cloned
 }
 
 func hasSlaveCapability(capabilities []string, target string) bool {
@@ -165,6 +227,34 @@ func slaveCommandPayload(
 		"message":           strings.TrimSpace(message),
 		"outputLines":       append([]string{}, outputLines...),
 		"completedAt":       strings.TrimSpace(completedAt),
+	}
+	switch typed := command.GetPayload().(type) {
+	case *slavev1.SlaveCommand_LaunchProcess:
+		if typed != nil && typed.LaunchProcess != nil {
+			payload["runId"] = strings.TrimSpace(typed.LaunchProcess.GetRunId())
+			payload["processKey"] = strings.TrimSpace(typed.LaunchProcess.GetProcessKey())
+			payload["packageKey"] = strings.TrimSpace(typed.LaunchProcess.GetPackageKey())
+			payload["cwd"] = strings.TrimSpace(typed.LaunchProcess.GetCwd())
+			payload["command"] = strings.TrimSpace(typed.LaunchProcess.GetCommand())
+		}
+	case *slavev1.SlaveCommand_SoftKillProcess:
+		if typed != nil && typed.SoftKillProcess != nil {
+			payload["runId"] = strings.TrimSpace(typed.SoftKillProcess.GetRunId())
+			payload["processKey"] = strings.TrimSpace(typed.SoftKillProcess.GetProcessKey())
+			payload["pid"] = typed.SoftKillProcess.GetPid()
+			payload["pgid"] = typed.SoftKillProcess.GetPgid()
+			payload["signal"] = strings.TrimSpace(typed.SoftKillProcess.GetSignal())
+			payload["reason"] = strings.TrimSpace(typed.SoftKillProcess.GetReason())
+		}
+	case *slavev1.SlaveCommand_HardKillProcess:
+		if typed != nil && typed.HardKillProcess != nil {
+			payload["runId"] = strings.TrimSpace(typed.HardKillProcess.GetRunId())
+			payload["processKey"] = strings.TrimSpace(typed.HardKillProcess.GetProcessKey())
+			payload["pid"] = typed.HardKillProcess.GetPid()
+			payload["pgid"] = typed.HardKillProcess.GetPgid()
+			payload["signal"] = strings.TrimSpace(typed.HardKillProcess.GetSignal())
+			payload["reason"] = strings.TrimSpace(typed.HardKillProcess.GetReason())
+		}
 	}
 	return payload
 }

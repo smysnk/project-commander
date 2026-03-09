@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { installWebSocketMock } = require("./helpers/wsMock");
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 const PROJECT_PATH = "/tmp/mock-project";
@@ -174,6 +175,19 @@ async function installGraphqlMocks(page) {
 
 async function openDashboardWithMocks(page, baseURL) {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: "project",
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: "merged",
+        lines: MOCK_PROJECT_LOGS,
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {

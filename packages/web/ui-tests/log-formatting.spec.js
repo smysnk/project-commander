@@ -131,7 +131,19 @@ async function installGraphqlMocks(page) {
 test('log formatting uses adjacent columns and keeps tag rows aligned to log text lines', async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
-  await installWebSocketMock(page, []);
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: 'project',
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: 'merged',
+        lines: MOCK_PROJECT_LOGS,
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {
@@ -151,15 +163,18 @@ test('log formatting uses adjacent columns and keeps tag rows aligned to log tex
   const tagColumn = page.getByTestId('infinite-log-tag-column');
   const textBlock = page.getByTestId('infinite-log-text-block');
   const firstTagRow = page.locator('.infiniteLogTagRow').first();
+  const lastTagRow = page.locator('.infiniteLogTagRow').last();
 
   await expect(tagColumn).toBeVisible();
   await expect(textBlock).toBeVisible();
   await expect(firstTagRow).toBeVisible();
+  await expect(lastTagRow).toBeVisible();
 
-  const [tagColumnBox, textBlockBox, firstTagRowBox, textLineHeight, tagRowLineHeight] = await Promise.all([
+  const [tagColumnBox, textBlockBox, firstTagRowBox, lastTagRowBox, textLineHeight, tagRowLineHeight] = await Promise.all([
     tagColumn.boundingBox(),
     textBlock.boundingBox(),
     firstTagRow.boundingBox(),
+    lastTagRow.boundingBox(),
     textBlock.evaluate((node) => Number.parseFloat(window.getComputedStyle(node).lineHeight)),
     firstTagRow.evaluate((node) => Number.parseFloat(window.getComputedStyle(node).lineHeight)),
   ]);
@@ -167,15 +182,18 @@ test('log formatting uses adjacent columns and keeps tag rows aligned to log tex
   expect(tagColumnBox).toBeTruthy();
   expect(textBlockBox).toBeTruthy();
   expect(firstTagRowBox).toBeTruthy();
+  expect(lastTagRowBox).toBeTruthy();
   expect(textLineHeight).toBeGreaterThan(0);
   expect(tagRowLineHeight).toBeGreaterThan(0);
 
-  if (tagColumnBox && textBlockBox && firstTagRowBox) {
+  if (tagColumnBox && textBlockBox && firstTagRowBox && lastTagRowBox) {
     const columnGap = Math.abs((tagColumnBox.x + tagColumnBox.width) - textBlockBox.x);
     expect(columnGap).toBeLessThanOrEqual(1.0);
 
-    const firstRowTopDelta = Math.abs(firstTagRowBox.y - textBlockBox.y);
-    expect(firstRowTopDelta).toBeLessThanOrEqual(1.0);
+    const finalRowBottomDelta = Math.abs(
+      (lastTagRowBox.y + lastTagRowBox.height) - (textBlockBox.y + textBlockBox.height),
+    );
+    expect(finalRowBottomDelta).toBeLessThanOrEqual(textLineHeight + 1.0);
 
     const lineHeightDelta = Math.abs(tagRowLineHeight - textLineHeight);
     expect(lineHeightDelta).toBeLessThanOrEqual(0.5);

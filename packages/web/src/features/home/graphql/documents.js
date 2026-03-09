@@ -251,6 +251,202 @@ export const QUERY_TERMINAL_SESSION = `
   }
 `;
 
+export const QUERY_SLAVE_RUNTIME_STATE = `
+  query SlaveRuntimeState($hostId: Int, $agentUuid: String) {
+    slaveRuntimeState(hostId: $hostId, agentUuid: $agentUuid) {
+      host {
+        id
+        agentUuid
+        ip
+        port
+        targetSocket
+        name
+        source
+        online
+        health
+        status
+        lastSeenAt
+        error
+        version
+        protocolVersion
+        directories
+        projectCount
+        projects {
+          id
+          name
+          path
+        }
+      }
+      desiredProcesses {
+        id
+        hostId
+        projectId
+        serviceId
+        slaveId
+        hostName
+        projectName
+        serviceName
+        processKey
+        packageKey
+        packageRelativePath
+        projectPath
+        desiredState
+        launchMode
+        cwd
+        command
+        args
+        env {
+          key
+          value
+        }
+        envHash
+        launchFingerprint
+        logRoot
+        restartPolicy
+        updatedAt
+      }
+      observedRuns {
+        id
+        runId
+        desiredProcessId
+        hostId
+        projectId
+        serviceId
+        slaveId
+        bootId
+        processKey
+        packageKey
+        projectPath
+        pid
+        pgid
+        launchFingerprint
+        command
+        args
+        cwd
+        envHash
+        status
+        startedAt
+        lastSeenAt
+        exitedAt
+        exitCode
+        exitSignal
+        logPath
+        adopted
+        reconciliationSource
+        runtimeState {
+          sampledAt
+          cpuPercent
+          memoryPercent
+          rssBytes
+          vmsBytes
+          readBytes
+          writeBytes
+          readOps
+          writeOps
+          openFds
+          threadCount
+          status
+        }
+      }
+      hostRuntimeState {
+        sampledAt
+        cpuPercent
+        load1m
+        load5m
+        load15m
+        memoryTotalBytes
+        memoryUsedBytes
+        memoryAvailableBytes
+        diskTotalBytes
+        diskUsedBytes
+        diskAvailableBytes
+        diskMount
+      }
+    }
+  }
+`;
+
+export const QUERY_DESIRED_PROCESSES = `
+  query DesiredProcesses($hostId: Int, $projectId: Int, $agentUuid: String) {
+    desiredProcesses(hostId: $hostId, projectId: $projectId, agentUuid: $agentUuid) {
+      id
+      hostId
+      projectId
+      serviceId
+      slaveId
+      hostName
+      projectName
+      serviceName
+      processKey
+      packageKey
+      packageRelativePath
+      projectPath
+      desiredState
+      launchMode
+      cwd
+      command
+      args
+      env {
+        key
+        value
+      }
+      envHash
+      launchFingerprint
+      logRoot
+      restartPolicy
+      updatedAt
+    }
+  }
+`;
+
+export const QUERY_OBSERVED_PROCESS_RUNS = `
+  query ObservedProcessRuns($hostId: Int, $agentUuid: String) {
+    observedProcessRuns(hostId: $hostId, agentUuid: $agentUuid) {
+      id
+      runId
+      desiredProcessId
+      hostId
+      projectId
+      serviceId
+      slaveId
+      bootId
+      processKey
+      packageKey
+      projectPath
+      pid
+      pgid
+      launchFingerprint
+      command
+      args
+      cwd
+      envHash
+      status
+      startedAt
+      lastSeenAt
+      exitedAt
+      exitCode
+      exitSignal
+      logPath
+      adopted
+      reconciliationSource
+      runtimeState {
+        sampledAt
+        cpuPercent
+        memoryPercent
+        rssBytes
+        vmsBytes
+        readBytes
+        writeBytes
+        readOps
+        writeOps
+        openFds
+        threadCount
+        status
+      }
+    }
+  }
+`;
+
 export const MUTATION_TOGGLE_PROJECT_RUNTIME = `
   mutation ToggleProjectRuntime($projectPath: String!, $projectTypes: [String!]) {
     toggleProjectRuntime(projectPath: $projectPath, projectTypes: $projectTypes) {
@@ -438,5 +634,111 @@ export const MUTATION_START_HOST_TERMINAL_SESSION = `
 export const MUTATION_SEND_HOST_TERMINAL_INPUT = `
   mutation SendHostTerminalInput($sessionId: String!, $input: String!) {
     sendHostTerminalInput(sessionId: $sessionId, input: $input)
+  }
+`;
+
+export const MUTATION_ENSURE_DESIRED_PROCESS = `
+  mutation EnsureDesiredProcess(
+    $hostId: Int
+    $agentUuid: String
+    $projectId: Int
+    $projectPath: String
+    $serviceId: Int
+    $processKey: String
+    $packageKey: String
+    $packageRelativePath: String
+    $desiredState: String
+    $launchMode: String!
+    $cwd: String!
+    $command: String!
+    $args: [String!]
+    $env: [RuntimeEnvEntryInput!]
+    $logRoot: String
+    $restartPolicy: String
+    $createdBy: String
+    $updatedBy: String
+  ) {
+    ensureDesiredProcess(
+      hostId: $hostId
+      agentUuid: $agentUuid
+      projectId: $projectId
+      projectPath: $projectPath
+      serviceId: $serviceId
+      processKey: $processKey
+      packageKey: $packageKey
+      packageRelativePath: $packageRelativePath
+      desiredState: $desiredState
+      launchMode: $launchMode
+      cwd: $cwd
+      command: $command
+      args: $args
+      env: $env
+      logRoot: $logRoot
+      restartPolicy: $restartPolicy
+      createdBy: $createdBy
+      updatedBy: $updatedBy
+    ) {
+      id
+      hostId
+      projectId
+      processKey
+      packageKey
+      projectPath
+      desiredState
+      launchMode
+      cwd
+      command
+      args
+      restartPolicy
+      updatedAt
+    }
+  }
+`;
+
+export const MUTATION_SOFT_KILL_PROCESS = `
+  mutation SoftKillProcess(
+    $hostId: Int
+    $agentUuid: String
+    $runId: String
+    $processKey: String
+    $pid: Int
+    $reason: String
+  ) {
+    softKillProcess(
+      hostId: $hostId
+      agentUuid: $agentUuid
+      runId: $runId
+      processKey: $processKey
+      pid: $pid
+      reason: $reason
+    ) {
+      commandId
+      status
+      message
+    }
+  }
+`;
+
+export const MUTATION_HARD_KILL_PROCESS = `
+  mutation HardKillProcess(
+    $hostId: Int
+    $agentUuid: String
+    $runId: String
+    $processKey: String
+    $pid: Int
+    $reason: String
+  ) {
+    hardKillProcess(
+      hostId: $hostId
+      agentUuid: $agentUuid
+      runId: $runId
+      processKey: $processKey
+      pid: $pid
+      reason: $reason
+    ) {
+      commandId
+      status
+      message
+    }
   }
 `;

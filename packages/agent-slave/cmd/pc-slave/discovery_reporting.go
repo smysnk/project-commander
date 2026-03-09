@@ -22,6 +22,13 @@ var defaultSlaveCapabilities = []string{
 	"slave.checkout.project",
 }
 
+var defaultSlaveRuntimeCapabilities = []string{
+	"slave.runtime.desired_processes",
+	"slave.runtime.reconcile",
+	"slave.runtime.kill",
+	"slave.runtime.file_logs",
+}
+
 type discoveredProjectsCollector struct {
 	logger            *slog.Logger
 	projectPath       string
@@ -210,6 +217,14 @@ func buildRegisterSlaveRequest(
 		DiscoveredProjects: cloneDiscoveredProjects(discoveredProjects),
 		Version:            buildVersion,
 		ProtocolVersion:    slaveProtocolVersion,
+		BootId:             cfg.BootID,
+		AgentStartedAt:     cfg.AgentStartedAt,
+		ProcessLogRoot:     cfg.ProcessLogRoot,
+		StateRoot:          cfg.StateRoot,
+		RuntimeCapabilities: append(
+			[]string{},
+			defaultSlaveRuntimeCapabilities...,
+		),
 	}
 }
 
@@ -218,6 +233,11 @@ func buildHeartbeatRequest(
 	requestID string,
 	runningServices int32,
 	discoveredProjects []*slavev1.DiscoveredProject,
+	hostTelemetry *slavev1.HostTelemetrySample,
+	processTelemetry []*slavev1.ProcessTelemetrySample,
+	observedRuns []*slavev1.ObservedProcessRun,
+	processLogChunks []*slavev1.ProcessLogChunk,
+	runtimeSequence int64,
 	now time.Time,
 ) *slavev1.HeartbeatRequest {
 	timestamp := now
@@ -234,7 +254,105 @@ func buildHeartbeatRequest(
 		DiscoveredProjects: cloneDiscoveredProjects(discoveredProjects),
 		Version:            buildVersion,
 		ProtocolVersion:    slaveProtocolVersion,
+		BootId:             cfg.BootID,
+		HostTelemetry:      cloneHostTelemetrySample(hostTelemetry),
+		ProcessTelemetry:   cloneProcessTelemetrySamples(processTelemetry),
+		ObservedRuns:       cloneObservedRuns(observedRuns),
+		ProcessLogChunks:   cloneProcessLogChunks(processLogChunks),
+		RuntimeSequence:    runtimeSequence,
 	}
+}
+
+func cloneObservedRuns(input []*slavev1.ObservedProcessRun) []*slavev1.ObservedProcessRun {
+	cloned := make([]*slavev1.ObservedProcessRun, 0, len(input))
+	for _, run := range input {
+		if run == nil {
+			continue
+		}
+		cloned = append(cloned, cloneObservedProcessRun(run))
+	}
+	return cloned
+}
+
+func cloneHostTelemetrySample(input *slavev1.HostTelemetrySample) *slavev1.HostTelemetrySample {
+	if input == nil {
+		return nil
+	}
+	return &slavev1.HostTelemetrySample{
+		SampledAt:            strings.TrimSpace(input.GetSampledAt()),
+		CpuPercent:           input.GetCpuPercent(),
+		Load_1M:              input.GetLoad_1M(),
+		Load_5M:              input.GetLoad_5M(),
+		Load_15M:             input.GetLoad_15M(),
+		MemoryTotalBytes:     input.GetMemoryTotalBytes(),
+		MemoryUsedBytes:      input.GetMemoryUsedBytes(),
+		MemoryAvailableBytes: input.GetMemoryAvailableBytes(),
+		DiskTotalBytes:       input.GetDiskTotalBytes(),
+		DiskUsedBytes:        input.GetDiskUsedBytes(),
+		DiskAvailableBytes:   input.GetDiskAvailableBytes(),
+		DiskMount:            strings.TrimSpace(input.GetDiskMount()),
+	}
+}
+
+func cloneProcessTelemetrySamples(input []*slavev1.ProcessTelemetrySample) []*slavev1.ProcessTelemetrySample {
+	cloned := make([]*slavev1.ProcessTelemetrySample, 0, len(input))
+	for _, sample := range input {
+		if sample == nil {
+			continue
+		}
+		cloned = append(cloned, &slavev1.ProcessTelemetrySample{
+			RunId:         strings.TrimSpace(sample.GetRunId()),
+			ProcessKey:    strings.TrimSpace(sample.GetProcessKey()),
+			Pid:           sample.GetPid(),
+			SampledAt:     strings.TrimSpace(sample.GetSampledAt()),
+			CpuPercent:    sample.GetCpuPercent(),
+			MemoryPercent: sample.GetMemoryPercent(),
+			RssBytes:      sample.GetRssBytes(),
+			VmsBytes:      sample.GetVmsBytes(),
+			ReadBytes:     sample.GetReadBytes(),
+			WriteBytes:    sample.GetWriteBytes(),
+			ReadOps:       sample.GetReadOps(),
+			WriteOps:      sample.GetWriteOps(),
+			OpenFds:       sample.GetOpenFds(),
+			ThreadCount:   sample.GetThreadCount(),
+			Status:        strings.TrimSpace(sample.GetStatus()),
+		})
+	}
+	return cloned
+}
+
+func cloneProcessLogChunks(input []*slavev1.ProcessLogChunk) []*slavev1.ProcessLogChunk {
+	cloned := make([]*slavev1.ProcessLogChunk, 0, len(input))
+	for _, chunk := range input {
+		if chunk == nil {
+			continue
+		}
+		runID := strings.TrimSpace(chunk.GetRunId())
+		logPath := strings.TrimSpace(chunk.GetLogPath())
+		if runID == "" || logPath == "" {
+			continue
+		}
+		lines := make([]string, 0, len(chunk.GetLines()))
+		for _, line := range chunk.GetLines() {
+			if strings.TrimSpace(line) == "" {
+				continue
+			}
+			lines = append(lines, line)
+		}
+		if len(lines) == 0 {
+			continue
+		}
+		cloned = append(cloned, &slavev1.ProcessLogChunk{
+			RunId:      runID,
+			ProcessKey: strings.TrimSpace(chunk.GetProcessKey()),
+			PackageKey: strings.TrimSpace(chunk.GetPackageKey()),
+			LogPath:    logPath,
+			SampledAt:  strings.TrimSpace(chunk.GetSampledAt()),
+			Stream:     normalizeProcessLogStream(chunk.GetStream()),
+			Lines:      lines,
+		})
+	}
+	return cloned
 }
 
 func discoveredProjectsSignature(projects []*slavev1.DiscoveredProject) string {

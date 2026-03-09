@@ -3,6 +3,10 @@ const { Service } = require('./service');
 const { Technology } = require('./technology');
 const { PortRange } = require('./portRange');
 const { Host } = require('./host');
+const { DesiredProcess } = require('./desiredProcess');
+const { ProcessRun } = require('./processRun');
+const { ProcessRuntimeState } = require('./processRuntimeState');
+const { HostRuntimeState } = require('./hostRuntimeState');
 
 const initModelAssociations = () => {
   Host.hasMany(Project, {
@@ -14,6 +18,24 @@ const initModelAssociations = () => {
     foreignKey: 'hostId',
   });
 
+  Host.hasMany(DesiredProcess, {
+    as: 'desiredProcesses',
+    foreignKey: 'hostId',
+  });
+  DesiredProcess.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
+  Host.hasOne(HostRuntimeState, {
+    as: 'runtimeState',
+    foreignKey: 'hostId',
+  });
+  HostRuntimeState.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
   Project.hasMany(Service, {
     as: 'services',
     foreignKey: 'projectId',
@@ -21,6 +43,60 @@ const initModelAssociations = () => {
   Service.belongsTo(Project, {
     as: 'project',
     foreignKey: 'projectId',
+  });
+
+  Project.hasMany(DesiredProcess, {
+    as: 'desiredProcesses',
+    foreignKey: 'projectId',
+  });
+  DesiredProcess.belongsTo(Project, {
+    as: 'project',
+    foreignKey: 'projectId',
+  });
+
+  Project.hasMany(ProcessRun, {
+    as: 'processRuns',
+    foreignKey: 'projectId',
+  });
+  ProcessRun.belongsTo(Project, {
+    as: 'project',
+    foreignKey: 'projectId',
+  });
+
+  Service.hasMany(DesiredProcess, {
+    as: 'desiredProcesses',
+    foreignKey: 'serviceId',
+  });
+  DesiredProcess.belongsTo(Service, {
+    as: 'service',
+    foreignKey: 'serviceId',
+  });
+
+  Service.hasMany(ProcessRun, {
+    as: 'processRuns',
+    foreignKey: 'serviceId',
+  });
+  ProcessRun.belongsTo(Service, {
+    as: 'service',
+    foreignKey: 'serviceId',
+  });
+
+  DesiredProcess.hasMany(ProcessRun, {
+    as: 'runs',
+    foreignKey: 'desiredProcessId',
+  });
+  ProcessRun.belongsTo(DesiredProcess, {
+    as: 'desiredProcess',
+    foreignKey: 'desiredProcessId',
+  });
+
+  ProcessRun.hasOne(ProcessRuntimeState, {
+    as: 'runtimeState',
+    foreignKey: 'processRunId',
+  });
+  ProcessRuntimeState.belongsTo(ProcessRun, {
+    as: 'processRun',
+    foreignKey: 'processRunId',
   });
 
   Project.hasOne(PortRange, {
@@ -50,6 +126,10 @@ module.exports = {
   Project,
   Host,
   Service,
+  DesiredProcess,
+  ProcessRun,
+  ProcessRuntimeState,
+  HostRuntimeState,
   Technology,
   PortRange,
   initModelAssociations,

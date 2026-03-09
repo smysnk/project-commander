@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { installWebSocketMock } = require("./helpers/wsMock");
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 const PROJECT_PATH = "/tmp/mock-project";
@@ -6,6 +7,7 @@ const PROJECT_PATH = "/tmp/mock-project";
 const buildMockLogs = (count = 260) =>
   Array.from({ length: count }, (_, index) => ({
     id: index + 1,
+    projectPath: PROJECT_PATH,
     timestamp: new Date(Date.UTC(2026, 2, 2, 12, 0, index % 60)).toISOString(),
     serviceName: "web",
     stream: "stdout",
@@ -13,6 +15,33 @@ const buildMockLogs = (count = 260) =>
   }));
 
 const MOCK_LOGS = buildMockLogs();
+
+async function waitForScrollableLogStream(logStream) {
+  await expect.poll(async () => (
+    logStream.evaluate((node) => ({
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+      scrollTop: node.scrollTop,
+    }))
+  )).toMatchObject({
+    clientHeight: expect.any(Number),
+    scrollHeight: expect.any(Number),
+  });
+
+  await expect.poll(async () => (
+    logStream.evaluate((node) => node.scrollHeight - node.clientHeight)
+  )).toBeGreaterThan(0);
+}
+
+async function scrollLogStreamAwayFromBottom(page, logStream, distancePx = 220) {
+  await logStream.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+    node.dispatchEvent(new Event("scroll", { bubbles: true }));
+  });
+
+  await logStream.hover();
+  await page.mouse.wheel(0, -distancePx);
+}
 
 async function installGraphqlMocks(page) {
   await page.route("**/graphql", async (route) => {
@@ -144,6 +173,19 @@ async function installGraphqlMocks(page) {
 test("shows 'Scroll to bottom' near the lower middle when logs are scrolled upward", async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: "project",
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: "merged",
+        lines: MOCK_LOGS,
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {
@@ -155,6 +197,7 @@ test("shows 'Scroll to bottom' near the lower middle when logs are scrolled upwa
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
+  await waitForScrollableLogStream(logStream);
   const initialRows = page.locator(".infiniteLogTagRow");
   await expect(initialRows.first()).toBeVisible();
   const initialRowCount = await initialRows.count();
@@ -164,10 +207,7 @@ test("shows 'Scroll to bottom' near the lower middle when logs are scrolled upwa
   const jumpButton = page.getByTestId("scroll-to-bottom");
   await expect(jumpButton).toHaveCount(0);
 
-  await logStream.evaluate((node) => {
-    node.scrollTop = 0;
-    node.dispatchEvent(new Event("scroll", { bubbles: true }));
-  });
+  await scrollLogStreamAwayFromBottom(page, logStream);
 
   await expect(jumpButton).toBeVisible();
   await expect(jumpButton).toHaveText("Scroll to bottom");
@@ -191,6 +231,19 @@ test("shows 'Scroll to bottom' near the lower middle when logs are scrolled upwa
 test("shows 'Scroll to bottom' while away from bottom and hides it when scrolled back to bottom", async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: "project",
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: "merged",
+        lines: MOCK_LOGS,
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {
@@ -202,6 +255,7 @@ test("shows 'Scroll to bottom' while away from bottom and hides it when scrolled
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
+  await waitForScrollableLogStream(logStream);
   const initialRows = page.locator(".infiniteLogTagRow");
   await expect(initialRows.first()).toBeVisible();
   const initialRowCount = await initialRows.count();
@@ -212,10 +266,7 @@ test("shows 'Scroll to bottom' while away from bottom and hides it when scrolled
   await expect(scrollButton).toHaveCount(0);
 
   // Move away from bottom: follow mode should disable and button should appear.
-  await logStream.evaluate((node) => {
-    node.scrollTop = Math.max(0, node.scrollHeight - node.clientHeight - 200);
-    node.dispatchEvent(new Event("scroll", { bubbles: true }));
-  });
+  await scrollLogStreamAwayFromBottom(page, logStream, 200);
 
   await expect(scrollButton).toBeVisible();
 
@@ -239,6 +290,19 @@ test("shows 'Scroll to bottom' while away from bottom and hides it when scrolled
 test("'Scroll to bottom' button is absolutely positioned", async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
+  await installWebSocketMock(page, [], {
+    logQueryFixtures: [
+      {
+        context: {
+          scope: "project",
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: "merged",
+        lines: MOCK_LOGS,
+      },
+    ],
+  });
   await installGraphqlMocks(page);
 
   try {
@@ -250,16 +314,14 @@ test("'Scroll to bottom' button is absolutely positioned", async ({ page, baseUR
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();
+  await waitForScrollableLogStream(logStream);
   const initialRows = page.locator(".infiniteLogTagRow");
   await expect(initialRows.first()).toBeVisible();
   const initialRowCount = await initialRows.count();
   expect(initialRowCount).toBeGreaterThan(80);
   expect(initialRowCount).toBeLessThan(MOCK_LOGS.length);
 
-  await logStream.evaluate((node) => {
-    node.scrollTop = 0;
-    node.dispatchEvent(new Event("scroll", { bubbles: true }));
-  });
+  await scrollLogStreamAwayFromBottom(page, logStream);
 
   const scrollButton = page.getByTestId("scroll-to-bottom");
   await expect(scrollButton).toBeVisible();

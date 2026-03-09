@@ -431,13 +431,13 @@ if [[ "${LOCAL_MODE}" == "1" ]]; then
   cp "${TMP_DIR}/${SERVICE_NAME}.service" "/tmp/${SERVICE_NAME}.service"
   cp "${TMP_DIR}/${SERVICE_NAME}.plist" "/tmp/${SERVICE_NAME}.plist"
 else
-  SCP_ARGS=()
+  SCP_COMMAND=(scp)
   if [[ -n "${SSH_PORT}" ]]; then
-    SCP_ARGS+=("-P" "${SSH_PORT}")
+    SCP_COMMAND+=("-P" "${SSH_PORT}")
   fi
-  scp "${SCP_ARGS[@]}" "${TMP_DIR}/pc-slave" "${HOST}:/tmp/${SERVICE_NAME}.bin"
-  scp "${SCP_ARGS[@]}" "${TMP_DIR}/${SERVICE_NAME}.service" "${HOST}:/tmp/${SERVICE_NAME}.service"
-  scp "${SCP_ARGS[@]}" "${TMP_DIR}/${SERVICE_NAME}.plist" "${HOST}:/tmp/${SERVICE_NAME}.plist"
+  "${SCP_COMMAND[@]}" "${TMP_DIR}/pc-slave" "${HOST}:/tmp/${SERVICE_NAME}.bin"
+  "${SCP_COMMAND[@]}" "${TMP_DIR}/${SERVICE_NAME}.service" "${HOST}:/tmp/${SERVICE_NAME}.service"
+  "${SCP_COMMAND[@]}" "${TMP_DIR}/${SERVICE_NAME}.plist" "${HOST}:/tmp/${SERVICE_NAME}.plist"
 fi
 
 INSTALL_RUNNER=()
@@ -470,13 +470,11 @@ if [[ "${LOCAL_MODE}" == "1" ]]; then
   )
 else
   log "Installing remote service ${SERVICE_NAME}"
-  SSH_ARGS=()
+  INSTALL_RUNNER=(ssh)
   if [[ -n "${SSH_PORT}" ]]; then
-    SSH_ARGS+=("-p" "${SSH_PORT}")
+    INSTALL_RUNNER+=("-p" "${SSH_PORT}")
   fi
-  INSTALL_RUNNER=(
-    ssh
-    "${SSH_ARGS[@]}"
+  INSTALL_RUNNER+=(
     "${HOST}"
     "TARGET_DIR=${TARGET_DIR}"
     "SERVICE_NAME=${SERVICE_NAME}"

@@ -18,7 +18,10 @@ import (
 )
 
 const (
-	slaveCommandTypeGitCheckout = "git_checkout"
+	slaveCommandTypeGitCheckout     = "git_checkout"
+	slaveCommandTypeLaunchProcess   = "launch_process"
+	slaveCommandTypeSoftKillProcess = "soft_kill_process"
+	slaveCommandTypeHardKillProcess = "hard_kill_process"
 
 	slaveCommandStatusCompleted = "completed"
 	slaveCommandStatusFailed    = "failed"
@@ -41,7 +44,7 @@ func cloneQueuedSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveComman
 	if command == nil {
 		return nil
 	}
-	return &slavev1.SlaveCommand{
+	cloned := &slavev1.SlaveCommand{
 		CommandId:         strings.TrimSpace(command.GetCommandId()),
 		CommandType:       strings.TrimSpace(command.GetCommandType()),
 		RepositoryUrl:     strings.TrimSpace(command.GetRepositoryUrl()),
@@ -50,6 +53,65 @@ func cloneQueuedSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveComman
 		TargetPath:        strings.TrimSpace(command.GetTargetPath()),
 		RequestedAt:       strings.TrimSpace(command.GetRequestedAt()),
 	}
+	switch payload := command.GetPayload().(type) {
+	case *slavev1.SlaveCommand_GitCheckout:
+		if payload != nil && payload.GitCheckout != nil {
+			cloned.Payload = &slavev1.SlaveCommand_GitCheckout{
+				GitCheckout: &slavev1.GitCheckoutCommand{
+					RepositoryUrl:     strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
+					BaseDirectory:     strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
+					DestinationFolder: strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
+					TargetPath:        strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_LaunchProcess:
+		if payload != nil && payload.LaunchProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_LaunchProcess{
+				LaunchProcess: &slavev1.LaunchProcessCommand{
+					RunId:               strings.TrimSpace(payload.LaunchProcess.GetRunId()),
+					ProcessKey:          strings.TrimSpace(payload.LaunchProcess.GetProcessKey()),
+					ProjectPath:         strings.TrimSpace(payload.LaunchProcess.GetProjectPath()),
+					PackageKey:          strings.TrimSpace(payload.LaunchProcess.GetPackageKey()),
+					PackageRelativePath: strings.TrimSpace(payload.LaunchProcess.GetPackageRelativePath()),
+					Cwd:                 strings.TrimSpace(payload.LaunchProcess.GetCwd()),
+					Command:             strings.TrimSpace(payload.LaunchProcess.GetCommand()),
+					Args:                append([]string{}, payload.LaunchProcess.GetArgs()...),
+					Env:                 cloneProcessEnvEntries(payload.LaunchProcess.GetEnv()),
+					EnvHash:             strings.TrimSpace(payload.LaunchProcess.GetEnvHash()),
+					LogRoot:             strings.TrimSpace(payload.LaunchProcess.GetLogRoot()),
+					LaunchFingerprint:   strings.TrimSpace(payload.LaunchProcess.GetLaunchFingerprint()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_SoftKillProcess:
+		if payload != nil && payload.SoftKillProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_SoftKillProcess{
+				SoftKillProcess: &slavev1.KillProcessCommand{
+					RunId:      strings.TrimSpace(payload.SoftKillProcess.GetRunId()),
+					ProcessKey: strings.TrimSpace(payload.SoftKillProcess.GetProcessKey()),
+					Pid:        payload.SoftKillProcess.GetPid(),
+					Pgid:       payload.SoftKillProcess.GetPgid(),
+					Signal:     strings.TrimSpace(payload.SoftKillProcess.GetSignal()),
+					Reason:     strings.TrimSpace(payload.SoftKillProcess.GetReason()),
+				},
+			}
+		}
+	case *slavev1.SlaveCommand_HardKillProcess:
+		if payload != nil && payload.HardKillProcess != nil {
+			cloned.Payload = &slavev1.SlaveCommand_HardKillProcess{
+				HardKillProcess: &slavev1.KillProcessCommand{
+					RunId:      strings.TrimSpace(payload.HardKillProcess.GetRunId()),
+					ProcessKey: strings.TrimSpace(payload.HardKillProcess.GetProcessKey()),
+					Pid:        payload.HardKillProcess.GetPid(),
+					Pgid:       payload.HardKillProcess.GetPgid(),
+					Signal:     strings.TrimSpace(payload.HardKillProcess.GetSignal()),
+					Reason:     strings.TrimSpace(payload.HardKillProcess.GetReason()),
+				},
+			}
+		}
+	}
+	return cloned
 }
 
 func normalizeCheckoutOutputLines(rawOutput string) []string {
@@ -255,6 +317,7 @@ func executeCheckoutCommand(
 func executeSlaveCommand(
 	ctx context.Context,
 	logger *slog.Logger,
+	manager *processManager,
 	command *slavev1.SlaveCommand,
 ) slaveCommandResult {
 	if command == nil {
@@ -270,6 +333,90 @@ func executeSlaveCommand(
 	switch commandType {
 	case slaveCommandTypeGitCheckout:
 		return executeCheckoutCommand(ctx, logger, command)
+	case slaveCommandTypeLaunchProcess:
+		if manager == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "process manager is not available for launch_process",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		payload := command.GetLaunchProcess()
+		if payload == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "launch_process payload is required",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		if err := manager.ExecuteLaunchCommand(payload); err != nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     err.Error(),
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		return slaveCommandResult{
+			status:      slaveCommandStatusCompleted,
+			message:     fmt.Sprintf("launch_process executed for %s", strings.TrimSpace(payload.GetProcessKey())),
+			completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		}
+	case slaveCommandTypeSoftKillProcess:
+		if manager == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "process manager is not available for soft_kill_process",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		payload := command.GetSoftKillProcess()
+		if payload == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "soft_kill_process payload is required",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		if err := manager.ExecuteKillCommand(payload, false); err != nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     err.Error(),
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		return slaveCommandResult{
+			status:      slaveCommandStatusCompleted,
+			message:     fmt.Sprintf("soft_kill_process executed for %s", strings.TrimSpace(payload.GetProcessKey())),
+			completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		}
+	case slaveCommandTypeHardKillProcess:
+		if manager == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "process manager is not available for hard_kill_process",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		payload := command.GetHardKillProcess()
+		if payload == nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     "hard_kill_process payload is required",
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		if err := manager.ExecuteKillCommand(payload, true); err != nil {
+			return slaveCommandResult{
+				status:      slaveCommandStatusFailed,
+				message:     err.Error(),
+				completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+			}
+		}
+		return slaveCommandResult{
+			status:      slaveCommandStatusCompleted,
+			message:     fmt.Sprintf("hard_kill_process executed for %s", strings.TrimSpace(payload.GetProcessKey())),
+			completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		}
 	default:
 		return slaveCommandResult{
 			status:      slaveCommandStatusFailed,

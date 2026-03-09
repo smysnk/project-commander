@@ -14,7 +14,7 @@ Implement Project Commander as a Model Context Protocol (MCP) server so MCP clie
   - `getProjectPortRangeSettings`
   - `setProjectPortRangeSettings`
 - These are exposed today through GraphQL in:
-  - `/Users/josh/play/project-commander/packages/server/src/graphql/index.js`
+  - `../packages/server/src/graphql/index.js`
 - This strongly supports an adapter approach (MCP layer on top of existing service logic).
 
 ## Architecture

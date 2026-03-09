@@ -28,6 +28,7 @@ const {
   removeRemoteHostDirectory,
 } = require('./hostDeployment');
 const { createTerminalSessionManager } = require('./terminalSessionManager');
+const { createProcessRegistry } = require('./runtime/processRegistry');
 const {
   parseMaxDepth,
   buildFolderPattern,
@@ -203,6 +204,10 @@ const validateAndNormalizeConfig = async (input) => {
 const startServer = async () => {
   const runtimeBackendMode = normalizeBackendName();
   const runtimeBackend = createRuntimeBackend();
+  const processRegistry = createProcessRegistry({
+    runtimeBackend,
+    logger: console,
+  });
   const customProjectPaths = new Set();
 
   initModelAssociations();
@@ -469,6 +474,38 @@ const startServer = async () => {
           : (payload.host.name || payload.host.ip || null),
         payload: payload.host,
         timestamp: payload.host.lastSeenAt || null,
+      });
+    }
+    if (payload.type === 'slave-runtime-state' && payload.runtimeState && typeof payload.runtimeState === 'object') {
+      Promise.resolve(processRegistry.applySlaveRuntimeState(payload.runtimeState))
+        .catch((error) => {
+          emitBackendLog({
+            message: `Slave runtime state persistence failed: ${error.message || error}`,
+            stream: 'stderr',
+          });
+        });
+      return publishEvent({
+        topic: 'runtime.slave.state.updated',
+        source: payload.source || 'master-agent',
+        entityId: payload.runtimeState.slaveId ? `slave:${payload.runtimeState.slaveId}` : null,
+        payload: payload.runtimeState,
+        timestamp: payload.runtimeState.updatedAt || null,
+      });
+    }
+    if (payload.type === 'slave-process-reconciliation' && payload.report && typeof payload.report === 'object') {
+      Promise.resolve(processRegistry.applyReconciliationReport(payload.report))
+        .catch((error) => {
+          emitBackendLog({
+            message: `Slave reconciliation persistence failed: ${error.message || error}`,
+            stream: 'stderr',
+          });
+        });
+      return publishEvent({
+        topic: 'runtime.slave.reconciliation',
+        source: payload.source || 'master-agent',
+        entityId: payload.report.slaveId ? `slave:${payload.report.slaveId}` : null,
+        payload: payload.report,
+        timestamp: payload.report.updatedAt || null,
       });
     }
     if (payload.type === 'discovery.projects' && Array.isArray(payload.projects)) {
@@ -757,6 +794,47 @@ const startServer = async () => {
     })));
   };
 
+  const resolveManagedProcessLogsForScope = async ({
+    hostAgentUuid = null,
+    hostId = null,
+    hostName = null,
+    hostIp = null,
+    runId = null,
+    requestedLimit = LOG_QUERY_MAX_LIMIT,
+  } = {}) => {
+    const normalizedHostAgentUuid = String(hostAgentUuid || '').trim();
+    const normalizedRunId = String(runId || '').trim();
+    if (!normalizedHostAgentUuid || !normalizedRunId || typeof runtimeBackend.getManagedProcessLogs !== 'function') {
+      return [];
+    }
+
+    const records = await runtimeBackend.getManagedProcessLogs({
+      slaveId: normalizedHostAgentUuid,
+      runId: normalizedRunId,
+      limit: requestedLimit,
+      afterId: null,
+      serviceNames: null,
+    });
+    return sortLogEntries((Array.isArray(records) ? records : []).map((record, index) => ({
+      id: String(record?.id || `process-log-${index}`),
+      timestamp: toIsoTimestamp(record?.timestamp),
+      serviceName: String(record?.serviceName || record?.processKey || 'managed-process').trim() || 'managed-process',
+      source: String(record?.source || record?.serviceName || 'managed-process').trim() || 'managed-process',
+      stream: String(record?.stream || 'stdout').trim().toLowerCase() || 'stdout',
+      level: record?.level ? String(record.level).trim().toLowerCase() : null,
+      message: String(record?.message || ''),
+      hostId: Number.isInteger(Number(record?.hostId))
+        ? Number(record.hostId)
+        : (Number.isInteger(Number(hostId)) ? Number(hostId) : null),
+      hostName: String(record?.hostName || hostName || '').trim() || null,
+      hostIp: String(record?.hostIp || hostIp || '').trim() || null,
+      agentUuid: String(record?.agentUuid || record?.slaveId || normalizedHostAgentUuid).trim() || null,
+      slaveId: String(record?.slaveId || record?.agentUuid || normalizedHostAgentUuid).trim() || null,
+      runId: normalizedRunId,
+      projectPath: String(record?.projectPath || `@process:${normalizedHostAgentUuid}:${normalizedRunId}`),
+    })));
+  };
+
   const resolveLogsForQueryContext = async (context = {}, streamRequests = []) => {
     const scope = String(context?.scope || 'runtime').trim().toLowerCase() || 'runtime';
     const requestedLimit = resolveRequestedBackendLogLimit(streamRequests);
@@ -772,6 +850,16 @@ const startServer = async () => {
         hostId: context?.hostId,
         hostName: context?.hostName,
         hostIp: context?.hostIp,
+        requestedLimit,
+      });
+    }
+    if (scope === 'process') {
+      return resolveManagedProcessLogsForScope({
+        hostAgentUuid: context?.hostAgentUuid || context?.agentUuid || context?.slaveId,
+        hostId: context?.hostId,
+        hostName: context?.hostName,
+        hostIp: context?.hostIp,
+        runId: context?.runId,
         requestedLimit,
       });
     }
@@ -1495,6 +1583,7 @@ const startServer = async () => {
       startHostTerminalSession,
       sendHostTerminalInput,
       closeHostTerminalSession,
+      processRegistry,
       runtimeBackend,
       serverVersion: SERVER_VERSION,
       serverProtocolVersion: EVENT_PROTOCOL_VERSION,
@@ -1648,6 +1737,30 @@ const startServer = async () => {
 
   runtimeBackend.setRuntimeEventSink?.(emitRuntimeEvent);
   runtimeBackend.start?.();
+  Promise.resolve()
+    .then(async () => {
+      if (typeof runtimeBackend.listRegisteredHosts !== 'function') {
+        return;
+      }
+      const registeredHosts = await runtimeBackend.listRegisteredHosts();
+      const slaveIds = Array.isArray(registeredHosts)
+        ? registeredHosts
+          .map((host) => String(host?.slaveId || '').trim().toLowerCase())
+          .filter(Boolean)
+        : [];
+      for (const slaveId of slaveIds) {
+        // Bootstrap persisted runtime state for already-connected slaves.
+        // Event streams do not replay historical heartbeats on backend startup.
+        // eslint-disable-next-line no-await-in-loop
+        await processRegistry.refreshSlaveRuntimeStateFromRuntimeBackend({ slaveId });
+      }
+    })
+    .catch((error) => {
+      emitBackendLog({
+        message: `Runtime registry bootstrap failed: ${error.message || error}`,
+        stream: 'stderr',
+      });
+    });
 
   app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

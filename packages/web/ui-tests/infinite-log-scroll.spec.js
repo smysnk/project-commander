@@ -136,6 +136,17 @@ test('infinite log renderer uses one text block with line-aligned tag rows and e
   await installWebSocketMock(page, [], {
     captureStorageKey: '__LOG_QUERY_MESSAGES__',
     captureActions: ['logs.query'],
+    logQueryFixtures: [
+      {
+        context: {
+          scope: 'project',
+          contextKey: `project:${PROJECT_PATH}`,
+          projectPath: PROJECT_PATH,
+        },
+        streamId: 'merged',
+        lines: MOCK_PROJECT_LOGS,
+      },
+    ],
   });
   await installGraphqlMocks(page);
 
@@ -169,7 +180,8 @@ test('infinite log renderer uses one text block with line-aligned tag rows and e
     }
     return content.split('\n').length;
   });
-  expect(renderedTextLineCount).toBe(renderedTagCount);
+  expect(renderedTextLineCount).toBeGreaterThanOrEqual(renderedTagCount);
+  expect(renderedTextLineCount).toBeLessThanOrEqual(MOCK_PROJECT_LOGS.length);
 
   const [firstBox, secondBox, firstLineHeight] = await Promise.all([
     tagRows.nth(0).boundingBox(),

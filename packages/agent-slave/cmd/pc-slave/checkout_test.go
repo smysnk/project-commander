@@ -30,7 +30,7 @@ func TestNormalizeCheckoutOutputLinesTruncatesAndLimits(t *testing.T) {
 }
 
 func TestExecuteSlaveCommandRejectsUnsupportedType(t *testing.T) {
-	result := executeSlaveCommand(t.Context(), slog.Default(), &slavev1.SlaveCommand{
+	result := executeSlaveCommand(t.Context(), slog.Default(), nil, &slavev1.SlaveCommand{
 		CommandId:   "test-1",
 		CommandType: "unsupported",
 	})

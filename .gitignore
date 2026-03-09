@@ -7,5 +7,8 @@ node_modules
 coverage
 runtime-logs
 test-results
+artifacts/workspace-tests
 *.sqlite
 bin
+references/
+docs-internal/

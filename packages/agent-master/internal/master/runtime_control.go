@@ -1391,6 +1391,7 @@ func (s *Server) GetLogs(ctx context.Context, req *masterv1.GetLogsRequest) (*ma
 	requestID := s.resolveRequestID(ctx, req.GetRequestId())
 	projectPathInput := strings.TrimSpace(req.GetProjectPath())
 	slaveID := strings.TrimSpace(req.GetSlaveId())
+	runID := strings.TrimSpace(req.GetRunId())
 
 	if projectPathInput == "" && slaveID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "project_path or slave_id is required")
@@ -1400,6 +1401,9 @@ func (s *Server) GetLogs(ctx context.Context, req *masterv1.GetLogsRequest) (*ma
 	}
 
 	if slaveID != "" {
+		if runID != "" {
+			return s.getSlaveProcessLogsResponse(requestID, req, slaveID, runID), nil
+		}
 		return s.getSlaveLogsResponse(requestID, req, slaveID), nil
 	}
 
@@ -1558,6 +1562,65 @@ func (s *Server) getSlaveLogsResponse(
 			ServiceName: entry.Service,
 			Stream:      entry.Stream,
 			Message:     entry.Message,
+		})
+	}
+
+	limit := clampLogLimit(req.GetLimit())
+	if len(pbEntries) > limit {
+		pbEntries = pbEntries[len(pbEntries)-limit:]
+	}
+
+	return &masterv1.GetLogsResponse{
+		RequestId: requestID,
+		Entries:   pbEntries,
+	}
+}
+
+func (s *Server) getSlaveProcessLogsResponse(
+	requestID string,
+	req *masterv1.GetLogsRequest,
+	slaveID string,
+	runID string,
+) *masterv1.GetLogsResponse {
+	entries := readLogFileEntries(
+		s.slaveProcessLogPath(slaveID, runID),
+		"managed-process",
+		"stdout",
+		runID,
+	)
+
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Timestamp != entries[j].Timestamp {
+			return entries[i].Timestamp < entries[j].Timestamp
+		}
+		if entries[i].Service != entries[j].Service {
+			return entries[i].Service < entries[j].Service
+		}
+		return entries[i].Message < entries[j].Message
+	})
+
+	serviceFilter := buildServiceFilter(req.GetServiceNames())
+	afterID := req.GetAfterId()
+	projectPath := fmt.Sprintf("@process:%s:%s", slaveID, runID)
+	pbEntries := make([]*masterv1.LogEntry, 0, len(entries))
+	for index, entry := range entries {
+		entryID := int64(index + 1)
+		if afterID > 0 && entryID <= afterID {
+			continue
+		}
+		if len(serviceFilter) > 0 {
+			if _, included := serviceFilter[entry.Service]; !included {
+				continue
+			}
+		}
+		pbEntries = append(pbEntries, &masterv1.LogEntry{
+			Id:          entryID,
+			ProjectPath: projectPath,
+			Timestamp:   entry.Timestamp,
+			ServiceName: entry.Service,
+			Stream:      entry.Stream,
+			Message:     entry.Message,
+			RunId:       entry.RunID,
 		})
 	}
 

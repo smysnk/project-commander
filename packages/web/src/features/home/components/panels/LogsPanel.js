@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InfiniteLogStream from '../../../../components/InfiniteLogStream';
+import useTagColumnWidth from '../../../../components/useTagColumnWidth';
 import { useLogsPanelContext } from '../../context/LogsPanelContext';
 import {
   LOG_LEVEL_COLOR_MAP,
@@ -25,9 +26,11 @@ export default function LogsPanel() {
     logLevelOptions,
     isLogLevelDisabled,
     toggleLogLevel,
+    isProcessLogContext,
     isProjectLogContext,
     logServiceOptions,
     selectedLogServices,
+    selectedProcessLogTarget,
     logServiceColorMap,
     toggleLogService,
     displayedLogs,
@@ -46,8 +49,39 @@ export default function LogsPanel() {
     renderLineTags,
   } = useLogsPanelContext();
   const [columnWidths, setColumnWidths] = useState(DEFAULT_COLUMN_WIDTHS);
+  const [manualColumnWidths, setManualColumnWidths] = useState({});
   const [activeResizeKey, setActiveResizeKey] = useState(null);
   const resizeSessionRef = useRef(null);
+  const logViewerRef = useRef(null);
+
+  const hostTagValues = useMemo(() => [
+    'Host',
+    ...displayedLogs
+      .map((entry) => String(entry?.hostName || entry?.hostIp || '').trim())
+      .filter(Boolean),
+  ], [displayedLogs]);
+  const packageTagValues = useMemo(() => [
+    'Package',
+    ...displayedLogs
+      .map((entry) => String(entry?.serviceName || '').trim())
+      .filter(Boolean),
+  ], [displayedLogs]);
+  const autoHostWidth = useTagColumnWidth({
+    values: hostTagValues,
+    minWidth: MIN_COLUMN_WIDTHS.host,
+    maxWidth: 180,
+    fallbackWidth: DEFAULT_COLUMN_WIDTHS.host,
+    containerRef: logViewerRef,
+    maxFraction: 0.18,
+  });
+  const autoPackageWidth = useTagColumnWidth({
+    values: packageTagValues,
+    minWidth: MIN_COLUMN_WIDTHS.package,
+    maxWidth: 190,
+    fallbackWidth: DEFAULT_COLUMN_WIDTHS.package,
+    containerRef: logViewerRef,
+    maxFraction: 0.2,
+  });
 
   const beginResizeColumn = useCallback((event, columnKey) => {
     if (!Object.prototype.hasOwnProperty.call(DEFAULT_COLUMN_WIDTHS, columnKey)) {
@@ -59,6 +93,11 @@ export default function LogsPanel() {
       startX: Number(event.clientX) || 0,
       startWidth: Number(columnWidths?.[columnKey]) || DEFAULT_COLUMN_WIDTHS[columnKey],
     };
+    setManualColumnWidths((previous) => (
+      previous?.[columnKey]
+        ? previous
+        : { ...previous, [columnKey]: true }
+    ));
     setActiveResizeKey(columnKey);
   }, [columnWidths]);
 
@@ -99,6 +138,24 @@ export default function LogsPanel() {
       window.removeEventListener('pointerup', onPointerUp);
     };
   }, [activeResizeKey]);
+
+  useEffect(() => {
+    setColumnWidths((previous) => {
+      let next = previous;
+
+      if (!manualColumnWidths.host && previous.host !== autoHostWidth) {
+        next = next === previous ? { ...previous } : next;
+        next.host = autoHostWidth;
+      }
+
+      if (!manualColumnWidths.package && previous.package !== autoPackageWidth) {
+        next = next === previous ? { ...previous } : next;
+        next.package = autoPackageWidth;
+      }
+
+      return next;
+    });
+  }, [autoHostWidth, autoPackageWidth, manualColumnWidths.host, manualColumnWidths.package]);
 
   const logColumnStyle = useMemo(() => ({
     '--log-col-level-width': `${Math.max(MIN_COLUMN_WIDTHS.level, Number(columnWidths?.level) || 0)}px`,
@@ -189,8 +246,29 @@ export default function LogsPanel() {
           Scroll to bottom
         </button>
       ) : null}
+      {isProcessLogContext && selectedProcessLogTarget ? (
+        <div className="runtimeInlineMeta">
+          Managed process log:
+          {' '}
+          {String(
+            selectedProcessLogTarget?.packageKey
+            || selectedProcessLogTarget?.processKey
+            || selectedProcessLogTarget?.runId
+            || '-',
+          ).trim() || '-'}
+        </div>
+      ) : null}
       {isProjectLogContext && !selectedProject && displayedLogs.length === 0 ? (
         <p className="emptyState">No project selected.</p>
+      ) : null}
+      {isProcessLogContext && !selectedHost && displayedLogs.length === 0 ? (
+        <p className="emptyState">No host selected for managed process logs.</p>
+      ) : null}
+      {isProcessLogContext && selectedHost && logsLoading && displayedLogs.length === 0 ? (
+        <p className="emptyState">Loading managed process logs...</p>
+      ) : null}
+      {isProcessLogContext && selectedHost && !logsLoading && displayedLogs.length === 0 ? (
+        <p className="emptyState">No managed process log output yet.</p>
       ) : null}
       {isHostLogContext && !selectedHost && displayedLogs.length === 0 ? (
         <p className="emptyState">No host selected.</p>
@@ -212,6 +290,7 @@ export default function LogsPanel() {
       ) : null}
       {displayedLogs.length > 0 ? (
         <div
+          ref={logViewerRef}
           className="logViewer"
           style={logColumnStyle}
           data-testid="log-viewer"

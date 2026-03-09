@@ -10,6 +10,8 @@
     "build": "yarn build:server && yarn build:web",
     "build:all": "make build-all",
     "start": "make start",
+    "test": "node ./references/test-reporter/bin/test-reporter.mjs run --config ./test-reporter.config.mjs",
+    "test:coverage": "node ./references/test-reporter/bin/test-reporter.mjs run --config ./test-reporter.config.mjs --coverage",
     "dev:web": "yarn workspace web dev",
     "build:web": "yarn workspace web build",
     "start:web": "yarn workspace web start",

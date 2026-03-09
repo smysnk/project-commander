@@ -87,6 +87,75 @@ message CheckoutProjectOnSlaveResponse {
   string message = 4;
 }
 
+message UpsertDesiredProcessRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  projectcommander.slave.v1.DesiredProcess desired_process = 3;
+}
+
+message UpsertDesiredProcessResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+message DeleteDesiredProcessRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string process_key = 3;
+}
+
+message DeleteDesiredProcessResponse {
+  string request_id = 1;
+  string status = 2;
+}
+
+message ListDesiredProcessesRequest {
+  string request_id = 1;
+  string slave_id = 2;
+}
+
+message ListDesiredProcessesResponse {
+  string request_id = 1;
+  repeated projectcommander.slave.v1.DesiredProcess desired_processes = 2;
+}
+
+message SlaveRuntimeState {
+  string slave_id = 1;
+  string boot_id = 2;
+  string status = 3;
+  projectcommander.slave.v1.HostTelemetrySample host_telemetry = 4;
+  repeated projectcommander.slave.v1.DesiredProcess desired_processes = 5;
+  repeated projectcommander.slave.v1.ObservedProcessRun observed_runs = 6;
+  repeated projectcommander.slave.v1.ProcessTelemetrySample process_telemetry = 7;
+  string updated_at = 8;
+}
+
+message GetSlaveRuntimeStateRequest {
+  string request_id = 1;
+  string slave_id = 2;
+}
+
+message GetSlaveRuntimeStateResponse {
+  string request_id = 1;
+  SlaveRuntimeState runtime_state = 2;
+}
+
+message QueueSlaveKillRequest {
+  string request_id = 1;
+  string slave_id = 2;
+  string run_id = 3;
+  string process_key = 4;
+  int64 pid = 5;
+  bool hard = 6;
+  string reason = 7;
+}
+
+message QueueSlaveKillResponse {
+  string request_id = 1;
+  string command_id = 2;
+  string status = 3;
+}
+
 message RuntimeServiceState {
   string service_key = 1;
   string service_name = 2;
@@ -191,6 +260,7 @@ message GetLogsRequest {
   int64 after_id = 4;
   repeated string service_names = 5;
   string slave_id = 6;
+  string run_id = 7;
 }
 
 message GetLogsResponse {
@@ -270,6 +340,11 @@ service MasterControl {
   rpc Handshake(HandshakeRequest) returns (HandshakeResponse);
   rpc ListRegisteredSlaves(ListRegisteredSlavesRequest) returns (ListRegisteredSlavesResponse);
   rpc CheckoutProjectOnSlave(CheckoutProjectOnSlaveRequest) returns (CheckoutProjectOnSlaveResponse);
+  rpc UpsertDesiredProcess(UpsertDesiredProcessRequest) returns (UpsertDesiredProcessResponse);
+  rpc DeleteDesiredProcess(DeleteDesiredProcessRequest) returns (DeleteDesiredProcessResponse);
+  rpc ListDesiredProcesses(ListDesiredProcessesRequest) returns (ListDesiredProcessesResponse);
+  rpc GetSlaveRuntimeState(GetSlaveRuntimeStateRequest) returns (GetSlaveRuntimeStateResponse);
+  rpc QueueSlaveKill(QueueSlaveKillRequest) returns (QueueSlaveKillResponse);
   rpc GetRuntimeSnapshot(GetRuntimeSnapshotRequest) returns (GetRuntimeSnapshotResponse);
   rpc StartService(StartServiceRequest) returns (StartServiceResponse);
   rpc StartProject(StartProjectRequest) returns (StartProjectResponse);

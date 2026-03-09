@@ -369,6 +369,50 @@ input {
   background: color-mix(in srgb, var(--accent) 10%, var(--card));
 }
 
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 1.2rem;
+  padding: 0.02rem 0.38rem;
+  border-radius: 6px;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-family: var(--log-mono-family);
+  font-size: 0.74rem;
+  line-height: 1.15;
+  font-stretch: condensed;
+  font-variation-settings: "wdth" 75, "wght" 500;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagChip--left {
+  justify-content: flex-start;
+}
+
+.tagChip--center {
+  justify-content: center;
+}
+
+.tagChip--fullWidth {
+  display: flex;
+  width: 100%;
+}
+
+.tagChipMeasure {
+  position: absolute;
+  left: -99999px;
+  top: -99999px;
+  visibility: hidden;
+  width: max-content !important;
+  max-width: none !important;
+  pointer-events: none;
+}
+
 .projectTableWrap {
   min-height: 0;
   overflow: auto;
@@ -419,6 +463,10 @@ th {
   text-align: right;
 }
 
+col.hostCol {
+  width: var(--project-host-col-width, 72px);
+}
+
 col.nameCol {
   width: auto;
 }
@@ -450,23 +498,23 @@ col.servicesCol {
   flex-wrap: wrap;
 }
 
+.projectHostCell {
+  vertical-align: middle;
+  width: var(--project-host-col-width, 72px);
+}
+
+.projectHostCell .projectHostChip {
+  width: 100%;
+  max-width: none;
+}
+
 .projectNameLabel {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .projectHostChip {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  padding: 1px 8px;
-  font-size: 0.68rem;
-  line-height: 1.2;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
 }
 
 .appNameCell.stopped {
@@ -678,6 +726,10 @@ col.servicesCol {
   justify-content: flex-end;
 }
 
+.infiniteLogStream > * {
+  flex: 0 0 auto;
+}
+
 .logViewer {
   --log-col-level-width: 1.8rem;
   --log-col-time-width: 5.5rem;
@@ -706,7 +758,9 @@ col.servicesCol {
     minmax(0, 1fr);
   column-gap: var(--log-col-gap);
   align-items: center;
-  padding: 6px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px 6px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--card) 92%, transparent);
   font-family: var(--log-mono-family);
@@ -863,21 +917,7 @@ col.servicesCol {
 }
 
 .logHostTag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.06rem 0.4rem;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--muted) 32%, transparent);
-  background: color-mix(in srgb, var(--chip) 88%, transparent);
-  color: var(--muted);
-  font-family: var(--log-mono-family);
-  font-stretch: condensed;
-  font-variation-settings: "wdth" 75, "wght" 500;
-  letter-spacing: -0.02em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text));
 }
 
 .logFollowBtn {
@@ -967,7 +1007,6 @@ col.servicesCol {
 }
 
 .logTimestamp,
-.logServiceTag,
 .logLevelTag {
   display: flex;
   align-items: center;
@@ -1038,9 +1077,7 @@ col.servicesCol {
 }
 
 .logServiceTag {
-  justify-content: flex-start;
-  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
-  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: currentColor;
 }
 
 .logServiceTagIcon {

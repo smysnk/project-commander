@@ -424,6 +424,8 @@ export const buildLogStreams = (entries) => {
 export const buildLogsContextDescriptor = ({
   isProjectLogContext,
   selectedProjectPath,
+  isProcessLogContext,
+  selectedProcessLogTarget,
   isHostLogContext,
   selectedHost,
 }) => {
@@ -436,6 +438,27 @@ export const buildLogsContextDescriptor = ({
       hostName: null,
       hostIp: null,
     };
+  }
+  if (isProcessLogContext && selectedHost && selectedProcessLogTarget) {
+    const runId = String(selectedProcessLogTarget?.runId || '').trim();
+    const hostId = Number(selectedHost?.id || 0);
+    if (runId && Number.isInteger(hostId) && hostId > 0) {
+      return {
+        scope: 'process',
+        contextKey: `process:${hostId}:${runId}`,
+        projectPath: null,
+        hostId,
+        hostName: String(selectedHost.name || '').trim() || null,
+        hostIp: String(selectedHost.ip || '').trim() || null,
+        hostAgentUuid: String(
+          selectedProcessLogTarget?.hostAgentUuid || selectedHost.agentUuid || selectedHost.slaveId || '',
+        ).trim() || null,
+        runId,
+        processKey: String(selectedProcessLogTarget?.processKey || '').trim() || null,
+        packageKey: String(selectedProcessLogTarget?.packageKey || '').trim() || null,
+        logPath: String(selectedProcessLogTarget?.logPath || '').trim() || null,
+      };
+    }
   }
   if (isHostLogContext && selectedHost) {
     return {
