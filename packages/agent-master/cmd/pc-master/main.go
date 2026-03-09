@@ -26,8 +26,9 @@ const (
 	defaultSocketPath      = "/tmp/project-commander/master.sock"
 	defaultSlaveListenAddr = "127.0.0.1:50052"
 	defaultGracePeriod     = 5 * time.Second
-	buildVersion           = "0.1.0"
 )
+
+var buildVersion = "0.1.0"
 
 func main() {
 	socketPathFlag := flag.String("socket-path", "", "unix socket path for master agent")

@@ -876,7 +876,7 @@ func (manager *processManager) startDesiredProcessLocked(desired *slavev1.Desire
 		manager.logger.Warn("failed to persist managed process state", "process_key", desired.GetProcessKey(), "error", err.Error())
 	}
 	manager.appendChange(changeTypeStarted, "started desired process", desired, run)
-	manager.logger.Info(
+	manager.logger.Debug(
 		"managed process started",
 		"process_key",
 		desired.GetProcessKey(),
@@ -983,7 +983,7 @@ func (manager *processManager) stopManagedProcessLocked(
 	delete(manager.processes, run.GetProcessKey())
 	manager.removePersistedState(managed)
 	manager.appendChange(changeTypeKilled, reason, managed.desired, run)
-	manager.logger.Info(
+	manager.logger.Debug(
 		"managed process stopped",
 		"process_key",
 		run.GetProcessKey(),

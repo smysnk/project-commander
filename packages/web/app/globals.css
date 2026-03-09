@@ -1682,6 +1682,167 @@ col.servicesCol {
   cursor: default;
 }
 
+.runtimeHostToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runtimeHostToolbarActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.runtimeProcessForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+}
+
+.runtimeFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.runtimeFieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.runtimeFieldSpanFull {
+  grid-column: 1 / -1;
+}
+
+.runtimeTextarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.runtimeProcessSection,
+.hostRuntimeProcessSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.runtimeSubsectionTitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.runtimeProcessList,
+.hostRuntimeProcessList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.runtimeProcessRow,
+.hostRuntimeProcessRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+}
+
+.runtimeProcessIdentity,
+.hostRuntimeProcessIdentity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.runtimeProcessMeta,
+.hostRuntimeProcessMeta {
+  min-width: 0;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.runtimeProcessMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.runtimeProcessMetrics > span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.runtimeProcessActions,
+.hostRuntimeProcessActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.runtimeInlineMeta {
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hostRuntimeProcessSection {
+  padding: 0 12px 10px;
+}
+
+.hostRuntimeEmptyState {
+  margin: 0;
+  padding: 0;
+}
+
+.hostTextActionButton {
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 6px;
+  background: var(--chip);
+  color: var(--text);
+  padding: 4px 9px;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.74rem;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.hostTextActionButton.danger {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 36%, transparent);
+}
+
+.hostTextActionButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .topPanel {
   min-height: 0;
   overflow: auto;
@@ -1962,6 +2123,11 @@ col.servicesCol {
 
   .hostCheckoutForm {
     margin-left: 150px;
+  }
+
+  .runtimeFieldGrid,
+  .runtimeProcessMetrics {
+    grid-template-columns: 1fr;
   }
 }
 

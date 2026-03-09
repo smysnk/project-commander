@@ -1,6 +1,7 @@
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const { resolveConfiguredSudoPassword } = require('./hostAgentLifecycle');
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 const DEPLOY_SLAVE_SCRIPT = path.resolve(REPO_ROOT, 'scripts/deploy/deploy-slave.sh');
@@ -528,14 +529,19 @@ const deploySlaveToHost = async ({
     message: `$ bash ${redactCommandArgs(args).map((value) => shellQuote(value)).join(' ')}`,
   });
 
+  const configuredSudoPassword = resolveConfiguredSudoPassword(process.env);
+
   const runDeploymentAttempt = ({ sudoPassword = null } = {}) => (
     new Promise((resolve, reject) => {
       let sudoPasswordRequired = false;
+      let sudoPasswordRejected = false;
       const child = spawn('bash', args, {
         cwd: REPO_ROOT,
         env: {
           ...process.env,
-          ...(sudoPassword ? { PC_DEPLOY_SUDO_PASSWORD: String(sudoPassword) } : {}),
+          ...(sudoPassword || configuredSudoPassword
+            ? { PC_DEPLOY_SUDO_PASSWORD: String(sudoPassword || configuredSudoPassword) }
+            : {}),
         },
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -544,6 +550,9 @@ const deploySlaveToHost = async ({
         if (line.includes(DEPLOY_SUDO_PASSWORD_REQUIRED_MARKER)) {
           sudoPasswordRequired = true;
           return false;
+        }
+        if (line.includes('[deploy][error] provided sudo password was rejected.')) {
+          sudoPasswordRejected = true;
         }
         return true;
       };
@@ -587,14 +596,15 @@ const deploySlaveToHost = async ({
           code,
           signal,
           sudoPasswordRequired: sudoPasswordRequired || code === DEPLOY_SUDO_PASSWORD_REQUIRED_EXIT_CODE,
+          sudoPasswordRejected,
         });
       });
     })
   );
 
   let sudoPassword = null;
-  let usedSudoPassword = false;
-  for (let attemptIndex = 1; attemptIndex <= 2; attemptIndex += 1) {
+  let usedManualSudoPassword = false;
+  for (let attemptIndex = 1; attemptIndex <= 3; attemptIndex += 1) {
     const result = await runDeploymentAttempt({ sudoPassword });
     if (result.code === 0) {
       emitOverlayLog(emitEvent, {
@@ -606,8 +616,18 @@ const deploySlaveToHost = async ({
       return;
     }
 
-    if (result.sudoPasswordRequired && !usedSudoPassword) {
-      usedSudoPassword = true;
+    if (result.sudoPasswordRejected && configuredSudoPassword && !usedManualSudoPassword) {
+      emitOverlayLog(emitEvent, {
+        hostId,
+        hostName,
+        hostIp: target.host,
+        message: `Configured sudo password from environment was rejected for slave ${deploymentLabel} on ${hostTarget}; falling back to frontend prompt.`,
+        stream: 'stderr',
+      });
+    }
+
+    if ((result.sudoPasswordRequired || result.sudoPasswordRejected) && !usedManualSudoPassword) {
+      usedManualSudoPassword = true;
       if (typeof requestSudoPassword !== 'function') {
         throw new Error(
           `Slave ${deploymentLabel} failed for ${hostTarget}: sudo password is required but no frontend password request handler is available.`,
@@ -636,7 +656,6 @@ const deploySlaveToHost = async ({
         hostIp: target.host,
         message: `Received sudo password from frontend; retrying slave ${deploymentLabel} on ${hostTarget}.`,
       });
-      // Retry once with password.
       continue;
     }
 

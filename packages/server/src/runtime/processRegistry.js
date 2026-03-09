@@ -31,6 +31,27 @@ const normalizeObject = (value) => (
     : {}
 );
 
+const SERVER_LOG_LEVELS = {
+  trace: 10,
+  debug: 20,
+  info: 30,
+  warn: 40,
+  error: 50,
+};
+
+const normalizeServerConsoleLogLevel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) {
+    return 'info';
+  }
+  if (normalized === 'warning') {
+    return 'warn';
+  }
+  return Object.prototype.hasOwnProperty.call(SERVER_LOG_LEVELS, normalized)
+    ? normalized
+    : 'info';
+};
+
 const sortObjectKeys = (value) => {
   if (Array.isArray(value)) {
     return value.map(sortObjectKeys);
@@ -109,6 +130,7 @@ const normalizeDesiredProcessPayload = (input = {}) => {
   const envJson = normalizeObject(input.envJson);
   const argsJson = normalizeArray(input.argsJson);
   return {
+    desiredProcessId: normalizeInteger(input.desiredProcessId),
     hostId: normalizeInteger(input.hostId),
     projectId: normalizeInteger(input.projectId),
     serviceId: normalizeInteger(input.serviceId),
@@ -219,6 +241,8 @@ const createProcessRegistry = ({
       ? logger
       : console
   );
+  const consoleLogLevel = normalizeServerConsoleLogLevel(process.env.PC_SERVER_CONSOLE_LOG_LEVEL);
+  const repeatedLogState = new Map();
   const {
     DesiredProcess: DesiredProcessModel,
     ProcessRun: ProcessRunModel,
@@ -229,16 +253,46 @@ const createProcessRegistry = ({
     Service: ServiceModel,
   } = models;
 
-  const logWarn = (message, details = undefined) => {
-    if (typeof runtimeLogger?.warn === 'function') {
-      if (details === undefined) {
-        runtimeLogger.warn(message);
-      } else {
-        runtimeLogger.warn(message, details);
-      }
+  const shouldLogLevel = (level) => (
+    SERVER_LOG_LEVELS[level] >= SERVER_LOG_LEVELS[consoleLogLevel]
+  );
+
+  const emitLog = (level, message, details = undefined) => {
+    if (!shouldLogLevel(level)) {
       return;
     }
-    console.warn(message, details);
+    const method = level === 'error'
+      ? 'error'
+      : (level === 'warn' ? 'warn' : 'log');
+    const target = typeof runtimeLogger?.[method] === 'function'
+      ? runtimeLogger[method].bind(runtimeLogger)
+      : console[method].bind(console);
+    if (details === undefined) {
+      target(message);
+      return;
+    }
+    target(message, details);
+  };
+
+  const logWarn = (message, details = undefined) => {
+    emitLog('warn', message, details);
+  };
+
+  const logDebug = (message, details = undefined) => {
+    emitLog('debug', message, details);
+  };
+
+  const logDebugRateLimited = (key, message, intervalMs = 30000, details = undefined) => {
+    const normalizedKey = normalizeString(key);
+    const now = Date.now();
+    const lastLoggedAt = repeatedLogState.get(normalizedKey) || 0;
+    if (normalizedKey && (now - lastLoggedAt) < intervalMs) {
+      return;
+    }
+    if (normalizedKey) {
+      repeatedLogState.set(normalizedKey, now);
+    }
+    logDebug(message, details);
   };
 
   const withTransaction = async (fn) => sequelizeInstance.transaction(fn);
@@ -431,22 +485,29 @@ const createProcessRegistry = ({
     if (!payload.hostId || !payload.projectId || !payload.packageKey || !payload.processKey || !payload.cwd || !payload.command) {
       throw new Error('desired process requires hostId, projectId, processKey, packageKey, cwd, and command');
     }
+    const { desiredProcessId, ...persistedPayload } = payload;
 
-    const existing = await DesiredProcessModel.findOne({
-      where: {
-        hostId: payload.hostId,
-        projectId: payload.projectId,
-        packageKey: payload.packageKey,
-      },
-      transaction,
-    });
+    let existing = null;
+    if (desiredProcessId) {
+      existing = await DesiredProcessModel.findByPk(desiredProcessId, { transaction });
+    }
+    if (!existing) {
+      existing = await DesiredProcessModel.findOne({
+        where: {
+          hostId: persistedPayload.hostId,
+          projectId: persistedPayload.projectId,
+          packageKey: persistedPayload.packageKey,
+        },
+        transaction,
+      });
+    }
 
     if (existing) {
-      await existing.update(payload, { transaction });
+      await existing.update(persistedPayload, { transaction });
       return existing;
     }
 
-    return DesiredProcessModel.create(payload, { transaction });
+    return DesiredProcessModel.create(persistedPayload, { transaction });
   };
 
   const removeDesiredProcess = async ({
@@ -822,7 +883,8 @@ const createProcessRegistry = ({
       normalizedObservedRun.packageKey || desiredProcess?.packageKey || normalizedObservedRun.processKey,
     );
     if (!resolvedProjectId || !resolvedCommand || !resolvedPackageKey) {
-      logWarn(
+      logDebugRateLimited(
+        `observed-run-unresolved:${normalizedRunId}`,
         `Skipping observed process run ${normalizedRunId}; project or command metadata could not be resolved.`,
       );
       return null;
@@ -878,7 +940,10 @@ const createProcessRegistry = ({
         transaction,
       });
       if (!host) {
-        logWarn(`Skipping runtime state update; host was not found for slave ${normalizedSlaveId}.`);
+        logDebugRateLimited(
+          `runtime-state-missing-host:${normalizedSlaveId}`,
+          `Skipping runtime state update; host was not found for slave ${normalizedSlaveId}.`,
+        );
         return null;
       }
 

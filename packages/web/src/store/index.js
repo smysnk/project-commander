@@ -1343,6 +1343,137 @@ const realtimeMiddleware = (storeApi) => {
     storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', nextByContext));
   };
 
+  const appendManagedProcessLogChunk = ({
+    eventId,
+    chunk,
+  } = {}) => {
+    const normalizedRunId = String(chunk?.runId || '').trim();
+    const rawLines = Array.isArray(chunk?.lines) ? chunk.lines : [];
+    if (!normalizedRunId || rawLines.length <= 0) {
+      return;
+    }
+
+    const currentByContext = storeApi.getState()?.homeDomain?.logsQueryEntriesByContext;
+    const normalizedCurrentByContext = (
+      currentByContext && typeof currentByContext === 'object'
+        ? currentByContext
+        : {}
+    );
+    const matchingContextKeys = Object.keys(normalizedCurrentByContext)
+      .filter((contextKey) => {
+        const entry = normalizedCurrentByContext[contextKey];
+        return String(entry?.scope || '').trim().toLowerCase() === 'process'
+          && contextKey.endsWith(`:${normalizedRunId}`);
+      });
+    if (matchingContextKeys.length <= 0) {
+      return;
+    }
+
+    const sampledAt = toIsoTimestamp(chunk?.sampledAt || Date.now());
+    const normalizedServiceName = String(
+      chunk?.packageKey || chunk?.processKey || 'managed-process',
+    ).trim() || 'managed-process';
+    const normalizedSource = String(chunk?.source || normalizedServiceName).trim().toLowerCase() || 'managed-process';
+    const normalizedStream = String(chunk?.stream || 'stdout').trim().toLowerCase() || 'stdout';
+    const normalizedAgentUuid = String(chunk?.agentUuid || chunk?.slaveId || '').trim() || null;
+    const normalizedProjectPath = `@process:${normalizedAgentUuid || 'unknown'}:${normalizedRunId}`;
+    const normalizedLines = rawLines
+      .map((line, lineIndex) => {
+        const message = String(line || '');
+        if (!message) {
+          return null;
+        }
+        return {
+          id: `${String(eventId || `proc-${normalizedRunId}`)}:${lineIndex}`,
+          projectPath: normalizedProjectPath,
+          timestamp: sampledAt,
+          serviceName: normalizedServiceName,
+          source: normalizedSource,
+          stream: normalizedStream,
+          level: normalizeLogLevelName(chunk?.level),
+          message,
+          hostId: Number.isInteger(Number(chunk?.hostId)) ? Number(chunk.hostId) : null,
+          hostName: String(chunk?.hostName || '').trim() || null,
+          hostIp: String(chunk?.hostIp || '').trim() || null,
+          agentUuid: normalizedAgentUuid,
+          slaveId: normalizedAgentUuid,
+          runId: normalizedRunId,
+        };
+      })
+      .filter(Boolean);
+    if (normalizedLines.length <= 0) {
+      return;
+    }
+
+    const nextByContext = { ...normalizedCurrentByContext };
+    let changed = false;
+
+    for (const contextKey of matchingContextKeys) {
+      const currentEntry = normalizedCurrentByContext[contextKey];
+      const currentStreams = Array.isArray(currentEntry?.streams) ? currentEntry.streams : [];
+      const mergedStream = currentStreams.find((stream) => String(stream?.streamId || '').trim() === 'merged');
+      const tailAware = mergedStream
+        ? ((Number.parseInt(mergedStream.offset, 10) || 0) + (Array.isArray(mergedStream.lines) ? mergedStream.lines.length : 0))
+          >= (Number.parseInt(mergedStream.totalLines, 10) || 0)
+        : true;
+      const existingLineIds = new Set(
+        (Array.isArray(currentEntry?.entries) ? currentEntry.entries : [])
+          .map((line) => String(line?.id || '').trim())
+          .filter(Boolean),
+      );
+      const appendableLines = normalizedLines.filter((line) => !existingLineIds.has(String(line.id || '').trim()));
+      if (appendableLines.length <= 0) {
+        continue;
+      }
+
+      const nextStreams = currentStreams.length > 0
+        ? currentStreams.map((stream) => {
+          if (String(stream?.streamId || '').trim() !== 'merged') {
+            return stream;
+          }
+          const currentStreamLines = Array.isArray(stream?.lines) ? stream.lines : [];
+          const nextStreamLines = tailAware
+            ? [...currentStreamLines, ...appendableLines]
+            : currentStreamLines;
+          return {
+            ...stream,
+            totalLines: Math.max(0, Number.parseInt(stream?.totalLines, 10) || 0) + appendableLines.length,
+            lines: nextStreamLines,
+          };
+        })
+        : [{
+          streamId: 'merged',
+          totalLines: appendableLines.length,
+          offset: 0,
+          lines: appendableLines,
+        }];
+
+      const flattenedEntries = nextStreams
+        .flatMap((stream) => (Array.isArray(stream?.lines) ? stream.lines : []))
+        .sort((left, right) => {
+          const leftTimestamp = toIsoTimestamp(left?.timestamp);
+          const rightTimestamp = toIsoTimestamp(right?.timestamp);
+          if (leftTimestamp !== rightTimestamp) {
+            return leftTimestamp.localeCompare(rightTimestamp);
+          }
+          return String(left?.id || '').localeCompare(String(right?.id || ''));
+        });
+
+      nextByContext[contextKey] = {
+        ...currentEntry,
+        receivedAt: sampledAt,
+        error: null,
+        streams: nextStreams,
+        entries: flattenedEntries,
+      };
+      changed = true;
+    }
+
+    if (changed) {
+      storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', nextByContext));
+    }
+  };
+
   const handleSocketMessage = (event) => {
     let payload = null;
     try {
@@ -1457,6 +1588,14 @@ const realtimeMiddleware = (storeApi) => {
 
     if (topic === 'project.log.append') {
       appendProjectLogEntry(storeApi, payload.payload, { projectLogSeedRef });
+      return;
+    }
+
+    if (topic === 'process.log.append') {
+      appendManagedProcessLogChunk({
+        eventId,
+        chunk: payload.payload,
+      });
       return;
     }
 

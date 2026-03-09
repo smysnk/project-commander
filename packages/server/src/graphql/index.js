@@ -370,6 +370,7 @@ const typeDefs = `#graphql
     removeHostDirectory(hostId: Int!, directoryPath: String!): Host!
     upgradeHostAgent(hostId: Int!): Host!
     ensureDesiredProcess(
+      desiredProcessId: Int
       hostId: Int
       agentUuid: String
       projectId: Int
@@ -948,6 +949,7 @@ const createResolvers = ({
     ensureDesiredProcess: async (_, args) => {
       requireProcessRegistry('ensureDesiredProcess');
       const desiredProcess = await processRegistry.ensureDesiredProcess({
+        desiredProcessId: args.desiredProcessId,
         hostId: args.hostId,
         slaveId: args.agentUuid,
         projectId: args.projectId,

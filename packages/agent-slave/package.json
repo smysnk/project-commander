@@ -1,5 +1,6 @@
 {
   "name": "agent-slave",
+  "version": "0.1.4",
   "private": true,
   "scripts": {
     "dev": "make dev",

@@ -1,13 +1,16 @@
 {
-  "name": "project-discovery-monorepo",
+  "name": "project-discovery",
+  "version": "0.1.4",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
+    "version:sync": "node ./scripts/version/sync-package-versions.mjs",
+    "version:print": "node ./scripts/version/sync-package-versions.mjs --print",
     "dev": "mono-helper env yarn workspaces foreach -p -A -i run dev",
-    "build": "yarn build:server && yarn build:web",
+    "build": "yarn version:sync && yarn build:server && yarn build:web",
     "build:all": "make build-all",
     "start": "make start",
     "test": "node ./references/test-reporter/bin/test-reporter.mjs run --config ./test-reporter.config.mjs",

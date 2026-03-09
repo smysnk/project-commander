@@ -18,6 +18,7 @@ const MASTER_EVENT_TYPE_SLAVE_COMMAND_QUEUED = 'slave.command_queued';
 const MASTER_EVENT_TYPE_SLAVE_COMMAND_DISPATCHED = 'slave.command_dispatched';
 const MASTER_EVENT_TYPE_SLAVE_COMMAND_RESULT = 'slave.command_result';
 const MASTER_EVENT_TYPE_SLAVE_PROCESS_RECONCILIATION = 'slave.process_reconciliation';
+const MASTER_EVENT_TYPE_SLAVE_PROCESS_LOG_CHUNK = 'slave.process_log_chunk';
 const MASTER_EVENT_TYPE_SLAVE_RUNTIME_TELEMETRY = 'slave.runtime_telemetry';
 const EVENT_STREAM_RECONNECT_MS = 1000;
 const MASTER_CONNECT_RETRY_MS = 1000;
@@ -1250,6 +1251,41 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
     }
   };
 
+  const handleMasterProcessLogChunkEvent = (event) => {
+    if (typeof eventSink !== 'function') {
+      return;
+    }
+    const payload = parseJsonObject(event?.payloadJson) || {};
+    const runId = String(payload?.runId || event?.runId || '').trim();
+    const slaveId = normalizeSlaveId(payload?.slaveId || '');
+    const lines = Array.isArray(payload?.lines)
+      ? payload.lines
+        .map((line) => String(line || '').trimEnd())
+        .filter(Boolean)
+      : [];
+    if (!runId || !slaveId || lines.length <= 0) {
+      return;
+    }
+
+    eventSink({
+      type: 'managed-process-log-chunk',
+      source: 'master-agent',
+      chunk: {
+        slaveId,
+        agentUuid: slaveId,
+        hostName: toNonEmptyStringOrNull(payload?.hostName),
+        hostIp: toNonEmptyStringOrNull(payload?.hostIp),
+        runId,
+        processKey: toNonEmptyStringOrNull(payload?.processKey),
+        packageKey: toNonEmptyStringOrNull(payload?.packageKey),
+        logPath: toNonEmptyStringOrNull(payload?.logPath),
+        sampledAt: toIsoTimestamp(payload?.sampledAt || event?.timestamp),
+        stream: String(payload?.stream || 'stdout').trim().toLowerCase() || 'stdout',
+        lines,
+      },
+    });
+  };
+
   const handleMasterEvent = (event) => {
     const eventType = String(event?.type || '').trim().toLowerCase();
     if (eventType === MASTER_EVENT_TYPE_RUNTIME_SNAPSHOT) {
@@ -1282,6 +1318,10 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
       eventType === MASTER_EVENT_TYPE_SLAVE_PROCESS_RECONCILIATION
     ) {
       handleMasterSlaveRuntimeEvent(eventType, event);
+      return;
+    }
+    if (eventType === MASTER_EVENT_TYPE_SLAVE_PROCESS_LOG_CHUNK) {
+      handleMasterProcessLogChunkEvent(event);
     }
   };
 

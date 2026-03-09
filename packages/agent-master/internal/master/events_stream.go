@@ -22,6 +22,7 @@ const (
 	eventTypeSlaveCommandQueued   = "slave.command_queued"
 	eventTypeSlaveCommandDispatch = "slave.command_dispatched"
 	eventTypeSlaveCommandResult   = "slave.command_result"
+	eventTypeSlaveProcessLogChunk = "slave.process_log_chunk"
 )
 
 type eventSubscriber struct {

@@ -722,6 +722,7 @@ export default function HomePageContainer() {
   });
   const {
     ensureDesiredProcess,
+    deleteDesiredProcess,
     softKillProcess,
     hardKillProcess,
   } = useRuntimeRegistryActions({
@@ -1064,60 +1065,6 @@ export default function HomePageContainer() {
     ? `Master link: ${masterConnectionStatus}`
     : 'Master link: n/a';
 
-  const hostsSidebarState = useHostsSidebarController({
-    dispatch,
-    graphqlEndpoint,
-    setError,
-    setLeftPanelMode,
-    setHostsSidebarCollapsed,
-    setSelectedHostId,
-    setShowAddHostRow,
-    setManualHostIp,
-    setHostsLoading,
-    setHosts,
-    setTerminalSessionByHostId,
-    hostsSidebarCollapsed,
-    hostsSidebarWidthPx,
-    hostsLoading,
-    addingHost,
-    deletingHostId,
-    hosts,
-    showAddHostRow,
-    manualHostIp,
-    selectedHostId,
-    isMasterSidebarSelected,
-    masterConnectionHealthClass,
-    masterConnectionStatus,
-    masterAgentInfo,
-    showAddDirectoryRowByHostId,
-    directoryInputByHostId,
-    directoryMutationBusyByHostId,
-    showCheckoutRowByHostId,
-    checkoutRepoInputByHostId,
-    checkoutBaseDirectoryByHostId,
-    checkoutDestinationByHostId,
-    checkoutAutoDestinationByHostId,
-    checkoutMutationBusyByHostId,
-    terminalInputByHostId,
-    terminalStartingByHostId,
-    terminalSendingByHostId,
-    terminalSessionByHostId,
-    slaveTargetVersion,
-    upgradingHostId,
-    runtimeRegistryByHostId,
-    runtimeRegistryLoadingByHostId,
-    runtimeActionBusyByHostId,
-    onViewManagedProcessLogs,
-    onSoftKillObservedProcess,
-    onHardKillObservedProcess,
-    toHostHealthClassName,
-    normalizeHostDirectories,
-    isHostVersionOutOfDate,
-    deriveDestinationFolderFromRepositoryUrl,
-    formatVersionWithProtocol,
-    formatRuntimeDateTime,
-  });
-
   const projectsPaneState = useProjectsPaneController({
     dispatch,
     graphqlEndpoint,
@@ -1329,6 +1276,21 @@ export default function HomePageContainer() {
     });
   }, [hardKillProcess]);
 
+  const onDeleteDesiredProcess = useCallback((host, desiredProcess) => {
+    if (!host || !desiredProcess) {
+      return Promise.resolve(null);
+    }
+    return deleteDesiredProcess({
+      desiredProcessId: desiredProcess.id,
+      hostId: host.id,
+      agentUuid: host.agentUuid,
+      projectId: desiredProcess.projectId,
+      projectPath: desiredProcess.projectPath,
+      packageKey: desiredProcess.packageKey,
+      processKey: desiredProcess.processKey,
+    });
+  }, [deleteDesiredProcess]);
+
   const runtimePanelState = useMemo(() => ({
     runtimeConfig,
     runtimeBackendInfo,
@@ -1345,6 +1307,7 @@ export default function HomePageContainer() {
     runtimeActionBusy: selectedHostRuntimeActionBusy,
     onRefreshSelectedHostRuntime,
     onEnsureDesiredProcess: ensureDesiredProcess,
+    onDeleteDesiredProcess,
     onSoftKillObservedProcess,
     onHardKillObservedProcess,
     onViewManagedProcessLogs,
@@ -1353,6 +1316,7 @@ export default function HomePageContainer() {
   }), [
     ensureDesiredProcess,
     isGoMasterBackend,
+    onDeleteDesiredProcess,
     onHardKillObservedProcess,
     onRefreshSelectedHostRuntime,
     onSoftKillObservedProcess,
@@ -1370,6 +1334,60 @@ export default function HomePageContainer() {
     runtimeBackendInfoLoading,
     runtimeConfig,
   ]);
+
+  const hostsSidebarState = useHostsSidebarController({
+    dispatch,
+    graphqlEndpoint,
+    setError,
+    setLeftPanelMode,
+    setHostsSidebarCollapsed,
+    setSelectedHostId,
+    setShowAddHostRow,
+    setManualHostIp,
+    setHostsLoading,
+    setHosts,
+    setTerminalSessionByHostId,
+    hostsSidebarCollapsed,
+    hostsSidebarWidthPx,
+    hostsLoading,
+    addingHost,
+    deletingHostId,
+    hosts,
+    showAddHostRow,
+    manualHostIp,
+    selectedHostId,
+    isMasterSidebarSelected,
+    masterConnectionHealthClass,
+    masterConnectionStatus,
+    masterAgentInfo,
+    showAddDirectoryRowByHostId,
+    directoryInputByHostId,
+    directoryMutationBusyByHostId,
+    showCheckoutRowByHostId,
+    checkoutRepoInputByHostId,
+    checkoutBaseDirectoryByHostId,
+    checkoutDestinationByHostId,
+    checkoutAutoDestinationByHostId,
+    checkoutMutationBusyByHostId,
+    terminalInputByHostId,
+    terminalStartingByHostId,
+    terminalSendingByHostId,
+    terminalSessionByHostId,
+    slaveTargetVersion,
+    upgradingHostId,
+    runtimeRegistryByHostId,
+    runtimeRegistryLoadingByHostId,
+    runtimeActionBusyByHostId,
+    onViewManagedProcessLogs,
+    onSoftKillObservedProcess,
+    onHardKillObservedProcess,
+    toHostHealthClassName,
+    normalizeHostDirectories,
+    isHostVersionOutOfDate,
+    deriveDestinationFolderFromRepositoryUrl,
+    formatVersionWithProtocol,
+    formatRuntimeDateTime,
+  });
 
   const terminalPanelState = useMemo(() => ({
     selectedHost,

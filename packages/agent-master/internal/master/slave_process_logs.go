@@ -44,6 +44,15 @@ func (s *Server) appendSlaveProcessLogChunk(slaveID string, chunk *slavev1.Proce
 		return
 	}
 
+	hostName := ""
+	hostIP := ""
+	s.slaveMu.Lock()
+	if slave := s.slaves[slaveID]; slave != nil {
+		hostName = strings.TrimSpace(slave.HostName)
+		hostIP = strings.TrimSpace(slave.IP)
+	}
+	s.slaveMu.Unlock()
+
 	serviceName := strings.TrimSpace(chunk.GetPackageKey())
 	if serviceName == "" {
 		serviceName = strings.TrimSpace(chunk.GetProcessKey())
@@ -58,6 +67,25 @@ func (s *Server) appendSlaveProcessLogChunk(slaveID string, chunk *slavev1.Proce
 		}
 		appendStructuredLogLine(filePath, serviceName, stream, line)
 	}
+
+	s.publishEvent(
+		eventTypeSlaveProcessLogChunk,
+		"",
+		serviceName,
+		runID,
+		map[string]any{
+			"slaveId":    strings.TrimSpace(slaveID),
+			"hostName":   hostName,
+			"hostIp":     hostIP,
+			"runId":      runID,
+			"processKey": strings.TrimSpace(chunk.GetProcessKey()),
+			"packageKey": strings.TrimSpace(chunk.GetPackageKey()),
+			"logPath":    strings.TrimSpace(chunk.GetLogPath()),
+			"sampledAt":  strings.TrimSpace(chunk.GetSampledAt()),
+			"stream":     stream,
+			"lines":      append([]string{}, chunk.GetLines()...),
+		},
+	)
 }
 
 func (s *Server) appendSlaveProcessLogChunks(slaveID string, chunks []*slavev1.ProcessLogChunk) {

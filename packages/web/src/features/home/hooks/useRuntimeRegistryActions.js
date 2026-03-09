@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { graphqlRequest } from '../../../lib/graphqlClient';
 import {
+  MUTATION_DELETE_DESIRED_PROCESS,
   MUTATION_ENSURE_DESIRED_PROCESS,
   MUTATION_HARD_KILL_PROCESS,
   MUTATION_SOFT_KILL_PROCESS,
@@ -40,6 +41,7 @@ export default function useRuntimeRegistryActions({
     return withBusyHostAction(hostId, async () => {
       setError('');
       const variables = {
+        desiredProcessId: Number.isInteger(Number(input?.desiredProcessId)) ? Number(input.desiredProcessId) : null,
         hostId,
         agentUuid: String(input?.agentUuid || '').trim() || null,
         projectId: Number.isInteger(Number(input?.projectId)) ? Number(input.projectId) : null,
@@ -99,6 +101,39 @@ export default function useRuntimeRegistryActions({
     });
   }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
 
+  const deleteDesiredProcess = useCallback(async (input = {}) => {
+    const hostId = Number(input?.hostId);
+    if (!Number.isInteger(hostId) || hostId <= 0) {
+      setError('A valid host is required to delete a managed process.');
+      return null;
+    }
+
+    return withBusyHostAction(hostId, async () => {
+      setError('');
+      await graphqlRequest({
+        query: MUTATION_DELETE_DESIRED_PROCESS,
+        variables: {
+          desiredProcessId: Number.isInteger(Number(input?.desiredProcessId)) ? Number(input.desiredProcessId) : null,
+          hostId,
+          agentUuid: String(input?.agentUuid || '').trim() || null,
+          projectId: Number.isInteger(Number(input?.projectId)) ? Number(input.projectId) : null,
+          projectPath: String(input?.projectPath || '').trim() || null,
+          packageKey: String(input?.packageKey || '').trim() || null,
+          processKey: String(input?.processKey || '').trim() || null,
+        },
+        endpoint: graphqlEndpoint,
+      });
+      await loadSlaveRuntimeBundle({
+        hostId,
+        agentUuid: String(input?.agentUuid || '').trim() || null,
+      });
+      return true;
+    }).catch((error) => {
+      setError(error.message || 'Unable to delete managed process');
+      return null;
+    });
+  }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
+
   const queueKillProcess = useCallback(async ({
     hard = false,
     hostId,
@@ -151,6 +186,7 @@ export default function useRuntimeRegistryActions({
 
   return {
     ensureDesiredProcess,
+    deleteDesiredProcess,
     softKillProcess: softKillProcessAction,
     hardKillProcess: hardKillProcessAction,
   };

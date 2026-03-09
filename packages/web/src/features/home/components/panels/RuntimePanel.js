@@ -48,6 +48,26 @@ const buildDefaultDraft = (selectedHost, selectedProject) => {
   };
 };
 
+const buildDraftFromDesiredProcess = (desiredProcess) => ({
+  desiredProcessId: Number.isInteger(Number(desiredProcess?.id)) ? Number(desiredProcess.id) : null,
+  projectId: Number.isInteger(Number(desiredProcess?.projectId)) ? Number(desiredProcess.projectId) : null,
+  projectPath: String(desiredProcess?.projectPath || '').trim(),
+  packageKey: String(desiredProcess?.packageKey || '').trim(),
+  processKey: String(desiredProcess?.processKey || '').trim(),
+  cwd: String(desiredProcess?.cwd || '').trim(),
+  command: String(desiredProcess?.command || '').trim(),
+  launchMode: String(desiredProcess?.launchMode || 'exec').trim() || 'exec',
+  restartPolicy: String(desiredProcess?.restartPolicy || 'manual').trim() || 'manual',
+  argsText: Array.isArray(desiredProcess?.args) ? desiredProcess.args.join('\n') : '',
+  envText: Array.isArray(desiredProcess?.env)
+    ? desiredProcess.env
+      .map((entry) => `${String(entry?.key || '').trim()}=${entry?.value == null ? '' : String(entry.value)}`)
+      .filter(Boolean)
+      .join('\n')
+    : '',
+  logRoot: String(desiredProcess?.logRoot || '').trim(),
+});
+
 export default function RuntimePanel() {
   const {
     runtimeConfig,
@@ -65,6 +85,7 @@ export default function RuntimePanel() {
     runtimeActionBusy,
     onRefreshSelectedHostRuntime,
     onEnsureDesiredProcess,
+    onDeleteDesiredProcess,
     onSoftKillObservedProcess,
     onHardKillObservedProcess,
     onViewManagedProcessLogs,
@@ -73,10 +94,12 @@ export default function RuntimePanel() {
   } = useRuntimePanelContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [draft, setDraft] = useState(() => buildDefaultDraft(selectedHost, selectedProject));
+  const [editingDesiredProcessId, setEditingDesiredProcessId] = useState(null);
 
   useEffect(() => {
     setDraft(buildDefaultDraft(selectedHost, selectedProject));
     setShowCreateForm(false);
+    setEditingDesiredProcessId(null);
   }, [selectedHost, selectedProject]);
 
   const backendName = toDisplayValue(
@@ -133,6 +156,7 @@ export default function RuntimePanel() {
     await onEnsureDesiredProcess({
       hostId: selectedHost.id,
       agentUuid: selectedHost.agentUuid,
+      desiredProcessId: editingDesiredProcessId,
       projectId: draft.projectId,
       projectPath: draft.projectPath,
       packageKey,
@@ -148,6 +172,30 @@ export default function RuntimePanel() {
       updatedBy: 'runtime-panel',
     });
     setShowCreateForm(false);
+    setEditingDesiredProcessId(null);
+    setDraft(buildDefaultDraft(selectedHost, selectedProject));
+  };
+
+  const startEditingDesiredProcess = (desiredProcess) => {
+    setDraft(buildDraftFromDesiredProcess(desiredProcess));
+    setEditingDesiredProcessId(Number.isInteger(Number(desiredProcess?.id)) ? Number(desiredProcess.id) : null);
+    setShowCreateForm(true);
+  };
+
+  const cancelDesiredProcessEdit = () => {
+    setShowCreateForm(false);
+    setEditingDesiredProcessId(null);
+    setDraft(buildDefaultDraft(selectedHost, selectedProject));
+  };
+
+  const deleteDesiredProcessDefinition = async (desiredProcess) => {
+    if (!selectedHost || !desiredProcess) {
+      return;
+    }
+    await onDeleteDesiredProcess?.(selectedHost, desiredProcess);
+    if (Number(editingDesiredProcessId) === Number(desiredProcess?.id)) {
+      cancelDesiredProcessEdit();
+    }
   };
 
   return (
@@ -300,10 +348,10 @@ export default function RuntimePanel() {
                 {`${formatRuntimeLoad(hostRuntimeState?.load1m)} / ${formatRuntimeLoad(hostRuntimeState?.load5m)} / ${formatRuntimeLoad(hostRuntimeState?.load15m)}`}
               </span>
             </div>
-            {selectedHostSlaveRuntimeState?.hostRuntimeState?.diskMount ? (
+            {slaveRuntimeState?.hostRuntimeState?.diskMount ? (
               <div className="hostFieldItem">
                 <span className="hostFieldLabel">Disk Mount</span>
-                <span className="hostFieldValue">{selectedHostSlaveRuntimeState.hostRuntimeState.diskMount}</span>
+                <span className="hostFieldValue">{slaveRuntimeState.hostRuntimeState.diskMount}</span>
               </div>
             ) : null}
           </div>
@@ -427,10 +475,10 @@ export default function RuntimePanel() {
                 <button
                   type="button"
                   className="hostsAddAction hostCheckoutCancel"
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={cancelDesiredProcessEdit}
                   disabled={runtimeActionBusy}
                 >
-                  Cancel
+                  {editingDesiredProcessId ? 'Cancel Edit' : 'Cancel'}
                 </button>
                 <button
                   type="button"
@@ -438,7 +486,9 @@ export default function RuntimePanel() {
                   onClick={submitDesiredProcess}
                   disabled={runtimeActionBusy}
                 >
-                  {runtimeActionBusy ? 'Saving...' : 'Ensure Desired Process'}
+                  {runtimeActionBusy
+                    ? 'Saving...'
+                    : (editingDesiredProcessId ? 'Update Managed Process' : 'Ensure Desired Process')}
                 </button>
               </div>
             </div>
@@ -465,6 +515,24 @@ export default function RuntimePanel() {
                       <span>{toDisplayValue(processDefinition.projectName || processDefinition.projectPath)}</span>
                       <span>{toDisplayValue(processDefinition.cwd)}</span>
                       <span>{toDisplayValue(processDefinition.restartPolicy)}</span>
+                    </div>
+                    <div className="runtimeProcessActions">
+                      <button
+                        type="button"
+                        className="hostTextActionButton"
+                        onClick={() => startEditingDesiredProcess(processDefinition)}
+                        disabled={runtimeActionBusy}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="hostTextActionButton danger"
+                        onClick={() => deleteDesiredProcessDefinition(processDefinition)}
+                        disabled={runtimeActionBusy}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -499,7 +567,7 @@ export default function RuntimePanel() {
                     <div className="runtimeProcessActions">
                       <button
                         type="button"
-                        className="hostsActionButton"
+                        className="hostTextActionButton"
                         onClick={() => onViewManagedProcessLogs?.(selectedHost, observedRun)}
                         disabled={runtimeActionBusy}
                       >
@@ -507,7 +575,7 @@ export default function RuntimePanel() {
                       </button>
                       <button
                         type="button"
-                        className="hostsActionButton"
+                        className="hostTextActionButton"
                         onClick={() => onSoftKillObservedProcess?.(selectedHost, observedRun)}
                         disabled={runtimeActionBusy}
                       >
@@ -515,7 +583,7 @@ export default function RuntimePanel() {
                       </button>
                       <button
                         type="button"
-                        className="hostsDeleteButton"
+                        className="hostTextActionButton danger"
                         onClick={() => onHardKillObservedProcess?.(selectedHost, observedRun)}
                         disabled={runtimeActionBusy}
                       >

@@ -256,6 +256,7 @@ export default function LogsPanel() {
             || selectedProcessLogTarget?.runId
             || '-',
           ).trim() || '-'}
+          {selectedProcessLogTarget?.logPath ? ` · ${selectedProcessLogTarget.logPath}` : ''}
         </div>
       ) : null}
       {isProjectLogContext && !selectedProject && displayedLogs.length === 0 ? (

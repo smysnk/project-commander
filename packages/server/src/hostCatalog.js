@@ -95,7 +95,7 @@ const normalizeRegisteredHost = (input) => {
     ip,
     port: normalizeHostPort(input?.port),
     source: HOST_SOURCE_RUNTIME,
-    slaveId: normalizeHostAgentUuid(input?.slaveId),
+    slaveId: normalizeHostAgentUuid(input?.slaveId || input?.agentUuid || input?.hostAgentUuid),
   };
 };
 
@@ -281,6 +281,43 @@ const getHostById = async (hostIdInput, { transaction } = {}) => {
     throw new Error('hostId must be a positive integer');
   }
   return Host.findByPk(hostId, { transaction });
+};
+
+const findHostByRuntimeIdentity = async (input, { transaction } = {}) => {
+  const agentUuid = normalizeHostAgentUuid(input?.slaveId || input?.agentUuid || input?.hostAgentUuid);
+  if (agentUuid) {
+    const byAgentUuid = await Host.findOne({
+      where: { agentUuid },
+      transaction,
+    });
+    if (byAgentUuid) {
+      return byAgentUuid;
+    }
+  }
+
+  const ip = normalizeHostIp(input?.ip);
+  if (ip) {
+    const byIp = await Host.findOne({
+      where: { ip },
+      transaction,
+    });
+    if (byIp) {
+      return byIp;
+    }
+  }
+
+  const name = normalizeHostName(input?.name || input?.hostName);
+  if (name) {
+    const byName = await Host.findOne({
+      where: { name },
+      transaction,
+    });
+    if (byName) {
+      return byName;
+    }
+  }
+
+  return null;
 };
 
 const deleteHostById = async (hostIdInput) => {
@@ -498,6 +535,7 @@ module.exports = {
   addManualHost,
   deleteHostById,
   getHostById,
+  findHostByRuntimeIdentity,
   normalizeHostDirectoryPath,
   getHostDirectoriesFromMetadata,
   addHostDirectory,

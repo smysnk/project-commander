@@ -191,6 +191,40 @@ test('ensureDesiredProcess mutation forwards env entries and maps the created pr
   assert.equal(result.env[0].key, 'PORT');
 });
 
+test('ensureDesiredProcess mutation forwards desiredProcessId for edits', async () => {
+  const { resolvers, calls } = createResolverHarness({
+    ensureDesiredProcessResult: {
+      id: 22,
+      hostId: 4,
+      projectId: 8,
+      processKey: 'worker',
+      packageKey: 'worker',
+      projectPath: '/tmp/managed-app',
+      desiredState: 'running',
+      launchMode: 'exec',
+      cwd: '/tmp/managed-app',
+      command: 'yarn',
+      argsJson: ['dev'],
+      restartPolicy: 'manual',
+      updatedAt: new Date('2026-03-09T10:15:00.000Z'),
+    },
+  });
+
+  await resolvers.Mutation.ensureDesiredProcess(null, {
+    desiredProcessId: 22,
+    hostId: 4,
+    projectId: 8,
+    processKey: 'worker',
+    packageKey: 'worker',
+    launchMode: 'exec',
+    cwd: '/tmp/managed-app',
+    command: 'yarn',
+  });
+
+  assert.equal(calls[0].method, 'ensureDesiredProcess');
+  assert.equal(calls[0].input.desiredProcessId, 22);
+});
+
 test('softKillProcess and hardKillProcess mutations queue kill commands with the correct hard flag', async () => {
   const { resolvers, calls } = createResolverHarness();
 

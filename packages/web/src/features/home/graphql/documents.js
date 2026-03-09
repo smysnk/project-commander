@@ -639,6 +639,7 @@ export const MUTATION_SEND_HOST_TERMINAL_INPUT = `
 
 export const MUTATION_ENSURE_DESIRED_PROCESS = `
   mutation EnsureDesiredProcess(
+    $desiredProcessId: Int
     $hostId: Int
     $agentUuid: String
     $projectId: Int
@@ -659,6 +660,7 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
     $updatedBy: String
   ) {
     ensureDesiredProcess(
+      desiredProcessId: $desiredProcessId
       hostId: $hostId
       agentUuid: $agentUuid
       projectId: $projectId
@@ -692,6 +694,28 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
       restartPolicy
       updatedAt
     }
+  }
+`;
+
+export const MUTATION_DELETE_DESIRED_PROCESS = `
+  mutation DeleteDesiredProcessDefinition(
+    $desiredProcessId: Int
+    $hostId: Int
+    $agentUuid: String
+    $projectId: Int
+    $projectPath: String
+    $packageKey: String
+    $processKey: String
+  ) {
+    deleteDesiredProcessDefinition(
+      desiredProcessId: $desiredProcessId
+      hostId: $hostId
+      agentUuid: $agentUuid
+      projectId: $projectId
+      projectPath: $projectPath
+      packageKey: $packageKey
+      processKey: $processKey
+    )
   }
 `;
 

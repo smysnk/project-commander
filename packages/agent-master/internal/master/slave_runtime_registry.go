@@ -805,7 +805,7 @@ func (s *Server) ReportProcessReconciliation(ctx context.Context, req *slavev1.R
 		reconciliationPayload(slaveID, req.GetBootId(), changes, observedRuns, now),
 	)
 
-	s.logger.Info(
+	s.logger.Debug(
 		"slave process reconciliation received",
 		"request_id",
 		requestID,

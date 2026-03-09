@@ -12,6 +12,8 @@ start:
 	@yarn start:server & yarn start:web & wait
 
 build-all:
+	@printf "$(COLOR_CYAN)[build:all] syncing workspace version from git commit count$(COLOR_RESET)\n"
+	@yarn version:sync
 	@printf "$(COLOR_CYAN)[build:all] generating Go protobuf stubs$(COLOR_RESET)\n"
 	@yarn proto:generate:go
 	@printf "$(COLOR_BLUE)[build:all] building web/server$(COLOR_RESET)\n"

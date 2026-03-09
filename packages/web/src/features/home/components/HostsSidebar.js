@@ -467,54 +467,100 @@ export default function HostsSidebar() {
                           </span>
                         </div>
                       </div>
-                      {isSelectedHost && observedRuns.length > 0 ? (
-                        <div className="hostRuntimeProcessList">
-                          {observedRuns.map((observedRun) => (
-                            <div
-                              className="hostRuntimeProcessRow"
-                              key={`${hostId}-${observedRun.runId}`}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <div className="hostRuntimeProcessIdentity">
-                                <TagChip className="logServiceTag">
-                                  {getObservedProcessLabel(observedRun)}
-                                </TagChip>
-                                <span className="hostRuntimeProcessMeta">
-                                  pid {Number(observedRun?.pid || 0) > 0 ? Number(observedRun.pid) : '-'}
-                                  {' · '}
-                                  {String(observedRun?.status || '-').trim() || '-'}
-                                  {' · '}
-                                  {formatRuntimeBytes(observedRun?.runtimeState?.rssBytes)}
-                                </span>
-                              </div>
-                              <div className="hostRuntimeProcessActions">
-                                <button
-                                  type="button"
-                                  className="hostsActionButton"
-                                  onClick={() => onViewManagedProcessLogs?.(host, observedRun)}
-                                  disabled={runtimeBusy}
+                      {isSelectedHost ? (
+                        <div className="hostRuntimeProcessSection">
+                          <div className="runtimeInlineMeta">Desired Processes</div>
+                          {desiredProcesses.length > 0 ? (
+                            <div className="hostRuntimeProcessList">
+                              {desiredProcesses.map((desiredProcess) => (
+                                <div
+                                  className="hostRuntimeProcessRow"
+                                  key={`${hostId}-desired-${desiredProcess.id}`}
+                                  onClick={(event) => event.stopPropagation()}
                                 >
-                                  Logs
-                                </button>
-                                <button
-                                  type="button"
-                                  className="hostsActionButton"
-                                  onClick={() => onSoftKillObservedProcess?.(host, observedRun)}
-                                  disabled={runtimeBusy}
-                                >
-                                  Soft
-                                </button>
-                                <button
-                                  type="button"
-                                  className="hostsDeleteButton"
-                                  onClick={() => onHardKillObservedProcess?.(host, observedRun)}
-                                  disabled={runtimeBusy}
-                                >
-                                  Hard
-                                </button>
-                              </div>
+                                  <div className="hostRuntimeProcessIdentity">
+                                    <TagChip className="logServiceTag">
+                                      {String(
+                                        desiredProcess?.packageKey
+                                        || desiredProcess?.processKey
+                                        || '-',
+                                      ).trim() || '-'}
+                                    </TagChip>
+                                    <span className="hostRuntimeProcessMeta">
+                                      {String(desiredProcess?.command || '').trim() || '-'}
+                                      {Array.isArray(desiredProcess?.args) && desiredProcess.args.length > 0
+                                        ? ` ${desiredProcess.args.join(' ')}`
+                                        : ''}
+                                    </span>
+                                  </div>
+                                  <div className="hostRuntimeProcessMeta">
+                                    {String(desiredProcess?.cwd || '').trim() || '-'}
+                                    {' · '}
+                                    {String(desiredProcess?.restartPolicy || '').trim() || '-'}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          ) : (
+                            <p className="emptyState hostRuntimeEmptyState">No desired processes.</p>
+                          )}
+                        </div>
+                      ) : null}
+                      {isSelectedHost ? (
+                        <div className="hostRuntimeProcessSection">
+                          <div className="runtimeInlineMeta">Observed Runs</div>
+                          {observedRuns.length > 0 ? (
+                            <div className="hostRuntimeProcessList">
+                              {observedRuns.map((observedRun) => (
+                                <div
+                                  className="hostRuntimeProcessRow"
+                                  key={`${hostId}-${observedRun.runId}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <div className="hostRuntimeProcessIdentity">
+                                    <TagChip className="logServiceTag">
+                                      {getObservedProcessLabel(observedRun)}
+                                    </TagChip>
+                                    <span className="hostRuntimeProcessMeta">
+                                      pid {Number(observedRun?.pid || 0) > 0 ? Number(observedRun.pid) : '-'}
+                                      {' · '}
+                                      {String(observedRun?.status || '-').trim() || '-'}
+                                      {' · '}
+                                      {formatRuntimeBytes(observedRun?.runtimeState?.rssBytes)}
+                                    </span>
+                                  </div>
+                                  <div className="hostRuntimeProcessActions">
+                                    <button
+                                      type="button"
+                                      className="hostTextActionButton"
+                                      onClick={() => onViewManagedProcessLogs?.(host, observedRun)}
+                                      disabled={runtimeBusy}
+                                    >
+                                      Logs
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="hostTextActionButton"
+                                      onClick={() => onSoftKillObservedProcess?.(host, observedRun)}
+                                      disabled={runtimeBusy}
+                                    >
+                                      Soft
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="hostTextActionButton danger"
+                                      onClick={() => onHardKillObservedProcess?.(host, observedRun)}
+                                      disabled={runtimeBusy}
+                                    >
+                                      Hard
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="emptyState hostRuntimeEmptyState">No observed runs.</p>
+                          )}
                         </div>
                       ) : null}
                       {showDirectoryRow ? (

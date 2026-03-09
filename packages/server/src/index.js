@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const crypto = require('crypto');
-const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const { ApolloServer } = require('@apollo/server');
@@ -15,6 +14,7 @@ const {
   addManualHost,
   deleteHostById,
   getHostById,
+  findHostByRuntimeIdentity,
   normalizeHostDirectoryPath,
   getHostDirectoriesFromMetadata,
   addHostDirectory: addHostDirectoryInCatalog,
@@ -30,6 +30,12 @@ const {
 const { createTerminalSessionManager } = require('./terminalSessionManager');
 const { createProcessRegistry } = require('./runtime/processRegistry');
 const {
+  isHostVersionOutOfDate,
+  createHostAgentAutoUpgradeController,
+  resolveAutoUpgradeEnabled,
+  resolveAutoUpgradeCooldownMs,
+} = require('./hostAgentLifecycle');
+const {
   parseMaxDepth,
   buildFolderPattern,
   isDirectory,
@@ -37,6 +43,7 @@ const {
 const { createRuntimeBackend, normalizeBackendName } = require('./runtime/backend');
 const { typeDefs, createResolvers } = require('./graphql');
 const { version: serverPackageVersion } = require('../package.json');
+const { version: slavePackageVersion } = require('../../agent-slave/package.json');
 
 require('./env');
 
@@ -54,8 +61,6 @@ const discoveryConfig = {
 };
 const EVENT_PROTOCOL_VERSION = 'v1';
 const SERVER_VERSION = String(serverPackageVersion || '').trim() || '0.0.0-dev';
-const REPO_ROOT = path.resolve(__dirname, '../../..');
-const SLAVE_MAIN_GO_PATH = path.resolve(REPO_ROOT, 'packages/agent-slave/cmd/pc-slave/main.go');
 const EVENT_BUFFER_LIMIT = 4000;
 const WS_PING_INTERVAL_MS = 15000;
 const WS_MAX_BUFFERED_AMOUNT = 1024 * 1024;
@@ -63,7 +68,7 @@ const DEPLOY_SUDO_PASSWORD_REQUEST_TIMEOUT_SECONDS = Math.max(
   15,
   Number.parseInt(String(process.env.PC_DEPLOY_SUDO_PASSWORD_TIMEOUT_SECONDS || '120').trim(), 10) || 120,
 );
-const LOG_EVENT_TOPICS = new Set(['log.overlay', 'project.log.append']);
+const LOG_EVENT_TOPICS = new Set(['log.overlay', 'project.log.append', 'process.log.append']);
 const LOG_QUERY_MAX_LIMIT = 1200;
 const RUNTIME_LOG_SOURCES = new Set(['nextjs-client', 'node-backend', 'master-agent', 'agent-master']);
 const MASTER_LOG_SOURCES = new Set(['master-agent', 'agent-master']);
@@ -95,71 +100,11 @@ const resolveSlaveTargetVersion = () => {
   if (fromEnv) {
     return fromEnv;
   }
-
-  try {
-    const source = fs.readFileSync(SLAVE_MAIN_GO_PATH, 'utf8');
-    const match = source.match(/buildVersion\s*=\s*"([^"]+)"/);
-    const parsed = String(match?.[1] || '').trim();
-    return parsed || null;
-  } catch {
-    return null;
-  }
+  const fromPackage = String(slavePackageVersion || '').trim();
+  return fromPackage || null;
 };
 
 const SLAVE_TARGET_VERSION = resolveSlaveTargetVersion();
-
-const parseVersionSegments = (value) => {
-  const normalized = String(value || '').trim().replace(/^v/i, '');
-  const core = normalized.match(/^\d+(?:\.\d+)*/)?.[0] || '';
-  if (!core) {
-    return null;
-  }
-  const segments = core
-    .split('.')
-    .map((segment) => Number.parseInt(segment, 10));
-  if (segments.some((segment) => !Number.isInteger(segment) || segment < 0)) {
-    return null;
-  }
-  return segments;
-};
-
-const compareVersionSegments = (left, right) => {
-  const leftSegments = parseVersionSegments(left);
-  const rightSegments = parseVersionSegments(right);
-  if (!leftSegments || !rightSegments) {
-    return null;
-  }
-
-  const maxLength = Math.max(leftSegments.length, rightSegments.length);
-  for (let index = 0; index < maxLength; index += 1) {
-    const leftValue = leftSegments[index] ?? 0;
-    const rightValue = rightSegments[index] ?? 0;
-    if (leftValue > rightValue) {
-      return 1;
-    }
-    if (leftValue < rightValue) {
-      return -1;
-    }
-  }
-  return 0;
-};
-
-const isHostVersionOutOfDate = (hostVersion, targetVersion) => {
-  const normalizedTarget = String(targetVersion || '').trim();
-  if (!normalizedTarget) {
-    return false;
-  }
-  const normalizedHostVersion = String(hostVersion || '').trim();
-  if (!normalizedHostVersion) {
-    return true;
-  }
-
-  const numericComparison = compareVersionSegments(normalizedHostVersion, normalizedTarget);
-  if (numericComparison == null) {
-    return normalizedHostVersion !== normalizedTarget;
-  }
-  return numericComparison < 0;
-};
 
 const validateAndNormalizeConfig = async (input) => {
   const nextConfig = {
@@ -465,8 +410,18 @@ const startServer = async () => {
         timestamp: payload.entry.timestamp,
       });
     }
-    if (payload.type === 'host' && payload.host && typeof payload.host === 'object') {
+    if (payload.type === 'managed-process-log-chunk' && payload.chunk && typeof payload.chunk === 'object') {
+      const chunk = payload.chunk;
       return publishEvent({
+        topic: 'process.log.append',
+        source: String(chunk.packageKey || chunk.processKey || payload.source || 'managed-process').trim() || 'managed-process',
+        entityId: chunk.runId ? `process:${chunk.runId}` : null,
+        payload: chunk,
+        timestamp: chunk.sampledAt || null,
+      });
+    }
+    if (payload.type === 'host' && payload.host && typeof payload.host === 'object') {
+      const event = publishEvent({
         topic: 'host.updated',
         source: payload.source || 'master-agent',
         entityId: payload.host.id != null
@@ -475,6 +430,16 @@ const startServer = async () => {
         payload: payload.host,
         timestamp: payload.host.lastSeenAt || null,
       });
+      Promise.resolve(hostAgentAutoUpgradeController.considerRuntimeHost(payload.host, { trigger: 'runtime-event' }))
+        .catch((error) => {
+          emitBackendLog({
+            message: `Automatic host agent upgrade evaluation failed: ${error.message || error}`,
+            stream: 'stderr',
+            hostName: payload.host?.name || null,
+            hostIp: payload.host?.ip || null,
+          });
+        });
+      return event;
     }
     if (payload.type === 'slave-runtime-state' && payload.runtimeState && typeof payload.runtimeState === 'object') {
       Promise.resolve(processRegistry.applySlaveRuntimeState(payload.runtimeState))
@@ -558,6 +523,109 @@ const startServer = async () => {
       },
     });
   };
+  const hostDeploymentJobs = new Map();
+  const runHostAgentDeployment = async ({
+    host,
+    currentVersion = 'unknown',
+    targetVersion = SLAVE_TARGET_VERSION,
+    deploymentAction = 'deployment',
+    logRequestedMessage = null,
+    duplicateMessage = null,
+  } = {}) => {
+    const plainHost = host && typeof host.toJSON === 'function' ? host.toJSON() : host;
+    const hostId = Number(plainHost?.id);
+    if (!Number.isInteger(hostId) || hostId <= 0) {
+      throw new Error('A persisted host with a valid id is required for deployment.');
+    }
+
+    const existingJob = hostDeploymentJobs.get(hostId);
+    if (existingJob) {
+      if (duplicateMessage) {
+        emitBackendLog({
+          hostId,
+          hostName: plainHost?.name,
+          hostIp: plainHost?.ip,
+          message: duplicateMessage,
+        });
+      }
+      return existingJob;
+    }
+
+    const hostIp = String(plainHost?.ip || '').trim();
+    const hostAgentUuid = String(plainHost?.agentUuid || '').trim().toLowerCase();
+    if (!hostIp) {
+      throw new Error(`Host ${plainHost?.name || hostId} is missing an IP address.`);
+    }
+    if (!hostAgentUuid) {
+      throw new Error(`Host ${plainHost?.name || hostId} does not have an assigned slave UUID.`);
+    }
+
+    const normalizedAction = String(deploymentAction || '').trim().toLowerCase() || 'deployment';
+    const requestLabel = normalizedAction === 'upgrade'
+      ? 'upgrade'
+      : normalizedAction === 'redeploy'
+        ? 're-deploy'
+        : 'deployment';
+    const normalizedCurrentVersion = String(currentVersion || '').trim() || 'unknown';
+    const normalizedTargetVersion = String(targetVersion || '').trim() || 'unknown';
+
+    if (logRequestedMessage) {
+      emitBackendLog({
+        hostId,
+        hostName: plainHost?.name,
+        hostIp,
+        message: logRequestedMessage,
+      });
+    }
+
+    const job = deploySlaveToHost({
+      hostId,
+      hostName: plainHost?.name,
+      hostIp,
+      hostMetadata: plainHost?.metadata,
+      hostAgentUuid,
+      deploymentAction: normalizedAction,
+      emitEvent: emitRuntimeEvent,
+      requestSudoPassword: requestDeploySudoPassword,
+    }).catch((error) => {
+      emitRuntimeEvent({
+        type: 'overlay-log',
+        entry: {
+          timestamp: new Date().toISOString(),
+          serviceName: 'node-backend',
+          source: 'node-backend',
+          stream: 'system',
+          message: `${requestLabel[0].toUpperCase()}${requestLabel.slice(1)} attempt failed for ${hostIp}: ${error.message || error}`,
+          hostId,
+          hostName: plainHost?.name ? String(plainHost.name) : null,
+          hostIp,
+          currentVersion: normalizedCurrentVersion,
+          targetVersion: normalizedTargetVersion,
+        },
+      });
+      throw error;
+    }).finally(() => {
+      hostDeploymentJobs.delete(hostId);
+    });
+
+    hostDeploymentJobs.set(hostId, job);
+    return job;
+  };
+  const hostAgentAutoUpgradeController = createHostAgentAutoUpgradeController({
+    targetVersion: SLAVE_TARGET_VERSION,
+    enabled: resolveAutoUpgradeEnabled(process.env),
+    cooldownMs: resolveAutoUpgradeCooldownMs(process.env),
+    findHostRecord: async (runtimeHost) => findHostByRuntimeIdentity(runtimeHost),
+    deployHostAgent: ({ host, currentVersion, targetVersion, deploymentAction }) => (
+      runHostAgentDeployment({
+        host,
+        currentVersion,
+        targetVersion,
+        deploymentAction,
+      })
+    ),
+    emitLog: emitBackendLog,
+  });
   const terminalSessionManager = createTerminalSessionManager({ emitEvent: emitRuntimeEvent });
 
   const getHostForTerminal = async ({ hostId }) => {
@@ -1083,6 +1151,10 @@ const startServer = async () => {
       try {
         const runtimeHosts = await runtimeBackend.listRegisteredHosts();
         await syncRegisteredHosts(Array.isArray(runtimeHosts) ? runtimeHosts : []);
+        await Promise.allSettled(
+          (Array.isArray(runtimeHosts) ? runtimeHosts : [])
+            .map((runtimeHost) => hostAgentAutoUpgradeController.considerRuntimeHost(runtimeHost, { trigger: 'discovery-sync' })),
+        );
       } catch (hostSyncError) {
         console.warn('Unable to sync hosts during project discovery:', hostSyncError);
       }
@@ -1135,6 +1207,10 @@ const startServer = async () => {
         registeredHosts = await runtimeBackend.listRegisteredHosts();
       }
       await syncRegisteredHosts(registeredHosts);
+      await Promise.allSettled(
+        (Array.isArray(registeredHosts) ? registeredHosts : [])
+          .map((runtimeHost) => hostAgentAutoUpgradeController.considerRuntimeHost(runtimeHost, { trigger: 'list-hosts' })),
+      );
     } catch (error) {
       console.warn('Failed to sync registered hosts from runtime backend:', error);
       emitBackendLog({
@@ -1282,28 +1358,9 @@ const startServer = async () => {
       hostName: host?.name,
       hostIp: host?.ip || ip,
     });
-    deploySlaveToHost({
-      hostId: host?.id,
-      hostName: host?.name,
-      hostIp: host?.ip,
-      hostMetadata: host?.metadata,
-      hostAgentUuid: host?.agentUuid,
-      emitEvent: emitRuntimeEvent,
-      requestSudoPassword: requestDeploySudoPassword,
-    }).catch((error) => {
-      emitRuntimeEvent({
-        type: 'overlay-log',
-        entry: {
-          timestamp: new Date().toISOString(),
-          serviceName: 'node-backend',
-          source: 'node-backend',
-          stream: 'system',
-          message: `Deployment attempt failed for ${host?.ip || ip}: ${error.message || error}`,
-          hostId: Number.isInteger(Number(host?.id)) ? Number(host.id) : null,
-          hostName: host?.name ? String(host.name) : null,
-          hostIp: host?.ip ? String(host.ip) : String(ip || ''),
-        },
-      });
+    void runHostAgentDeployment({
+      host,
+      deploymentAction: 'deployment',
     });
     return host;
   };
@@ -1447,8 +1504,7 @@ const startServer = async () => {
       throw new Error(`Host not found: ${parsedHostId}`);
     }
 
-    const hostAgentUuid = String(host?.agentUuid || '').trim().toLowerCase();
-    if (!hostAgentUuid) {
+    if (!String(host?.agentUuid || '').trim().toLowerCase()) {
       throw new Error(`Host ${host?.name || parsedHostId} does not have an assigned slave UUID.`);
     }
     if (typeof runtimeBackend.checkoutHostProject !== 'function') {
@@ -1518,37 +1574,12 @@ const startServer = async () => {
     const outOfDate = isHostVersionOutOfDate(currentVersion, targetVersion);
     const deploymentAction = outOfDate ? 'upgrade' : 'redeploy';
     const requestLabel = outOfDate ? 'upgrade' : 're-deploy';
-
-    emitBackendLog({
-      hostId: parsedHostId,
-      hostName: host?.name,
-      hostIp,
-      message: `Slave ${requestLabel} requested for ${host?.name || hostIp} (${currentVersion} -> ${targetVersion}).`,
-    });
-
-    deploySlaveToHost({
-      hostId: parsedHostId,
-      hostName: host?.name,
-      hostIp,
-      hostMetadata: host?.metadata,
-      hostAgentUuid,
+    void runHostAgentDeployment({
+      host,
+      currentVersion,
+      targetVersion,
       deploymentAction,
-      emitEvent: emitRuntimeEvent,
-      requestSudoPassword: requestDeploySudoPassword,
-    }).catch((error) => {
-      emitRuntimeEvent({
-        type: 'overlay-log',
-        entry: {
-          timestamp: new Date().toISOString(),
-          serviceName: 'node-backend',
-          source: 'node-backend',
-          stream: 'system',
-          message: `${requestLabel[0].toUpperCase()}${requestLabel.slice(1)} attempt failed for ${hostIp}: ${error.message || error}`,
-          hostId: parsedHostId,
-          hostName: host?.name ? String(host.name) : null,
-          hostIp,
-        },
-      });
+      logRequestedMessage: `Slave ${requestLabel} requested for ${host?.name || hostIp} (${currentVersion} -> ${targetVersion}).`,
     });
 
     return currentHostState || host;

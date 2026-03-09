@@ -39,9 +39,11 @@ const (
 	commandReportRetryDelay  = 1 * time.Second
 	commandReportMaxAttempts = 3
 	commandSeenTTL           = 30 * time.Minute
-	buildVersion             = "0.1.0"
 	slaveProtocolVersion     = "v1"
+	levelTrace               = slog.LevelDebug - 4
 )
+
+var buildVersion = "0.1.0"
 
 type config struct {
 	SlaveID           string
@@ -70,6 +72,7 @@ func main() {
 	launchCommandFlag := flag.String("launch-command", "", "workload launch command (default: yarn dev)")
 	watchIntervalFlag := flag.Duration("watch-interval", 0, "file watch interval (e.g. 1s)")
 	logFormatFlag := flag.String("log-format", "text", "log format: text or json")
+	consoleLogLevelFlag := flag.String("console-log-level", "", "console log level: trace, debug, info, warn, or error")
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -94,7 +97,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := newLogger(cfg.LogFormat)
+	consoleLogLevel, rawConsoleLogLevel, consoleLogLevelValid := resolveConsoleLogLevel(*consoleLogLevelFlag)
+	logger := newLogger(cfg.LogFormat, consoleLogLevel)
+	if !consoleLogLevelValid {
+		logger.Warn(
+			"invalid console log level; falling back to info",
+			"value",
+			rawConsoleLogLevel,
+			"allowed_values",
+			"trace,debug,info,warn,error",
+			"env_key",
+			"PC_SLAVE_CONSOLE_LOG_LEVEL",
+		)
+	}
 	if runErr := run(cfg, logger); runErr != nil {
 		logger.Error("pc-slave exited with error", "error", runErr.Error())
 		os.Exit(1)
@@ -292,14 +307,78 @@ func parseUnixSocketPath(endpoint string) (string, bool) {
 	return "", false
 }
 
-func newLogger(format string) *slog.Logger {
+func newLogger(format string, level slog.Level) *slog.Logger {
+	options := &slog.HandlerOptions{
+		Level:       level,
+		ReplaceAttr: replaceLogLevelAttr,
+	}
 	var handler slog.Handler
 	if strings.EqualFold(strings.TrimSpace(format), "json") {
-		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+		handler = slog.NewJSONHandler(os.Stdout, options)
 	} else {
-		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+		handler = slog.NewTextHandler(os.Stdout, options)
 	}
 	return slog.New(handler)
+}
+
+func resolveConsoleLogLevel(flagValue string) (slog.Level, string, bool) {
+	if trimmed := strings.TrimSpace(flagValue); trimmed != "" {
+		level, ok := parseLogLevel(trimmed)
+		return level, trimmed, ok
+	}
+	if fromEnv := strings.TrimSpace(os.Getenv("PC_SLAVE_CONSOLE_LOG_LEVEL")); fromEnv != "" {
+		level, ok := parseLogLevel(fromEnv)
+		return level, fromEnv, ok
+	}
+	return slog.LevelInfo, "info", true
+}
+
+func parseLogLevel(value string) (slog.Level, bool) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "trace":
+		return levelTrace, true
+	case "debug":
+		return slog.LevelDebug, true
+	case "info":
+		return slog.LevelInfo, true
+	case "warn", "warning":
+		return slog.LevelWarn, true
+	case "error":
+		return slog.LevelError, true
+	default:
+		return slog.LevelInfo, false
+	}
+}
+
+func replaceLogLevelAttr(_ []string, attr slog.Attr) slog.Attr {
+	if attr.Key != slog.LevelKey {
+		return attr
+	}
+
+	switch attr.Value.Kind() {
+	case slog.KindAny:
+		if parsed, ok := attr.Value.Any().(slog.Level); ok {
+			attr.Value = slog.StringValue(formatLogLevelLabel(parsed))
+		}
+	case slog.KindInt64:
+		attr.Value = slog.StringValue(formatLogLevelLabel(slog.Level(attr.Value.Int64())))
+	}
+	return attr
+}
+
+func formatLogLevelLabel(level slog.Level) string {
+	switch {
+	case level <= levelTrace:
+		return "TRACE"
+	case level < slog.LevelInfo:
+		return "DEBUG"
+	case level < slog.LevelWarn:
+		return "INFO"
+	case level < slog.LevelError:
+		return "WARN"
+	default:
+		return "ERROR"
+	}
 }
 
 func ensureProjectPathExists(projectPath string) (bool, error) {
@@ -832,7 +911,9 @@ func run(cfg config, logger *slog.Logger) error {
 			return nil, err
 		}
 
-		logger.Info(
+		logger.Log(
+			parent,
+			levelTrace,
 			"heartbeat",
 			"status",
 			"ok",

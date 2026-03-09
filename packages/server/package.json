@@ -1,12 +1,13 @@
 {
   "name": "server",
+  "version": "0.1.4",
   "private": true,
   "main": "src/index.js",
   "scripts": {
     "dev": "NODE_ENV=development nodemon --watch src src/index.js",
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
-    "build": "echo 'No server build step required'",
+    "build": "node ../../scripts/version/sync-package-versions.mjs --quiet >/dev/null && echo 'No server build step required'",
     "agent:master:smoke": "node src/agent/smoke.js"
   },
   "dependencies": {
