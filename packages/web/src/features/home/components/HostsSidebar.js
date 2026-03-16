@@ -4,6 +4,7 @@ import { useHostsSidebarContext } from '../context/HostsSidebarContext';
 import {
   formatRuntimeByteRatio,
   formatRuntimeBytes,
+  formatRuntimeLoad,
   formatRuntimePercent,
   getObservedProcessLabel,
 } from '../lib/runtimeRegistryUi';
@@ -429,6 +430,41 @@ export default function HostsSidebar() {
                         ) : null}
                         {isSelectedHost ? (
                           <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Runtime Load</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading
+                                ? 'Loading...'
+                                : `${formatRuntimeLoad(hostRuntimeState?.load1m)} / ${formatRuntimeLoad(hostRuntimeState?.load5m)} / ${formatRuntimeLoad(hostRuntimeState?.load15m)}`}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Runtime Disk</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading
+                                ? 'Loading...'
+                                : formatRuntimeByteRatio(
+                                  hostRuntimeState?.diskUsedBytes,
+                                  hostRuntimeState?.diskTotalBytes,
+                                )}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Runtime Sampled</span>
+                            <span className="hostFieldValue">
+                              {runtimeLoading
+                                ? 'Loading...'
+                                : (hostRuntimeState?.sampledAt
+                                  ? formatRuntimeDateTime(hostRuntimeState.sampledAt)
+                                  : '-')}
+                            </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost ? (
+                          <div className="hostFieldItem">
                             <span className="hostFieldLabel">Desired Processes</span>
                             <span className="hostFieldValue">
                               {runtimeLoading ? 'Loading...' : desiredProcesses.length}
@@ -441,6 +477,12 @@ export default function HostsSidebar() {
                             <span className="hostFieldValue">
                               {runtimeLoading ? 'Loading...' : observedRuns.length}
                             </span>
+                          </div>
+                        ) : null}
+                        {isSelectedHost && hostRuntimeState?.diskMount ? (
+                          <div className="hostFieldItem">
+                            <span className="hostFieldLabel">Disk Mount</span>
+                            <span className="hostFieldValue">{hostRuntimeState.diskMount}</span>
                           </div>
                         ) : null}
                         <div className="hostFieldItem">
@@ -525,8 +567,25 @@ export default function HostsSidebar() {
                                       pid {Number(observedRun?.pid || 0) > 0 ? Number(observedRun.pid) : '-'}
                                       {' · '}
                                       {String(observedRun?.status || '-').trim() || '-'}
+                                    </span>
+                                  </div>
+                                  <div className="hostRuntimeProcessMetrics">
+                                    <span>CPU {formatRuntimePercent(observedRun?.runtimeState?.cpuPercent)}</span>
+                                    <span>Mem {formatRuntimeBytes(observedRun?.runtimeState?.rssBytes)}</span>
+                                    <span>
+                                      IO {formatRuntimeBytes(observedRun?.runtimeState?.readBytes)}
+                                      {' / '}
+                                      {formatRuntimeBytes(observedRun?.runtimeState?.writeBytes)}
+                                    </span>
+                                    <span>
+                                      FDs {String(observedRun?.runtimeState?.openFds ?? '-')}
                                       {' · '}
-                                      {formatRuntimeBytes(observedRun?.runtimeState?.rssBytes)}
+                                      Threads {String(observedRun?.runtimeState?.threadCount ?? '-')}
+                                    </span>
+                                    <span>
+                                      Sampled {observedRun?.runtimeState?.sampledAt
+                                        ? formatRuntimeDateTime(observedRun.runtimeState.sampledAt)
+                                        : '-'}
                                     </span>
                                   </div>
                                   <div className="hostRuntimeProcessActions">

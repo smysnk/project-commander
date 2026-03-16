@@ -30,6 +30,8 @@ const (
 	defaultProjectPathSuffix = "play"
 	defaultDiscoveryInterval = 10 * time.Second
 	minDiscoveryInterval     = 2 * time.Second
+	defaultRuntimeArtifactRetention = 7 * 24 * time.Hour
+	defaultMaxRetainedBootLogs      = 10
 	// Project discovery is intentionally limited to configured root + one child level.
 	defaultDiscoveryMaxDepth = 1
 	rpcTimeout               = 5 * time.Second
@@ -60,6 +62,8 @@ type config struct {
 	AgentStartedAt    string
 	StateRoot         string
 	ProcessLogRoot    string
+	RuntimeArtifactRetention time.Duration
+	MaxRetainedBootLogs      int
 }
 
 func main() {
@@ -247,6 +251,22 @@ func resolveConfig(
 	if err != nil {
 		return config{}, err
 	}
+	runtimeArtifactRetention := defaultRuntimeArtifactRetention
+	if fromEnv := strings.TrimSpace(os.Getenv("PC_SLAVE_RUNTIME_ARTIFACT_RETENTION")); fromEnv != "" {
+		parsed, parseErr := time.ParseDuration(fromEnv)
+		if parseErr != nil {
+			return config{}, fmt.Errorf("parse PC_SLAVE_RUNTIME_ARTIFACT_RETENTION: %w", parseErr)
+		}
+		runtimeArtifactRetention = parsed
+	}
+	maxRetainedBootLogs := defaultMaxRetainedBootLogs
+	if fromEnv := strings.TrimSpace(os.Getenv("PC_SLAVE_MAX_RETAINED_BOOT_LOGS")); fromEnv != "" {
+		parsed, parseErr := strconv.Atoi(fromEnv)
+		if parseErr != nil {
+			return config{}, fmt.Errorf("parse PC_SLAVE_MAX_RETAINED_BOOT_LOGS: %w", parseErr)
+		}
+		maxRetainedBootLogs = parsed
+	}
 	bootID, err := resolveBootID()
 	if err != nil {
 		return config{}, err
@@ -267,6 +287,8 @@ func resolveConfig(
 		AgentStartedAt:    time.Now().UTC().Format(time.RFC3339Nano),
 		StateRoot:         stateRoot,
 		ProcessLogRoot:    processLogRoot,
+		RuntimeArtifactRetention: runtimeArtifactRetention,
+		MaxRetainedBootLogs:      maxRetainedBootLogs,
 	}, nil
 }
 

@@ -94,6 +94,8 @@ type processManager struct {
 	defaultProjectPath   string
 	defaultLaunchCommand string
 	watchInterval        time.Duration
+	artifactRetention    time.Duration
+	maxRetainedBootLogs  int
 
 	mu              sync.Mutex
 	processes       map[string]*managedProcess
@@ -119,7 +121,7 @@ func newProcessManager(logger *slog.Logger, cfg config) (*processManager, error)
 			return nil, fmt.Errorf("create runtime directory %s: %w", pathValue, err)
 		}
 	}
-	return &processManager{
+	manager := &processManager{
 		logger:               logger,
 		slaveID:              strings.TrimSpace(cfg.SlaveID),
 		bootID:               strings.TrimSpace(cfg.BootID),
@@ -129,9 +131,15 @@ func newProcessManager(logger *slog.Logger, cfg config) (*processManager, error)
 		defaultProjectPath:   strings.TrimSpace(cfg.ProjectPath),
 		defaultLaunchCommand: strings.TrimSpace(cfg.LaunchCommand),
 		watchInterval:        cfg.WatchInterval,
+		artifactRetention:    cfg.RuntimeArtifactRetention,
+		maxRetainedBootLogs:  cfg.MaxRetainedBootLogs,
 		processes:            map[string]*managedProcess{},
 		pendingChanges:       make([]*slavev1.ProcessReconciliationChange, 0, 8),
-	}, nil
+	}
+	if err := manager.cleanupRuntimeArtifacts(); err != nil {
+		manager.logger.Warn("failed to clean runtime artifacts", "error", err.Error())
+	}
+	return manager, nil
 }
 
 func cloneProcessEnvEntries(input []*slavev1.ProcessEnvEntry) []*slavev1.ProcessEnvEntry {
@@ -694,6 +702,118 @@ func (manager *processManager) hasManagedProcessForStateFileLocked(stateFilePath
 		}
 	}
 	return false
+}
+
+func (manager *processManager) cleanupRuntimeArtifacts() error {
+	var cleanupErrors []string
+	if err := manager.cleanupPersistedStateArtifacts(); err != nil {
+		cleanupErrors = append(cleanupErrors, err.Error())
+	}
+	if err := manager.cleanupBootLogDirectories(); err != nil {
+		cleanupErrors = append(cleanupErrors, err.Error())
+	}
+	if len(cleanupErrors) == 0 {
+		return nil
+	}
+	return fmt.Errorf("runtime artifact cleanup failed: %s", strings.Join(cleanupErrors, "; "))
+}
+
+func (manager *processManager) cleanupPersistedStateArtifacts() error {
+	entries, err := os.ReadDir(manager.processStateRoot)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".json") {
+			continue
+		}
+		stateFilePath := filepath.Join(manager.processStateRoot, entry.Name())
+		persisted, readErr := manager.readPersistedState(stateFilePath)
+		if readErr != nil {
+			manager.logger.Debug("removing unreadable persisted process state", "path", stateFilePath, "error", readErr.Error())
+			if removeErr := os.Remove(stateFilePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				return removeErr
+			}
+			continue
+		}
+		if persisted == nil {
+			continue
+		}
+		if persisted.BootID != "" && manager.bootID != "" && persisted.BootID != manager.bootID {
+			manager.logger.Debug("removing persisted process state from previous boot", "path", stateFilePath, "process_key", persisted.ProcessKey)
+			if removeErr := os.Remove(stateFilePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				return removeErr
+			}
+			continue
+		}
+		if !processExists(persisted.Pid) {
+			manager.logger.Debug("removing stale persisted process state for exited process", "path", stateFilePath, "process_key", persisted.ProcessKey, "pid", persisted.Pid)
+			if removeErr := os.Remove(stateFilePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				return removeErr
+			}
+		}
+	}
+	return nil
+}
+
+func (manager *processManager) cleanupBootLogDirectories() error {
+	entries, err := os.ReadDir(manager.processLogRoot)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+
+	type bootLogDirectory struct {
+		path    string
+		name    string
+		modTime time.Time
+	}
+
+	currentBootDirectory := sanitizeStateToken(manager.bootID)
+	candidates := make([]bootLogDirectory, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := strings.TrimSpace(entry.Name())
+		if name == "" || name == currentBootDirectory {
+			continue
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		candidates = append(candidates, bootLogDirectory{
+			path:    filepath.Join(manager.processLogRoot, name),
+			name:    name,
+			modTime: info.ModTime(),
+		})
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].modTime.After(candidates[j].modTime)
+	})
+
+	retainedCount := 0
+	now := time.Now().UTC()
+	for _, candidate := range candidates {
+		expiredByAge := manager.artifactRetention > 0 && now.Sub(candidate.modTime) > manager.artifactRetention
+		expiredByCount := manager.maxRetainedBootLogs > 0 && retainedCount >= manager.maxRetainedBootLogs
+		if !expiredByAge && !expiredByCount {
+			retainedCount += 1
+			continue
+		}
+		manager.logger.Debug("removing retained process log directory", "path", candidate.path, "expired_by_age", expiredByAge, "expired_by_count", expiredByCount)
+		if removeErr := os.RemoveAll(candidate.path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			return removeErr
+		}
+	}
+	return nil
 }
 
 func (manager *processManager) observedRunFromPersistedState(state *persistedProcessState) *slavev1.ObservedProcessRun {

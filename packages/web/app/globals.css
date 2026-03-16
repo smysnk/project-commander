@@ -721,12 +721,17 @@ col.servicesCol {
     var(--log-col-icon-width, 1rem) +
     (4 * var(--log-col-gap))
   );
+  display: block;
+}
+
+.infiniteLogStreamContent {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
 }
 
-.infiniteLogStream > * {
+.infiniteLogStreamContent > * {
   flex: 0 0 auto;
 }
 
@@ -942,10 +947,12 @@ col.servicesCol {
 }
 
 .logPanel {
+  flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 .logFilters {
@@ -1790,11 +1797,20 @@ col.servicesCol {
   font-size: 0.74rem;
 }
 
-.runtimeProcessMetrics > span {
+.runtimeProcessMetrics > span,
+.hostRuntimeProcessMetrics > span {
   min-width: 0;
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.hostRuntimeProcessMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.74rem;
 }
 
 .runtimeProcessActions,

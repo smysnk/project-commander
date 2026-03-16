@@ -348,6 +348,18 @@ export default function RuntimePanel() {
                 {`${formatRuntimeLoad(hostRuntimeState?.load1m)} / ${formatRuntimeLoad(hostRuntimeState?.load5m)} / ${formatRuntimeLoad(hostRuntimeState?.load15m)}`}
               </span>
             </div>
+            <div className="hostFieldItem">
+              <span className="hostFieldLabel">Runtime Sampled</span>
+              <span className="hostFieldValue">{toDisplayValue(formatRuntimeDateTime(hostRuntimeState?.sampledAt))}</span>
+            </div>
+            <div className="hostFieldItem">
+              <span className="hostFieldLabel">Memory Available</span>
+              <span className="hostFieldValue">{formatRuntimeBytes(hostRuntimeState?.memoryAvailableBytes)}</span>
+            </div>
+            <div className="hostFieldItem">
+              <span className="hostFieldLabel">Disk Available</span>
+              <span className="hostFieldValue">{formatRuntimeBytes(hostRuntimeState?.diskAvailableBytes)}</span>
+            </div>
             {slaveRuntimeState?.hostRuntimeState?.diskMount ? (
               <div className="hostFieldItem">
                 <span className="hostFieldLabel">Disk Mount</span>
@@ -562,6 +574,17 @@ export default function RuntimePanel() {
                     <div className="runtimeProcessMetrics">
                       <span>CPU {formatRuntimePercent(observedRun.runtimeState?.cpuPercent)}</span>
                       <span>Mem {formatRuntimeBytes(observedRun.runtimeState?.rssBytes)}</span>
+                      <span>
+                        IO {formatRuntimeBytes(observedRun.runtimeState?.readBytes)}
+                        {' / '}
+                        {formatRuntimeBytes(observedRun.runtimeState?.writeBytes)}
+                      </span>
+                      <span>
+                        FDs {toDisplayValue(observedRun.runtimeState?.openFds)}
+                        {' · '}
+                        Threads {toDisplayValue(observedRun.runtimeState?.threadCount)}
+                      </span>
+                      <span>Sampled {toDisplayValue(formatRuntimeDateTime(observedRun.runtimeState?.sampledAt))}</span>
                       <span>{toDisplayValue(observedRun.logPath)}</span>
                     </div>
                     <div className="runtimeProcessActions">

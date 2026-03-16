@@ -1,0 +1,134 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Capture build start time
+        run: echo "TEST_STATION_BUILD_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install JavaScript dependencies
+        run: yarn install --immutable
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: |
+            packages/agent-master/go.sum
+            packages/agent-slave/go.sum
+            packages/agent-shared/go.sum
+
+      - name: Install Playwright browser
+        run: yarn --cwd packages/web exec playwright install --with-deps chromium
+
+      - name: Run canonical test suite
+        id: workspace_tests
+        shell: bash
+        run: |
+          log_path="${RUNNER_TEMP}/workspace-tests.log"
+          set +e
+          yarn test 2>&1 | tee "$log_path"
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          echo "log_path=$log_path" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Derive report publishing status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.workspace_tests.outputs.exit_code }}" = "0" ]; then
+            echo "TEST_STATION_CI_STATUS=passed" >> "$GITHUB_ENV"
+          else
+            echo "TEST_STATION_CI_STATUS=failed" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload test-station artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-tests
+          path: |
+            artifacts/workspace-tests
+            packages/web/test-results
+          if-no-files-found: ignore
+
+      - name: Configure AWS credentials for report archive sync
+        if: ${{ always() && vars.S3_BUCKET != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.S3_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.S3_AWS_REGION != '' && vars.S3_AWS_REGION || 'us-east-1' }}
+
+      - name: Sync workspace report to S3
+        if: ${{ always() && vars.S3_BUCKET != '' && hashFiles('artifacts/workspace-tests/report.json') != '' }}
+        shell: bash
+        env:
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_STORAGE_PREFIX: ${{ vars.S3_STORAGE_PREFIX }}
+        run: |
+          storage_prefix="${S3_STORAGE_PREFIX:-ci/${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}}"
+          echo "S3_STORAGE_PREFIX=$storage_prefix" >> "$GITHUB_ENV"
+          aws s3 sync ./artifacts/workspace-tests "s3://${S3_BUCKET}/${storage_prefix}" --no-progress
+
+      - name: Publish workspace report to test-station ingest
+        if: always()
+        shell: bash
+        env:
+          TEST_STATION_INGEST_ENDPOINT: https://test-station.smysnk.com/api/ingest
+          TEST_STATION_INGEST_PROJECT_KEY: project-commander
+          TEST_STATION_INGEST_SHARED_KEY: ${{ secrets.TEST_STATION_INGEST_SHARED_KEY }}
+          S3_PUBLIC_URL: ${{ vars.S3_PUBLIC_URL }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+        run: |
+          if [ ! -f ./artifacts/workspace-tests/report.json ]; then
+            echo "Skipping ingest publish because artifacts/workspace-tests/report.json was not generated."
+            exit 0
+          fi
+          if [ -z "$TEST_STATION_INGEST_SHARED_KEY" ]; then
+            echo "Skipping ingest publish because TEST_STATION_INGEST_SHARED_KEY is not set."
+            exit 0
+          fi
+          export TEST_STATION_BUILD_COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          export S3_STORAGE_PREFIX="${S3_STORAGE_PREFIX:-ci/${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}}"
+          node ./references/test-station/scripts/publish-ingest-report.mjs --input ./artifacts/workspace-tests/report.json
+
+      - name: Assert canonical suite pass
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.workspace_tests.outputs.exit_code }}" = "0" ]; then
+            exit 0
+          fi
+          echo "Canonical test suite failed. Captured log:"
+          if [ -f "${{ steps.workspace_tests.outputs.log_path }}" ]; then
+            cat "${{ steps.workspace_tests.outputs.log_path }}"
+          else
+            echo "No captured log found at ${{ steps.workspace_tests.outputs.log_path }}"
+          fi
+          exit 1

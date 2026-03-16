@@ -180,52 +180,54 @@ const InfiniteLogStream = forwardRef(({
       onScroll={handleScroll}
       data-testid={dataTestId}
     >
-      <div style={{ height: `${topSpacerHeight}px` }} aria-hidden />
-      <div className="infiniteLogWindow" style={{ height: `${windowHeight}px` }}>
-        <div className="infiniteLogColumns">
-          <div
-            className="infiniteLogTagColumn"
-            data-testid="infinite-log-tag-column"
-            style={{ height: `${windowHeight}px` }}
-          >
-            {renderedRows.map((row) => {
-              const lineEntry = row.lineEntry;
-              if (!lineEntry) {
-                return null;
-              }
-              const tagRowStyle = computeTagRowStyle({
-                localIndex: row.localIndex,
-                lineHeight: normalizedLineHeight,
-              });
-              return (
-                <div
-                  key={`${lineEntry.streamId}-${lineEntry.streamLineIndex}-${row.globalIndex}`}
-                  className={`infiniteLogTagRow logLine ${String(lineEntry?.line?.stream || 'stdout').trim().toLowerCase()}`}
-                  style={{
-                    top: `${tagRowStyle.top}px`,
-                    height: `${tagRowStyle.height}px`,
-                    lineHeight: `${tagRowStyle.lineHeight}px`,
-                  }}
-                >
-                  {typeof renderLineTags === 'function'
-                    ? renderLineTags(lineEntry.line, lineEntry)
-                    : null}
-                </div>
-              );
-            })}
+      <div className="infiniteLogStreamContent">
+        <div style={{ height: `${topSpacerHeight}px` }} aria-hidden />
+        <div className="infiniteLogWindow" style={{ height: `${windowHeight}px` }}>
+          <div className="infiniteLogColumns">
+            <div
+              className="infiniteLogTagColumn"
+              data-testid="infinite-log-tag-column"
+              style={{ height: `${windowHeight}px` }}
+            >
+              {renderedRows.map((row) => {
+                const lineEntry = row.lineEntry;
+                if (!lineEntry) {
+                  return null;
+                }
+                const tagRowStyle = computeTagRowStyle({
+                  localIndex: row.localIndex,
+                  lineHeight: normalizedLineHeight,
+                });
+                return (
+                  <div
+                    key={`${lineEntry.streamId}-${lineEntry.streamLineIndex}-${row.globalIndex}`}
+                    className={`infiniteLogTagRow logLine ${String(lineEntry?.line?.stream || 'stdout').trim().toLowerCase()}`}
+                    style={{
+                      top: `${tagRowStyle.top}px`,
+                      height: `${tagRowStyle.height}px`,
+                      lineHeight: `${tagRowStyle.lineHeight}px`,
+                    }}
+                  >
+                    {typeof renderLineTags === 'function'
+                      ? renderLineTags(lineEntry.line, lineEntry)
+                      : null}
+                  </div>
+                );
+              })}
+            </div>
+            <pre
+              className="infiniteLogTextBlock"
+              data-testid="infinite-log-text-block"
+              style={{
+                lineHeight: `${normalizedLineHeight}px`,
+              }}
+            >
+              {textBlockValue}
+            </pre>
           </div>
-          <pre
-            className="infiniteLogTextBlock"
-            data-testid="infinite-log-text-block"
-            style={{
-              lineHeight: `${normalizedLineHeight}px`,
-            }}
-          >
-            {textBlockValue}
-          </pre>
         </div>
+        <div style={{ height: `${bottomSpacerHeight}px` }} aria-hidden />
       </div>
-      <div style={{ height: `${bottomSpacerHeight}px` }} aria-hidden />
     </div>
   );
 });

@@ -130,6 +130,8 @@ yarn test
 yarn test:coverage
 ```
 
+These commands run the vendored `test-station` 0.2.x CLI through the repo-level [test-station.config.mjs](/Users/josh/play/project-commander/test-station.config.mjs). The wrapper at [run-vendored-test-station.mjs](/Users/josh/play/project-commander/scripts/test-station/run-vendored-test-station.mjs) executes `references/test-station` in its own workspace context and bootstraps that vendored checkout on first use if needed.
+
 Canonical test artifacts are written to:
 
 - `artifacts/workspace-tests/report.json`
@@ -137,6 +139,31 @@ Canonical test artifacts are written to:
 - `artifacts/workspace-tests/raw/`
 
 `report.json` is the machine-readable source of truth. `index.html` is the drillable human-facing report. `raw/` contains per-suite native artifacts such as normalized NDJSON and Playwright JSON payloads.
+
+### CI Report Publishing
+
+The GitHub Actions test workflow publishes the canonical workspace report to:
+
+- `https://test-station.smysnk.com/api/ingest`
+
+The workflow uses shared-key auth through the GitHub Actions secret:
+
+- `TEST_STATION_INGEST_SHARED_KEY`
+
+The hosted `test-station` deployment must be configured with the matching server-side `INGEST_SHARED_KEY`.
+
+Optional artifact storage wiring mirrors the upstream `test-station` deployment pattern:
+
+- variables:
+  - `S3_BUCKET`
+  - `S3_STORAGE_PREFIX`
+  - `S3_PUBLIC_URL`
+  - `S3_AWS_REGION`
+- secrets:
+  - `S3_AWS_ACCESS_KEY_ID`
+  - `S3_AWS_SECRET_ACCESS_KEY`
+
+When those are configured, the workflow syncs `artifacts/workspace-tests/` to S3 before publishing the ingest payload so the hosted report can link back to uploaded artifacts.
 
 ## Deployment
 

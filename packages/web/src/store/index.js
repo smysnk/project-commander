@@ -9,6 +9,11 @@ import logQueryProtocol from '../lib/logQueryProtocol';
 import { MAX_OVERLAY_LOG_ENTRIES, MAX_PROJECT_LOG_ENTRIES } from '../features/home/constants/ui';
 import { normalizeLogLevelName } from '../features/home/lib/logTransforms';
 import { normalizeRuntimeBackendInfo } from '../features/home/lib/runtimeTransforms';
+import {
+  buildRuntimeConnectionFingerprint,
+  normalizeOverlayLogEntry,
+  toIsoTimestamp,
+} from './realtimeStateHelpers.mjs';
 
 const SET_RUNTIME_CONFIG = 'SET_RUNTIME_CONFIG';
 const SET_HOME_DOMAIN_PATCH = 'SET_HOME_DOMAIN_PATCH';
@@ -29,6 +34,7 @@ const SET_UI_ERROR = 'SET_UI_ERROR';
 const SET_UI_RESIZING = 'SET_UI_RESIZING';
 const SET_UI_DEBUG_EXPANDED_PATHS = 'SET_UI_DEBUG_EXPANDED_PATHS';
 const APPEND_HOME_OVERLAY_LOG = 'APPEND_HOME_OVERLAY_LOG';
+const APPEND_HOME_OVERLAY_LOGS = 'APPEND_HOME_OVERLAY_LOGS';
 const APPEND_HOME_PROJECT_LOG = 'APPEND_HOME_PROJECT_LOG';
 const MERGE_HOME_RUNTIME_BACKEND_INFO = 'MERGE_HOME_RUNTIME_BACKEND_INFO';
 const APPLY_HOME_RUNTIME_PROJECT_UPDATE = 'APPLY_HOME_RUNTIME_PROJECT_UPDATE';
@@ -133,6 +139,11 @@ export const setUiDebugExpandedPaths = (debugExpandedPaths) => ({
 export const appendHomeOverlayLog = (entry) => ({
   type: APPEND_HOME_OVERLAY_LOG,
   entry,
+});
+
+export const appendHomeOverlayLogs = (entries) => ({
+  type: APPEND_HOME_OVERLAY_LOGS,
+  entries,
 });
 
 export const appendHomeProjectLog = ({ entry, selectedProjectPath } = {}) => ({
@@ -510,6 +521,26 @@ function reducer(state = initialState, action) {
         },
       };
     }
+    case APPEND_HOME_OVERLAY_LOGS: {
+      const entries = Array.isArray(action.entries)
+        ? action.entries.filter((entry) => entry && typeof entry === 'object')
+        : [];
+      if (entries.length <= 0) {
+        return state;
+      }
+      const current = Array.isArray(state.homeDomain?.overlayLogs) ? state.homeDomain.overlayLogs : [];
+      const next = [...current, ...entries];
+      const bounded = next.length > MAX_OVERLAY_LOG_ENTRIES
+        ? next.slice(next.length - MAX_OVERLAY_LOG_ENTRIES)
+        : next;
+      return {
+        ...state,
+        homeDomain: {
+          ...state.homeDomain,
+          overlayLogs: bounded,
+        },
+      };
+    }
     case APPEND_HOME_PROJECT_LOG: {
       const entry = action.entry && typeof action.entry === 'object' ? action.entry : null;
       if (!entry) {
@@ -867,48 +898,15 @@ const {
 const WEBSOCKET_DISCONNECTED_ERROR = 'Websocket disconnected; reconnecting...';
 const DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK = 120;
 const DEPLOY_SUDO_PASSWORD_PROMPT_TITLE = 'Project Commander requires sudo access to install or update a slave service.';
-
-const toIsoTimestamp = (value) => {
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Date.parse(value);
-    if (!Number.isNaN(parsed)) {
-      return new Date(parsed).toISOString();
-    }
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return new Date(value).toISOString();
-  }
-  return new Date().toISOString();
-};
-
-const normalizeOverlayLogStream = (value) => {
-  const normalized = String(value || 'system').trim().toLowerCase();
-  if (normalized === 'stdout' || normalized === 'stderr' || normalized === 'system') {
-    return normalized;
-  }
-  return 'system';
-};
+const OVERLAY_LOG_FLUSH_DELAY_MS = 100;
 
 const appendOverlayLogEntry = (storeApi, entry, { overlaySeedRef }) => {
-  const message = String(entry?.message || '').trimEnd();
-  if (!message) {
+  const nextEntry = normalizeOverlayLogEntry(entry, {
+    id: `overlay-${overlaySeedRef.current}`,
+  });
+  if (!nextEntry) {
     return;
   }
-  const nextEntry = {
-    id: `overlay-${overlaySeedRef.current}`,
-    projectPath: '@overlay',
-    timestamp: toIsoTimestamp(entry?.timestamp),
-    serviceName: String(entry?.serviceName || 'system').trim() || 'system',
-    level: normalizeLogLevelName(entry?.level),
-    source: String(entry?.source || entry?.serviceName || 'system').trim().toLowerCase() || 'system',
-    hostId: Number.isInteger(Number(entry?.hostId)) ? Number(entry?.hostId) : null,
-    hostName: String(entry?.hostName || '').trim() || null,
-    hostIp: String(entry?.hostIp || '').trim() || null,
-    agentUuid: String(entry?.agentUuid || entry?.slaveId || '').trim() || null,
-    slaveId: String(entry?.slaveId || entry?.agentUuid || '').trim() || null,
-    stream: normalizeOverlayLogStream(entry?.stream),
-    message,
-  };
   overlaySeedRef.current += 1;
   storeApi.dispatch(appendHomeOverlayLog(nextEntry));
 };
@@ -1004,6 +1002,8 @@ const realtimeMiddleware = (storeApi) => {
   const reconnectTimerRef = { current: null };
   const disconnectTimerRef = { current: null };
   const runtimeConnectionFlushTimerRef = { current: null };
+  const overlayLogFlushTimerRef = { current: null };
+  const pendingOverlayLogsRef = { current: [] };
   const pendingRuntimeConnectionRef = { current: null };
   const lastRuntimeConnectionFingerprintRef = { current: '' };
   const lastRuntimeConnectionStatusRef = { current: '' };
@@ -1037,30 +1037,44 @@ const realtimeMiddleware = (storeApi) => {
       runtimeConnectionFlushTimerRef.current = null;
     }
   };
-
-  const buildRuntimeConnectionFingerprint = (connection) => {
-    if (!connection || typeof connection !== 'object') {
-      return '';
+  const clearOverlayLogFlushTimer = () => {
+    if (overlayLogFlushTimerRef.current) {
+      clearTimeout(overlayLogFlushTimerRef.current);
+      overlayLogFlushTimerRef.current = null;
     }
-    return JSON.stringify({
-      socketPath: connection.socketPath ?? null,
-      target: connection.target ?? null,
-      service: connection.service ?? null,
-      status: connection.status ?? null,
-      connectionStatus: connection.connectionStatus ?? null,
-      connectionHealth: connection.connectionHealth ?? null,
-      lastConnectedAt: connection.lastConnectedAt ?? null,
-      lastAttemptAt: connection.lastAttemptAt ?? null,
-      reconnectAttempts: Number.isFinite(Number(connection.reconnectAttempts))
-        ? Number(connection.reconnectAttempts)
-        : null,
-      version: connection.version ?? null,
-      protocolVersion: connection.protocolVersion ?? null,
-      startedAt: connection.startedAt ?? null,
-      capabilities: Array.isArray(connection.capabilities) ? connection.capabilities : [],
-      grantedCapabilities: Array.isArray(connection.grantedCapabilities) ? connection.grantedCapabilities : [],
-      error: connection.error ?? null,
+  };
+  const flushOverlayLogs = () => {
+    overlayLogFlushTimerRef.current = null;
+    const pendingEntries = pendingOverlayLogsRef.current;
+    pendingOverlayLogsRef.current = [];
+    if (!Array.isArray(pendingEntries) || pendingEntries.length <= 0) {
+      return;
+    }
+    storeApi.dispatch(appendHomeOverlayLogs(pendingEntries));
+  };
+  const scheduleOverlayLogFlush = (immediate = false) => {
+    if (immediate) {
+      clearOverlayLogFlushTimer();
+      flushOverlayLogs();
+      return;
+    }
+    if (overlayLogFlushTimerRef.current) {
+      return;
+    }
+    overlayLogFlushTimerRef.current = setTimeout(() => {
+      flushOverlayLogs();
+    }, OVERLAY_LOG_FLUSH_DELAY_MS);
+  };
+  const enqueueOverlayLogEntry = (entry) => {
+    const normalizedEntry = normalizeOverlayLogEntry(entry, {
+      id: `overlay-${overlaySeedRef.current}`,
     });
+    if (!normalizedEntry) {
+      return;
+    }
+    overlaySeedRef.current += 1;
+    pendingOverlayLogsRef.current = [...pendingOverlayLogsRef.current, normalizedEntry];
+    scheduleOverlayLogFlush(pendingOverlayLogsRef.current.length >= 20);
   };
 
   const flushRuntimeConnection = () => {
@@ -1094,6 +1108,7 @@ const realtimeMiddleware = (storeApi) => {
   };
 
   const closeSocket = () => {
+    flushOverlayLogs();
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -1582,7 +1597,7 @@ const realtimeMiddleware = (storeApi) => {
     }
 
     if (topic === 'log.overlay') {
-      appendOverlayLogEntry(storeApi, payload.payload, { overlaySeedRef });
+      enqueueOverlayLogEntry(payload.payload);
       return;
     }
 
@@ -1665,6 +1680,8 @@ const realtimeMiddleware = (storeApi) => {
   return (next) => (action) => {
     if (action.type === HOME_REALTIME_CONNECT) {
       clearDisconnectTimer();
+      clearOverlayLogFlushTimer();
+      pendingOverlayLogsRef.current = [];
       clearRuntimeConnectionFlushTimer();
       pendingRuntimeConnectionRef.current = null;
       storeApi.dispatch(setHomeDomainField('logsQueryEntriesByContext', {}));
@@ -1686,6 +1703,8 @@ const realtimeMiddleware = (storeApi) => {
       pendingSudoChallengeIdsRef.current.clear();
       clearDisconnectTimer();
       clearReconnectTimer();
+      clearOverlayLogFlushTimer();
+      pendingOverlayLogsRef.current = [];
       clearRuntimeConnectionFlushTimer();
       pendingRuntimeConnectionRef.current = null;
       disconnectTimerRef.current = setTimeout(() => {

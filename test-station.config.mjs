@@ -1,10 +1,12 @@
 import path from 'node:path';
-import { defineConfig } from './references/test-reporter/config.mjs';
+import { defineConfig } from './references/test-station/config.mjs';
 
 const rootDir = import.meta.dirname;
 const webDir = path.join(rootDir, 'packages', 'web');
+const serverDir = path.join(rootDir, 'packages', 'server');
 const agentMasterDir = path.join(rootDir, 'packages', 'agent-master');
 const agentSlaveDir = path.join(rootDir, 'packages', 'agent-slave');
+const agentSharedDir = path.join(rootDir, 'packages', 'agent-shared');
 
 export default defineConfig({
   schemaVersion: '1',
@@ -69,10 +71,24 @@ export default defineConfig({
       },
     },
     {
+      id: 'server-node',
+      label: 'Server Node',
+      adapter: 'node-test',
+      package: 'server',
+      cwd: serverDir,
+      command: ['yarn', 'run', 'test'],
+      env: {
+        NODE_ENV: 'test',
+      },
+      coverage: {
+        enabled: false,
+      },
+    },
+    {
       id: 'agent-master-go',
       label: 'Agent Master Go',
       adapter: 'go-test',
-      handler: './scripts/test-reporter/go-test-adapter.mjs',
+      handler: './scripts/test-station/go-test-adapter.mjs',
       package: 'agent-master',
       cwd: agentMasterDir,
       command: ['go', 'test', '-json', './...'],
@@ -84,9 +100,21 @@ export default defineConfig({
       id: 'agent-slave-go',
       label: 'Agent Slave Go',
       adapter: 'go-test',
-      handler: './scripts/test-reporter/go-test-adapter.mjs',
+      handler: './scripts/test-station/go-test-adapter.mjs',
       package: 'agent-slave',
       cwd: agentSlaveDir,
+      command: ['go', 'test', '-json', './...'],
+      coverage: {
+        enabled: false,
+      },
+    },
+    {
+      id: 'agent-shared-go',
+      label: 'Agent Shared Go',
+      adapter: 'go-test',
+      handler: './scripts/test-station/go-test-adapter.mjs',
+      package: 'agent-shared',
+      cwd: agentSharedDir,
       command: ['go', 'test', '-json', './...'],
       coverage: {
         enabled: false,

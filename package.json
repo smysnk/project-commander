@@ -1,6 +1,6 @@
 {
   "name": "project-discovery",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
@@ -13,8 +13,8 @@
     "build": "yarn version:sync && yarn build:server && yarn build:web",
     "build:all": "make build-all",
     "start": "make start",
-    "test": "node ./references/test-reporter/bin/test-reporter.mjs run --config ./test-reporter.config.mjs",
-    "test:coverage": "node ./references/test-reporter/bin/test-reporter.mjs run --config ./test-reporter.config.mjs --coverage",
+    "test": "node ./scripts/test-station/run-vendored-test-station.mjs run --config ./test-station.config.mjs",
+    "test:coverage": "node ./scripts/test-station/run-vendored-test-station.mjs run --config ./test-station.config.mjs --coverage",
     "dev:web": "yarn workspace web dev",
     "build:web": "yarn workspace web build",
     "start:web": "yarn workspace web start",

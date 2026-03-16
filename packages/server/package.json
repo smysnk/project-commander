@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "main": "src/index.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
     "build": "node ../../scripts/version/sync-package-versions.mjs --quiet >/dev/null && echo 'No server build step required'",
+    "test": "yarn node --test src/graphql/index.test.js src/hostAgentLifecycle.test.js src/runtime/processRegistry.test.js",
     "agent:master:smoke": "node src/agent/smoke.js"
   },
   "dependencies": {
