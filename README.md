@@ -130,7 +130,7 @@ yarn test
 yarn test:coverage
 ```
 
-These commands run the vendored `test-station` 0.2.x CLI through the repo-level [test-station.config.mjs](/Users/josh/play/project-commander/test-station.config.mjs). The wrapper at [run-vendored-test-station.mjs](/Users/josh/play/project-commander/scripts/test-station/run-vendored-test-station.mjs) executes `references/test-station` in its own workspace context and bootstraps that vendored checkout on first use if needed.
+These commands run the published `@test-station/cli` 0.2.x runner through the repo-level [test-station.config.mjs](/Users/josh/play/project-commander/test-station.config.mjs). CI report publishing uses the local helper at [publish-ingest-report.mjs](/Users/josh/play/project-commander/scripts/test-station/publish-ingest-report.mjs), so GitHub Actions no longer depends on a machine-local `references/test-station` checkout.
 
 Canonical test artifacts are written to:
 

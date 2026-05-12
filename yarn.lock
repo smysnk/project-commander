@@ -766,6 +766,85 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@test-station/adapter-jest@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/adapter-jest@npm:0.2.76"
+  checksum: 10c0/5987b63c35b36c597b1e9f34b64107b125590e6d2c963a176c6d3776ff4ee4145f770749532d8f871f277d96c4c9195680fc0e3be99af6e70b430b93ee3638ad
+  languageName: node
+  linkType: hard
+
+"@test-station/adapter-node-test@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/adapter-node-test@npm:0.2.76"
+  checksum: 10c0/2d8ca6bd219adc5a059d95c21f5844d4d4b909f75c7db1756be038d91f08b2c743548cffc25b3665aa3cfdf5390e67a3c7137b54685464ed646f917128a6303c
+  languageName: node
+  linkType: hard
+
+"@test-station/adapter-playwright@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/adapter-playwright@npm:0.2.76"
+  dependencies:
+    istanbul-lib-coverage: "npm:^3.2.2"
+  checksum: 10c0/c1572b87c7fe61831a3254be9e462fbb8064e4c6eafd884a3833e890f02e30c239dc14514e12b82d3bd5f7d76902efba121b20413c528ad595d76f9ab313a5bd
+  languageName: node
+  linkType: hard
+
+"@test-station/adapter-shell@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/adapter-shell@npm:0.2.76"
+  checksum: 10c0/b2c5574e73247987e28cd5b7b39d5bc83f4377f227d91721db5014b63185b4f5ad6c0de52ae512086dfccbedda28a423bef1d952e7eab3815fd8a36e632e1aa8
+  languageName: node
+  linkType: hard
+
+"@test-station/adapter-vitest@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/adapter-vitest@npm:0.2.76"
+  checksum: 10c0/ae674b618a811781ea4e8e6cba5eba438c1f0e6e4f256271761a29051561bad8a2a590c3faf7feffb8fd56f08e32534f6e1e98a71c866c3af48f600eebb4917e
+  languageName: node
+  linkType: hard
+
+"@test-station/cli@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/cli@npm:0.2.76"
+  dependencies:
+    "@test-station/core": "npm:0.2.76"
+    "@test-station/render-html": "npm:0.2.76"
+  bin:
+    test-station: src/cli.js
+  checksum: 10c0/42b04c244cf720405a4fad1fbc54f5c450686e24b52b2d656f148f3d52b736e4d5498943fb5aa4c35ec60ed4901376c0e96130211c24d2ad349f11d1834ffc06
+  languageName: node
+  linkType: hard
+
+"@test-station/core@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/core@npm:0.2.76"
+  dependencies:
+    "@test-station/adapter-jest": "npm:0.2.76"
+    "@test-station/adapter-node-test": "npm:0.2.76"
+    "@test-station/adapter-playwright": "npm:0.2.76"
+    "@test-station/adapter-shell": "npm:0.2.76"
+    "@test-station/adapter-vitest": "npm:0.2.76"
+    "@test-station/plugin-source-analysis": "npm:0.2.76"
+  checksum: 10c0/339375b4feb8fdb683c04cac784aa31713cebb83b403f0ed03c03388bdb99d8cc1d221224277d67c148b6b3913ce5462fc5f8eb4931d2bc36ce97ca875354cd8
+  languageName: node
+  linkType: hard
+
+"@test-station/plugin-source-analysis@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/plugin-source-analysis@npm:0.2.76"
+  dependencies:
+    acorn: "npm:^8.15.0"
+  checksum: 10c0/e5efb33db9ce563d2e6917165aef16fa076938406eca1a9e738c7e7ef21bb35bcc9e4a40d475f55964e36da09002b5ab2f7a11d4dc6f3c3c38dae4c2b162d8c9
+  languageName: node
+  linkType: hard
+
+"@test-station/render-html@npm:0.2.76":
+  version: 0.2.76
+  resolution: "@test-station/render-html@npm:0.2.76"
+  checksum: 10c0/2fd2adc61f815dae0a4ba7bbcda2c5b1142bccb6b6f6c0c0a32ac74eab2627c5ea76fbe7cfa1a0ae1ef4531263da094656b15fb6183cbdf82a00ba51e75090e6
+  languageName: node
+  linkType: hard
+
 "@tootallnate/once@npm:1":
   version: 1.1.2
   resolution: "@tootallnate/once@npm:1.1.2"
@@ -958,6 +1037,15 @@ __metadata:
     mime-types: "npm:~2.1.34"
     negotiator: "npm:0.6.3"
   checksum: 10c0/3a35c5f5586cfb9a21163ca47a5f77ac34fa8ceb5d17d2fa2c0d81f41cbd7f8c6fa52c77e2c039acc0f4d09e71abdc51144246900f6bef5e3c4b333f77d89362
+  languageName: node
+  linkType: hard
+
+"acorn@npm:^8.15.0":
+  version: 8.16.0
+  resolution: "acorn@npm:8.16.0"
+  bin:
+    acorn: bin/acorn
+  checksum: 10c0/c9c52697227661b68d0debaf972222d4f622aa06b185824164e153438afa7b08273432ca43ea792cadb24dada1d46f6f6bb1ef8de9956979288cc1b96bf9914e
   languageName: node
   linkType: hard
 
@@ -2342,6 +2430,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"istanbul-lib-coverage@npm:^3.2.2":
+  version: 3.2.2
+  resolution: "istanbul-lib-coverage@npm:3.2.2"
+  checksum: 10c0/6c7ff2106769e5f592ded1fb418f9f73b4411fd5a084387a5410538332b6567cd1763ff6b6cadca9b9eb2c443cce2f7ea7d7f1b8d315f9ce58539793b1e0922b
+  languageName: node
+  linkType: hard
+
 "js-tokens@npm:^3.0.0 || ^4.0.0":
   version: 4.0.0
   resolution: "js-tokens@npm:4.0.0"
@@ -3264,6 +3359,9 @@ __metadata:
 "project-discovery@workspace:.":
   version: 0.0.0-use.local
   resolution: "project-discovery@workspace:."
+  dependencies:
+    "@test-station/cli": "npm:0.2.76"
+    "@test-station/core": "npm:0.2.76"
   languageName: unknown
   linkType: soft
 

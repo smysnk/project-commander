@@ -124,7 +124,7 @@ jobs:
           fi
           export TEST_STATION_BUILD_COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           export S3_STORAGE_PREFIX="${S3_STORAGE_PREFIX:-ci/${GITHUB_REPOSITORY}/${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}}"
-          node ./references/test-station/scripts/publish-ingest-report.mjs --input ./artifacts/workspace-tests/report.json
+          node ./scripts/test-station/publish-ingest-report.mjs --input ./artifacts/workspace-tests/report.json
 
       - name: Assert canonical suite pass
         if: always()

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { defineConfig } from './references/test-station/config.mjs';
+import { defineConfig } from '@test-station/core';
 
 const rootDir = import.meta.dirname;
 const webDir = path.join(rootDir, 'packages', 'web');
