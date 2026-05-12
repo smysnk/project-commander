@@ -117,33 +117,10 @@ async function dragDividerToX(page, dividerLocator, targetX) {
   }
   const startX = dividerBox.x + (dividerBox.width / 2);
   const startY = dividerBox.y + (dividerBox.height / 2);
-  await dividerLocator.dispatchEvent('mousedown', {
-    button: 0,
-    buttons: 1,
-    clientX: startX,
-    clientY: startY,
-  });
-  for (let step = 1; step <= 12; step += 1) {
-    const x = startX + ((targetX - startX) * step / 12);
-    await page.evaluate(({ clientX, clientY }) => {
-      window.dispatchEvent(new MouseEvent('mousemove', {
-        bubbles: true,
-        button: 0,
-        buttons: 1,
-        clientX,
-        clientY,
-      }));
-    }, { clientX: x, clientY: startY });
-  }
-  await page.evaluate(({ clientX, clientY }) => {
-    window.dispatchEvent(new MouseEvent('mouseup', {
-      bubbles: true,
-      button: 0,
-      buttons: 0,
-      clientX,
-      clientY,
-    }));
-  }, { clientX: targetX, clientY: startY });
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(targetX, startY, { steps: 18 });
+  await page.mouse.up();
 }
 
 test('sidebar and content drag handles stay aligned with horizontal cursor resizing', async ({ page, baseURL }) => {
