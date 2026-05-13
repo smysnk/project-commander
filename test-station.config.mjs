@@ -76,12 +76,21 @@ export default defineConfig({
       adapter: 'node-test',
       package: 'server',
       cwd: serverDir,
-      command: ['yarn', 'run', 'test'],
+      command: [
+        'node',
+        '--require',
+        '../../.pnp.cjs',
+        '--test',
+        'src/graphql/index.test.js',
+        'src/hostAgentLifecycle.test.js',
+        'src/runtime/processRegistry.test.js',
+      ],
       env: {
         NODE_ENV: 'test',
       },
       coverage: {
-        enabled: false,
+        enabled: true,
+        mode: 'same-run',
       },
     },
     {
@@ -93,7 +102,7 @@ export default defineConfig({
       cwd: agentMasterDir,
       command: ['go', 'test', '-json', './...'],
       coverage: {
-        enabled: false,
+        enabled: true,
       },
     },
     {
@@ -105,7 +114,7 @@ export default defineConfig({
       cwd: agentSlaveDir,
       command: ['go', 'test', '-json', './...'],
       coverage: {
-        enabled: false,
+        enabled: true,
       },
     },
     {
@@ -117,7 +126,7 @@ export default defineConfig({
       cwd: agentSharedDir,
       command: ['go', 'test', '-json', './...'],
       coverage: {
-        enabled: false,
+        enabled: true,
       },
     },
   ],

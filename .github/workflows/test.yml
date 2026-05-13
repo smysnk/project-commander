@@ -59,7 +59,7 @@ jobs:
         run: |
           log_path="${RUNNER_TEMP}/workspace-tests.log"
           set +e
-          yarn test 2>&1 | tee "$log_path"
+          yarn test:coverage 2>&1 | tee "$log_path"
           status=${PIPESTATUS[0]}
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           echo "log_path=$log_path" >> "$GITHUB_OUTPUT"
