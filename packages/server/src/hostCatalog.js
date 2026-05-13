@@ -9,6 +9,7 @@ const DEFAULT_HOST_DIRECTORY_FALLBACK = '~/play';
 
 const normalizeHostIp = (ip) => String(ip || '').trim();
 const normalizeHostName = (name) => String(name || '').trim();
+const normalizeHostNameKey = (name) => normalizeHostName(name).toLowerCase();
 const normalizeHostAgentUuid = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
   return normalized || null;
@@ -97,6 +98,56 @@ const normalizeRegisteredHost = (input) => {
     source: HOST_SOURCE_RUNTIME,
     slaveId: normalizeHostAgentUuid(input?.slaveId || input?.agentUuid || input?.hostAgentUuid),
   };
+};
+
+const buildRuntimeHostNameCandidates = ({ requestedName, ip, port }) => {
+  const normalizedName = normalizeHostName(requestedName);
+  const normalizedIp = normalizeHostIp(ip);
+  const normalizedPort = normalizeHostPort(port);
+  const addressLabel = normalizedPort > 0 ? `${normalizedIp}:${normalizedPort}` : normalizedIp;
+  return [
+    normalizedName,
+    `${normalizedName} (${addressLabel})`,
+    `${normalizedName} [${addressLabel}]`,
+  ].filter(Boolean);
+};
+
+const allocateRuntimeHostName = ({
+  requestedName,
+  ip,
+  port,
+  existingId = null,
+  reservedNames = new Map(),
+}) => {
+  const normalizedName = normalizeHostName(requestedName);
+  if (!normalizedName) {
+    throw new Error('requestedName is required');
+  }
+
+  const candidates = buildRuntimeHostNameCandidates({ requestedName: normalizedName, ip, port });
+  const normalizedExistingId = Number.isInteger(Number(existingId)) && Number(existingId) > 0
+    ? Number(existingId)
+    : null;
+  const isAvailable = (candidate) => {
+    const ownerId = reservedNames.get(normalizeHostNameKey(candidate));
+    return ownerId == null || ownerId === normalizedExistingId;
+  };
+
+  for (const candidate of candidates) {
+    if (isAvailable(candidate)) {
+      return candidate;
+    }
+  }
+
+  const collisionBase = candidates[candidates.length - 1] || normalizedName;
+  for (let index = 2; index <= 1000; index += 1) {
+    const candidate = `${collisionBase} #${index}`;
+    if (isAvailable(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`Unable to allocate a unique runtime host name for ${normalizedName}.`);
 };
 
 const generateHostAgentUuid = () => normalizeHostAgentUuid(randomUUID());
@@ -370,14 +421,19 @@ const syncRegisteredHosts = async (registeredHosts) => {
     const existingByAgentUuid = new Map();
     const existingByName = new Map();
     const existingByIp = new Map();
+    const reservedNames = new Map();
 
     for (const host of existingHosts) {
       const normalizedAgentUuid = normalizeHostAgentUuid(host.agentUuid);
       if (normalizedAgentUuid && !existingByAgentUuid.has(normalizedAgentUuid)) {
         existingByAgentUuid.set(normalizedAgentUuid, host);
       }
-      if (host.name && !existingByName.has(host.name)) {
-        existingByName.set(host.name, host);
+      const normalizedNameKey = normalizeHostNameKey(host.name);
+      if (normalizedNameKey && !existingByName.has(normalizedNameKey)) {
+        existingByName.set(normalizedNameKey, host);
+      }
+      if (host.name) {
+        reservedNames.set(normalizedNameKey, Number(host.id));
       }
       if (host.ip && !existingByIp.has(host.ip)) {
         existingByIp.set(host.ip, host);
@@ -392,19 +448,34 @@ const syncRegisteredHosts = async (registeredHosts) => {
         existing = existingByAgentUuid.get(host.slaveId) || null;
       }
       if (!existing) {
-        existing = existingByName.get(host.name) || null;
-      }
-      if (!existing) {
         existing = existingByIp.get(host.ip) || null;
       }
+      if (!existing) {
+        existing = existingByName.get(normalizeHostNameKey(host.name)) || null;
+      }
+
+      const nextName = allocateRuntimeHostName({
+        requestedName: host.name,
+        ip: host.ip,
+        port: host.port,
+        existingId: existing ? Number(existing.id) : null,
+        reservedNames,
+      });
 
       if (!existing) {
         const created = await Host.create({
           ...host,
+          name: nextName,
           source: HOST_SOURCE_RUNTIME,
           agentUuid: host.slaveId,
           metadata: { directories: getInitialHostDirectories() },
         }, { transaction });
+        reservedNames.set(normalizeHostNameKey(nextName), Number(created.id));
+        existingByName.set(normalizeHostNameKey(nextName), created);
+        existingByIp.set(host.ip, created);
+        if (host.slaveId) {
+          existingByAgentUuid.set(host.slaveId, created);
+        }
         matchedExistingIds.add(Number(created.id));
         continue;
       }
@@ -414,7 +485,6 @@ const syncRegisteredHosts = async (registeredHosts) => {
       const existingAgentUuid = normalizeHostAgentUuid(existing.agentUuid);
       const nextAgentUuid = host.slaveId || existingAgentUuid || null;
       const nextSource = existing.source || HOST_SOURCE_RUNTIME;
-      const nextName = host.name;
       const existingMetadata = normalizeHostMetadata(existing.metadata);
       const hasDirectories = Object.prototype.hasOwnProperty.call(existingMetadata, 'directories');
       const nextDirectories = hasDirectories
@@ -440,6 +510,13 @@ const syncRegisteredHosts = async (registeredHosts) => {
         existingAgentUuid !== nextAgentUuid ||
         metadataChanged
       ) {
+        const previousName = normalizeHostName(existing.name);
+        const previousIp = normalizeHostIp(existing.ip);
+        const previousAgentUuid = normalizeHostAgentUuid(existing.agentUuid);
+        const currentNameKey = normalizeHostNameKey(existing.name);
+        if (currentNameKey && reservedNames.get(currentNameKey) === Number(existing.id)) {
+          reservedNames.delete(currentNameKey);
+        }
         await existing.update({
           name: nextName,
           ip: host.ip,
@@ -448,6 +525,22 @@ const syncRegisteredHosts = async (registeredHosts) => {
           agentUuid: nextAgentUuid,
           metadata: nextMetadata,
         }, { transaction });
+        const previousNameKey = normalizeHostNameKey(previousName);
+        if (previousNameKey && existingByName.get(previousNameKey) === existing) {
+          existingByName.delete(previousNameKey);
+        }
+        if (previousIp && existingByIp.get(previousIp) === existing) {
+          existingByIp.delete(previousIp);
+        }
+        if (previousAgentUuid && existingByAgentUuid.get(previousAgentUuid) === existing) {
+          existingByAgentUuid.delete(previousAgentUuid);
+        }
+        reservedNames.set(normalizeHostNameKey(nextName), Number(existing.id));
+        existingByName.set(normalizeHostNameKey(nextName), existing);
+        existingByIp.set(host.ip, existing);
+        if (nextAgentUuid) {
+          existingByAgentUuid.set(nextAgentUuid, existing);
+        }
       }
     }
 
@@ -533,6 +626,7 @@ const listHostsWithProjects = async () => Host.findAll({
 
 module.exports = {
   addManualHost,
+  allocateRuntimeHostName,
   deleteHostById,
   getHostById,
   findHostByRuntimeIdentity,

@@ -22,10 +22,25 @@ const packageJsonPaths = [
   path.join(repoRoot, 'packages/web/package.json'),
 ];
 
-const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+const readJson = (filePath) => {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Unable to parse JSON from ${filePath}: ${error.message}`);
+  }
+};
 
 const writeJson = (filePath, value) => {
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(tempPath, `${JSON.stringify(value, null, 2)}\n`);
+    fs.renameSync(tempPath, filePath);
+  } finally {
+    if (fs.existsSync(tempPath)) {
+      fs.rmSync(tempPath, { force: true });
+    }
+  }
 };
 
 const resolveBranchName = () => execFileSync(

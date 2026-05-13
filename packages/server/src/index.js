@@ -106,6 +106,17 @@ const resolveSlaveTargetVersion = () => {
 
 const SLAVE_TARGET_VERSION = resolveSlaveTargetVersion();
 
+const isTransientMasterStartupError = (error) => {
+  const code = Number(error?.code);
+  const details = String(error?.details || error?.message || '').toLowerCase();
+  return (
+    code === 14
+    || details.includes('unavailable')
+    || details.includes('connect enoent')
+    || details.includes('master.sock')
+  );
+};
+
 const validateAndNormalizeConfig = async (input) => {
   const nextConfig = {
     projectPath: discoveryConfig.projectPath,
@@ -1156,7 +1167,7 @@ const startServer = async () => {
             .map((runtimeHost) => hostAgentAutoUpgradeController.considerRuntimeHost(runtimeHost, { trigger: 'discovery-sync' })),
         );
       } catch (hostSyncError) {
-        console.warn('Unable to sync hosts during project discovery:', hostSyncError);
+        console.warn(`Unable to sync hosts during project discovery: ${hostSyncError?.message || hostSyncError}`);
       }
     }
 
@@ -1589,10 +1600,15 @@ const startServer = async () => {
     const initialDiscovery = await discoverProjects(discoveryConfig);
     console.log(`Initial project sync complete (${initialDiscovery.projects.length} projects).`);
   } catch (error) {
-    console.warn('Initial project sync skipped (waiting for master/slave discovery):', error);
+    const transientStartupError = isTransientMasterStartupError(error);
+    if (isTransientMasterStartupError(error)) {
+      console.log(`Initial project sync deferred until master/slave discovery is ready: ${error?.message || error}`);
+    } else {
+      console.warn('Initial project sync skipped (waiting for master/slave discovery):', error);
+    }
     emitBackendLog({
       message: `Initial project sync skipped: ${error.message || error}`,
-      stream: 'stderr',
+      stream: transientStartupError ? 'stdout' : 'stderr',
     });
   }
 
