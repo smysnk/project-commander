@@ -12,6 +12,9 @@ const repoRoot = path.resolve(__dirname, '../..');
 const args = new Set(process.argv.slice(2));
 const printOnly = args.has('--print');
 const quiet = args.has('--quiet');
+const injectedVersion = String(
+  process.env.PROJECT_COMMANDER_BUILD_VERSION || process.env.BUILD_VERSION || '',
+).trim();
 
 const packageJsonPaths = [
   path.join(repoRoot, 'package.json'),
@@ -43,24 +46,29 @@ const writeJson = (filePath, value) => {
   }
 };
 
-const resolveBranchName = () => execFileSync(
-  'git',
-  ['branch', '--show-current'],
-  {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  },
-).trim() || 'HEAD';
+const tryExecGit = (gitArgs) => {
+  try {
+    return execFileSync(
+      'git',
+      gitArgs,
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    ).trim();
+  } catch (error) {
+    return null;
+  }
+};
+
+const resolveBranchName = () => tryExecGit(['branch', '--show-current']) || 'HEAD';
 
 const resolveCommitCount = () => {
-  const raw = execFileSync(
-    'git',
-    ['rev-list', '--count', 'HEAD'],
-    {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    },
-  ).trim();
+  const raw = tryExecGit(['rev-list', '--count', 'HEAD']);
+  if (!raw) {
+    return null;
+  }
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error(`Unable to resolve git commit count from "${raw}"`);
@@ -78,13 +86,20 @@ const resolveBaseVersion = () => {
   return {
     major: match[1],
     minor: match[2],
+    patch: match[3],
   };
 };
 
-const branchName = resolveBranchName();
-const commitCount = resolveCommitCount();
 const baseVersion = resolveBaseVersion();
-const computedVersion = `${baseVersion.major}.${baseVersion.minor}.${commitCount}`;
+const inferredCommitCount = resolveCommitCount();
+const branchName = injectedVersion ? 'env' : resolveBranchName();
+const commitCount = injectedVersion ? null : inferredCommitCount;
+const computedVersion = injectedVersion
+  || (
+    commitCount
+      ? `${baseVersion.major}.${baseVersion.minor}.${commitCount}`
+      : `${baseVersion.major}.${baseVersion.minor}.${baseVersion.patch || '0'}`
+  );
 
 if (!printOnly) {
   for (const packageJsonPath of packageJsonPaths) {
@@ -101,6 +116,6 @@ if (quiet || printOnly) {
   process.stdout.write(`${computedVersion}\n`);
 } else {
   process.stdout.write(
-    `synced workspace package versions to ${computedVersion} (branch ${branchName}, commits ${commitCount})\n`,
+    `synced workspace package versions to ${computedVersion} (branch ${branchName}, commits ${commitCount ?? 'n/a'})\n`,
   );
 }

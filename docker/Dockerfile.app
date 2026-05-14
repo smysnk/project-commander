@@ -1,8 +1,15 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
+ARG BUILD_VERSION=0.0.0-dev
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV YARN_NODE_LINKER=node-modules
+ENV PROJECT_COMMANDER_BUILD_VERSION=${BUILD_VERSION}
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends git \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json yarn.lock ./
 COPY packages/agent-master/package.json ./packages/agent-master/package.json

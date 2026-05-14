@@ -96,6 +96,8 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile.app
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.value }}
           platforms: linux/amd64
           push: ${{ inputs.push_image }}
           tags: ${{ steps.app_meta.outputs.tags }}
