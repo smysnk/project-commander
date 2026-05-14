@@ -53,31 +53,43 @@ const isAllowedUserEmail = (
   return allowedUsers.includes(normalizeEmail(String(email)));
 };
 
-const userFromToken = (token) => {
+const resolveUserFromToken = (token) => {
   if (!token) {
-    return null;
+    return {
+      user: null,
+      failure: 'missing',
+    };
   }
 
   const email = typeof token.email === 'string' ? token.email : null;
   if (!isAllowedUserEmail(email)) {
-    return null;
+    return {
+      user: null,
+      failure: 'forbidden',
+    };
   }
 
   return {
-    subject: typeof token.sub === 'string' ? token.sub : null,
-    name: typeof token.name === 'string' ? token.name : null,
-    email,
-    image:
-      typeof token.picture === 'string'
-        ? token.picture
-        : (typeof token.image === 'string' ? token.image : null),
+    user: {
+      subject: typeof token.sub === 'string' ? token.sub : null,
+      name: typeof token.name === 'string' ? token.name : null,
+      email,
+      image:
+        typeof token.picture === 'string'
+          ? token.picture
+          : (typeof token.image === 'string' ? token.image : null),
+    },
+    failure: null,
   };
 };
 
-const readAuthenticatedUserFromHeaders = async ({ headers = {}, cookies = null } = {}) => {
+const readAuthenticatedAccessFromHeaders = async ({ headers = {}, cookies = null } = {}) => {
   const secret = getEffectiveAuthSecret();
   if (!secret) {
-    return null;
+    return {
+      user: null,
+      failure: 'unconfigured',
+    };
   }
 
   const normalizedCookies = cookies || parseCookieHeader(headers.cookie || '');
@@ -90,8 +102,17 @@ const readAuthenticatedUserFromHeaders = async ({ headers = {}, cookies = null }
     secureCookie: shouldUseSecureAuthCookies(),
   });
 
-  return userFromToken(token);
+  return resolveUserFromToken(token);
 };
+
+const readAuthenticatedUserFromHeaders = async (input) => {
+  const result = await readAuthenticatedAccessFromHeaders(input);
+  return result.user;
+};
+
+const readAuthenticatedAccess = async (request) => readAuthenticatedAccessFromHeaders({
+  headers: request?.headers || {},
+});
 
 const readAuthenticatedUser = async (request) => readAuthenticatedUserFromHeaders({
   headers: request?.headers || {},
@@ -102,6 +123,8 @@ module.exports = {
   isAllowedUserEmail,
   isApiAuthConfigured,
   parseAllowedUsers,
+  readAuthenticatedAccess,
+  readAuthenticatedAccessFromHeaders,
   readAuthenticatedUser,
   readAuthenticatedUserFromHeaders,
   shouldUseSecureAuthCookies,

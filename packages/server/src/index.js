@@ -37,8 +37,8 @@ const {
 } = require('./hostAgentLifecycle');
 const {
   isApiAuthConfigured,
-  readAuthenticatedUser,
-  readAuthenticatedUserFromHeaders,
+  readAuthenticatedAccess,
+  readAuthenticatedAccessFromHeaders,
 } = require('./auth/sessionAuth');
 const {
   parseMaxDepth,
@@ -1660,15 +1660,16 @@ const startServer = async () => {
         return;
       }
 
-      const user = await readAuthenticatedUser(req);
-      if (!user) {
-        res.status(401).json({
-          errors: [{ message: 'Authentication required.' }],
+      const authResult = await readAuthenticatedAccess(req);
+      if (!authResult.user) {
+        const unauthorized = authResult.failure === 'forbidden';
+        res.status(unauthorized ? 403 : 401).json({
+          errors: [{ message: unauthorized ? 'User is not authorized.' : 'Authentication required.' }],
         });
         return;
       }
 
-      req.authenticatedUser = user;
+      req.authenticatedUser = authResult.user;
       next();
     } catch (error) {
       next(error);
@@ -1694,11 +1695,14 @@ const startServer = async () => {
   wsServer.on('connection', async (socket, request) => {
     if (isApiAuthConfigured()) {
       try {
-        const user = await readAuthenticatedUserFromHeaders({
+        const authResult = await readAuthenticatedAccessFromHeaders({
           headers: request?.headers || {},
         });
-        if (!user) {
-          socket.close(WS_UNAUTHORIZED_CLOSE_CODE, 'Authentication required');
+        if (!authResult.user) {
+          socket.close(
+            authResult.failure === 'forbidden' ? 4403 : WS_UNAUTHORIZED_CLOSE_CODE,
+            authResult.failure === 'forbidden' ? 'User is not authorized' : 'Authentication required',
+          );
           return;
         }
       } catch (error) {

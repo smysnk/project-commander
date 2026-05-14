@@ -11,6 +11,13 @@ const redirectToLogin = (error = 'SessionExpired') => {
   window.location.assign(`/login?${params.toString()}`);
 };
 
+const redirectToUnauthorized = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.location.assign('/access-denied');
+};
+
 export async function graphqlRequest({ query, variables = {}, endpoint = '/graphql' }) {
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -23,7 +30,10 @@ export async function graphqlRequest({ query, variables = {}, endpoint = '/graph
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 403) {
+      redirectToUnauthorized();
+    }
+    if (response.status === 401) {
       redirectToLogin();
     }
     throw new Error(payload?.error || `GraphQL request failed (${response.status})`);

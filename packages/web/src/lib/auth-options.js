@@ -41,7 +41,14 @@ export const authOptions = {
   callbacks: {
     async signIn({ user, profile }) {
       const email = user.email || (typeof profile?.email === 'string' ? profile.email : null);
-      return isAllowedUserEmail(email);
+      if (!isAllowedUserEmail(email)) {
+        const params = new URLSearchParams();
+        if (email) {
+          params.set('email', String(email));
+        }
+        return `/access-denied${params.size > 0 ? `?${params.toString()}` : ''}`;
+      }
+      return true;
     },
     async jwt({ token, user, profile }) {
       if (user?.email) {

@@ -919,6 +919,13 @@ const redirectToLogin = (error = 'SessionExpired') => {
   window.location.assign(`/login?${params.toString()}`);
 };
 
+const redirectToUnauthorized = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.location.assign('/access-denied');
+};
+
 const appendOverlayLogEntry = (storeApi, entry, { overlaySeedRef }) => {
   const nextEntry = normalizeOverlayLogEntry(entry, {
     id: `overlay-${overlaySeedRef.current}`,
@@ -1688,7 +1695,11 @@ const realtimeMiddleware = (storeApi) => {
       }
       if (WEBSOCKET_UNAUTHORIZED_CLOSE_CODES.has(Number(event?.code))) {
         isManualDisconnectRef.current = true;
-        redirectToLogin();
+        if (Number(event?.code) === 4403) {
+          redirectToUnauthorized();
+        } else {
+          redirectToLogin();
+        }
         return;
       }
       if (!isManualDisconnectRef.current) {
