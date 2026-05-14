@@ -1,0 +1,23 @@
+{{- if not .Values.controlPlane.existingMasterConfigMap }}
+{{- $config := dict -}}
+{{- range $key, $value := default (dict) .Values.controlPlane.master.config }}
+{{- $_ := set $config $key $value -}}
+{{- end }}
+{{- if or (not (hasKey $config "PC_MASTER_SOCKET_PATH")) (eq (printf "%v" (index $config "PC_MASTER_SOCKET_PATH")) "") }}
+{{- $_ := set $config "PC_MASTER_SOCKET_PATH" "/tmp/project-commander/master.sock" -}}
+{{- end }}
+{{- if or (not (hasKey $config "PC_MASTER_SLAVE_LISTEN_ADDR")) (eq (printf "%v" (index $config "PC_MASTER_SLAVE_LISTEN_ADDR")) "") }}
+{{- $_ := set $config "PC_MASTER_SLAVE_LISTEN_ADDR" (printf "0.0.0.0:%v" .Values.controlPlane.slaveService.port) -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "project-commander.masterConfigMapName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+data:
+  {{- range $key := keys $config | sortAlpha }}
+  {{ $key }}: {{ printf "%v" (index $config $key) | quote }}
+  {{- end }}
+{{- end }}

@@ -22,6 +22,11 @@ export const toHostHealthClassName = (value) => normalizeHealthName(value);
 export const toConnectionHealthClassName = (value) => normalizeHealthName(value);
 
 export const getDefaultWsEndpoint = () => {
+  const explicitWsUrl = String(process.env.NEXT_PUBLIC_WS_URL || '').trim();
+  if (explicitWsUrl) {
+    return explicitWsUrl;
+  }
+
   const configuredServerPort = Number.parseInt(
     String(process.env.NEXT_PUBLIC_SERVER_PORT || '').trim(),
     10,

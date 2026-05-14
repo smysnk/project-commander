@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "project-commander.controlPlaneName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  type: {{ .Values.controlPlane.serverService.type }}
+  selector:
+    {{- include "project-commander.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+  ports:
+    - name: http
+      port: {{ .Values.controlPlane.serverService.port }}
+      targetPort: http
+      protocol: TCP
+      {{- if and .Values.controlPlane.serverService.nodePort (or (eq .Values.controlPlane.serverService.type "NodePort") (eq .Values.controlPlane.serverService.type "LoadBalancer")) }}
+      nodePort: {{ .Values.controlPlane.serverService.nodePort }}
+      {{- end }}

@@ -1,0 +1,36 @@
+{{- if not .Values.controlPlane.existingServerConfigMap }}
+{{- $config := dict -}}
+{{- range $key, $value := default (dict) .Values.controlPlane.server.config }}
+{{- $_ := set $config $key $value -}}
+{{- end }}
+{{- if or (not (hasKey $config "NODE_ENV")) (eq (printf "%v" (index $config "NODE_ENV")) "") }}
+{{- $_ := set $config "NODE_ENV" "production" -}}
+{{- end }}
+{{- if or (not (hasKey $config "SERVER_PORT")) (eq (printf "%v" (index $config "SERVER_PORT")) "") }}
+{{- $_ := set $config "SERVER_PORT" (printf "%v" .Values.controlPlane.serverService.port) -}}
+{{- end }}
+{{- if or (not (hasKey $config "SERVER_URL")) (eq (printf "%v" (index $config "SERVER_URL")) "") }}
+{{- $_ := set $config "SERVER_URL" (include "project-commander.publicUrl" . | trim) -}}
+{{- end }}
+{{- if or (not (hasKey $config "APP_URL")) (eq (printf "%v" (index $config "APP_URL")) "") }}
+{{- $_ := set $config "APP_URL" (include "project-commander.publicUrl" . | trim) -}}
+{{- end }}
+{{- if or (not (hasKey $config "WS_URL")) (eq (printf "%v" (index $config "WS_URL")) "") }}
+{{- $wsScheme := "ws" -}}
+{{- if eq (include "project-commander.publicScheme" . | trim) "https" -}}
+{{- $wsScheme = "wss" -}}
+{{- end -}}
+{{- $_ := set $config "WS_URL" (printf "%s://%s/ws" $wsScheme (include "project-commander.publicDomain" . | trim)) -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "project-commander.serverConfigMapName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+data:
+  {{- range $key := keys $config | sortAlpha }}
+  {{ $key }}: {{ printf "%v" (index $config $key) | quote }}
+  {{- end }}
+{{- end }}

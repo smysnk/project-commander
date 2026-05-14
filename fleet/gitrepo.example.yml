@@ -1,0 +1,11 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: project-commander
+  namespace: fleet-local
+spec:
+  repo: git@github.com:smysnk/project-commander.git
+  clientSecretName: smysnk-com-github-ssh
+  branch: main
+  paths:
+    - fleet

@@ -1,0 +1,27 @@
+FROM golang:1.26-bookworm AS build
+WORKDIR /src
+
+ARG BUILD_VERSION=0.0.0-dev
+
+COPY proto ./proto
+COPY packages/agent-shared ./packages/agent-shared
+COPY packages/agent-master ./packages/agent-master
+
+RUN cd /src/packages/agent-master \
+  && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -ldflags "-X main.buildVersion=${BUILD_VERSION}" -o /tmp/pc-master ./cmd/pc-master
+
+FROM debian:bookworm-slim AS runtime
+
+RUN groupadd --gid 10002 commander-master \
+  && useradd --uid 10002 --gid 10002 --home-dir /home/commander-master --create-home --shell /usr/sbin/nologin commander-master \
+  && mkdir -p /var/lib/project-commander
+
+COPY --from=build /tmp/pc-master /usr/local/bin/pc-master
+
+USER commander-master
+WORKDIR /app
+
+EXPOSE 50052
+
+ENTRYPOINT ["/usr/local/bin/pc-master"]

@@ -300,6 +300,11 @@ const toPersistedUiInteractions = (uiInteractions = {}) => ({
 });
 
 const getDefaultWsEndpoint = () => {
+  const explicitWsUrl = String(process.env.NEXT_PUBLIC_WS_URL || '').trim();
+  if (explicitWsUrl) {
+    return explicitWsUrl;
+  }
+
   const configuredServerPort = Number.parseInt(
     String(process.env.NEXT_PUBLIC_SERVER_PORT || '').trim(),
     10,

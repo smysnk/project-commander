@@ -1,0 +1,112 @@
+nameOverride: ""
+fullnameOverride: ""
+
+namespace:
+  create: true
+  name: project-commander
+
+global:
+  publicScheme: https
+  publicDomain: commander.smysnk.com
+
+imagePullSecrets: []
+
+image:
+  repository: 222634406587.dkr.ecr.us-east-1.amazonaws.com/project-commander-app
+  tag: main
+  pullPolicy: Always
+
+masterImage:
+  repository: 222634406587.dkr.ecr.us-east-1.amazonaws.com/project-commander-master
+  tag: main
+  pullPolicy: Always
+
+web:
+  replicaCount: 1
+  args:
+    - web
+  existingConfigMap: ""
+  existingSecret: ""
+  service:
+    type: ClusterIP
+    port: 3000
+    nodePort: null
+  config:
+    NODE_ENV: production
+    WEB_PORT: "3000"
+  secret: {}
+  podAnnotations: {}
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    host: commander.smysnk.com
+    path: /
+    pathType: Prefix
+    hosts: []
+    tls:
+      enabled: true
+      secretName: tls-commander-smysnk-com
+      hosts: []
+
+controlPlane:
+  replicaCount: 1
+  existingServerConfigMap: ""
+  existingServerSecret: ""
+  existingMasterConfigMap: ""
+  existingMasterSecret: ""
+  serverService:
+    type: ClusterIP
+    port: 4000
+    nodePort: null
+  slaveService:
+    type: NodePort
+    port: 50052
+    nodePort: 30552
+  server:
+    args:
+      - server
+    config:
+      NODE_ENV: production
+      SERVER_PORT: "4000"
+      RUN_MIGRATIONS_ON_STARTUP: "true"
+      PC_SERVER_CONSOLE_LOG_LEVEL: info
+      PC_MASTER_SOCKET_PATH: /tmp/project-commander/master.sock
+      PC_MASTER_ENDPOINT: commander.smysnk.com:30552
+      DB_DIALECT: sqlite
+      DB_STORAGE: /var/lib/project-commander/project-commander.sqlite
+      PROJECT_PATH: /var/lib/project-commander/workspaces
+      PROJECT_FOLDER_PATTERN: .*
+      SCAN_MAX_DEPTH: "6"
+    secret: {}
+  master:
+    config:
+      PC_MASTER_SOCKET_PATH: /tmp/project-commander/master.sock
+      PC_MASTER_SLAVE_LISTEN_ADDR: 0.0.0.0:50052
+      PC_MASTER_CONSOLE_LOG_LEVEL: info
+      PC_MASTER_LOG_DIR: /var/lib/project-commander/master-logs
+    secret:
+      PC_SLAVE_SHARED_KEY: change-me
+  storage:
+    existingClaim: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    storageClassName: ""
+  podAnnotations: {}
+  podSecurityContext:
+    fsGroup: 2000
+  resources:
+    server: {}
+    master: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+database:
+  mode: sqlite

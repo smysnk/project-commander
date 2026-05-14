@@ -1,6 +1,6 @@
 {
   "name": "project-discovery",
-  "version": "0.1.6",
+  "version": "0.1.11",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
@@ -12,6 +12,12 @@
     "dev": "mono-helper env yarn workspaces foreach -p -A -i run dev",
     "build": "yarn version:sync && yarn build:server && yarn build:web",
     "build:all": "make build-all",
+    "docker:build:app": "docker build -f docker/Dockerfile.app -t project-commander/app:local .",
+    "docker:build:master": "docker build -f docker/Dockerfile.master --build-arg BUILD_VERSION=$(node ./scripts/version/sync-package-versions.mjs --print) -t project-commander/master:local .",
+    "ecr:ensure": "bash ./scripts/create-ecr-repositories.sh",
+    "fleet:lint": "helm lint ./fleet/project-commander",
+    "fleet:template": "helm template project-commander ./fleet/project-commander -f ./fleet/project-commander/values.yaml",
+    "k8s:deploy:local": "bash ./scripts/deploy-fleet.sh",
     "start": "make start",
     "test": "yarn exec test-station run --config ./test-station.config.mjs",
     "test:coverage": "yarn exec test-station run --config ./test-station.config.mjs --coverage",

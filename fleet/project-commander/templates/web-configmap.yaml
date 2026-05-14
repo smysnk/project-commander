@@ -1,0 +1,26 @@
+{{- if not .Values.web.existingConfigMap }}
+{{- $config := dict -}}
+{{- range $key, $value := default (dict) .Values.web.config }}
+{{- $_ := set $config $key $value -}}
+{{- end }}
+{{- if or (not (hasKey $config "NODE_ENV")) (eq (printf "%v" (index $config "NODE_ENV")) "") }}
+{{- $_ := set $config "NODE_ENV" "production" -}}
+{{- end }}
+{{- if or (not (hasKey $config "WEB_PORT")) (eq (printf "%v" (index $config "WEB_PORT")) "") }}
+{{- $_ := set $config "WEB_PORT" (printf "%v" .Values.web.service.port) -}}
+{{- end }}
+{{- if or (not (hasKey $config "SERVER_URL")) (eq (printf "%v" (index $config "SERVER_URL")) "") }}
+{{- $_ := set $config "SERVER_URL" (include "project-commander.controlPlaneInternalUrl" . | trim) -}}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "project-commander.webConfigMapName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+data:
+  {{- range $key := keys $config | sortAlpha }}
+  {{ $key }}: {{ printf "%v" (index $config $key) | quote }}
+  {{- end }}
+{{- end }}

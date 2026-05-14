@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "project-commander.controlPlaneName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  replicas: {{ .Values.controlPlane.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "project-commander.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: control-plane
+  template:
+    metadata:
+      labels:
+        {{- include "project-commander.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: control-plane
+      annotations:
+        {{- toYaml .Values.controlPlane.podAnnotations | nindent 8 }}
+    spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.controlPlane.podSecurityContext | nindent 8 }}
+      containers:
+        - name: server
+          image: {{ include "project-commander.appImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- toYaml .Values.controlPlane.server.args | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.controlPlane.serverService.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "project-commander.serverConfigMapName" . }}
+            {{- if or .Values.controlPlane.existingServerSecret (gt (len (default (dict) .Values.controlPlane.server.secret)) 0) }}
+            - secretRef:
+                name: {{ include "project-commander.serverSecretName" . }}
+            {{- end }}
+          volumeMounts:
+            - name: master-socket
+              mountPath: /tmp/project-commander
+            - name: runtime-data
+              mountPath: /var/lib/project-commander
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 8
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.controlPlane.resources.server | nindent 12 }}
+        - name: master
+          image: {{ include "project-commander.masterImage" . }}
+          imagePullPolicy: {{ .Values.masterImage.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "project-commander.masterConfigMapName" . }}
+            {{- if or .Values.controlPlane.existingMasterSecret (gt (len (default (dict) .Values.controlPlane.master.secret)) 0) }}
+            - secretRef:
+                name: {{ include "project-commander.masterSecretName" . }}
+            {{- end }}
+          ports:
+            - name: slave
+              containerPort: {{ .Values.controlPlane.slaveService.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: master-socket
+              mountPath: /tmp/project-commander
+            - name: runtime-data
+              mountPath: /var/lib/project-commander
+          livenessProbe:
+            tcpSocket:
+              port: slave
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: slave
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.controlPlane.resources.master | nindent 12 }}
+      volumes:
+        - name: master-socket
+          emptyDir: {}
+        - name: runtime-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.controlPlane.storage.existingClaim | default (include "project-commander.runtimePvcName" .) }}
+      {{- with .Values.controlPlane.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.controlPlane.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

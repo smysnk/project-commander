@@ -1,0 +1,118 @@
+name: Build Container Images
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Branch or release tag to publish alongside sha and latest
+        required: false
+        default: main
+        type: string
+      push_image:
+        description: Push the built images to ECR
+        required: false
+        default: true
+        type: boolean
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Branch or release tag to publish alongside sha and latest
+        required: false
+        default: manual
+        type: string
+      push_image:
+        description: Push the built images to ECR
+        required: false
+        default: true
+        type: boolean
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION != '' && vars.AWS_REGION || 'us-east-1' }}
+  ECR_APP_REPOSITORY: ${{ vars.ECR_APP_REPOSITORY != '' && vars.ECR_APP_REPOSITORY || 'project-commander-app' }}
+  ECR_MASTER_REPOSITORY: ${{ vars.ECR_MASTER_REPOSITORY != '' && vars.ECR_MASTER_REPOSITORY || 'project-commander-master' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Derive build version
+        id: version
+        run: echo "value=$(node ./scripts/version/sync-package-versions.mjs --print)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve AWS account ID
+        id: aws
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure ECR repositories exist
+        run: ./scripts/create-ecr-repositories.sh
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Derive app image metadata
+        id: app_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.aws.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_APP_REPOSITORY }}
+          tags: |
+            type=raw,value=${{ inputs.image_tag }}
+            type=raw,value=latest
+            type=sha,format=long
+
+      - name: Derive master image metadata
+        id: master_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.aws.outputs.account_id }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_MASTER_REPOSITORY }}
+          tags: |
+            type=raw,value=${{ inputs.image_tag }}
+            type=raw,value=latest
+            type=sha,format=long
+
+      - name: Build and publish app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.app
+          platforms: linux/amd64
+          push: ${{ inputs.push_image }}
+          tags: ${{ steps.app_meta.outputs.tags }}
+          labels: ${{ steps.app_meta.outputs.labels }}
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
+
+      - name: Build and publish master image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.master
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.value }}
+          platforms: linux/amd64
+          push: ${{ inputs.push_image }}
+          tags: ${{ steps.master_meta.outputs.tags }}
+          labels: ${{ steps.master_meta.outputs.labels }}
+          cache-from: type=gha,scope=master
+          cache-to: type=gha,mode=max,scope=master

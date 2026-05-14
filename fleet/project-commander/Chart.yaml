@@ -1,0 +1,6 @@
+apiVersion: v2
+name: project-commander
+description: Fleet bundle for the Project Commander web and control-plane workloads
+type: application
+version: 0.1.0
+appVersion: "0.1.11"

@@ -1,0 +1,123 @@
+{{- if .Values.web.ingress.enabled }}
+{{- $hosts := default (list) .Values.web.ingress.hosts -}}
+{{- $host := .Values.web.ingress.host | default (include "project-commander.publicDomain" . | trim) -}}
+{{- $tls := default (dict) .Values.web.ingress.tls -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "project-commander.webName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+  {{- with .Values.web.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.web.ingress.className }}
+  ingressClassName: {{ .Values.web.ingress.className }}
+  {{- end }}
+  rules:
+    {{- if gt (len $hosts) 0 }}
+    {{- range $hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" $ }}
+                port:
+                  number: {{ $.Values.controlPlane.serverService.port }}
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" $ }}
+                port:
+                  number: {{ $.Values.controlPlane.serverService.port }}
+          - path: /api/discovery
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" $ }}
+                port:
+                  number: {{ $.Values.controlPlane.serverService.port }}
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" $ }}
+                port:
+                  number: {{ $.Values.controlPlane.serverService.port }}
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "project-commander.webName" $ }}
+                port:
+                  number: {{ $.Values.web.service.port }}
+          {{- end }}
+    {{- end }}
+    {{- else if $host }}
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" . }}
+                port:
+                  number: {{ .Values.controlPlane.serverService.port }}
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" . }}
+                port:
+                  number: {{ .Values.controlPlane.serverService.port }}
+          - path: /api/discovery
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" . }}
+                port:
+                  number: {{ .Values.controlPlane.serverService.port }}
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "project-commander.controlPlaneName" . }}
+                port:
+                  number: {{ .Values.controlPlane.serverService.port }}
+          - path: {{ .Values.web.ingress.path }}
+            pathType: {{ .Values.web.ingress.pathType }}
+            backend:
+              service:
+                name: {{ include "project-commander.webName" . }}
+                port:
+                  number: {{ .Values.web.service.port }}
+    {{- end }}
+  {{- if kindIs "slice" $tls }}
+  tls:
+    {{- toYaml $tls | nindent 4 }}
+  {{- else if and (kindIs "map" $tls) $tls.enabled }}
+  tls:
+    - hosts:
+        {{- if gt (len (default (list) $tls.hosts)) 0 }}
+        {{- range $tls.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+        {{- else if gt (len $hosts) 0 }}
+        {{- range $hosts }}
+        - {{ .host | quote }}
+        {{- end }}
+        {{- else if $host }}
+        - {{ $host | quote }}
+        {{- end }}
+      secretName: {{ default (include "project-commander.defaultTlsSecretName" . | trim) $tls.secretName | quote }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.DS_Store
+node_modules
+packages/*/node_modules
+.next
+bin
+artifacts
+references
+test-results
+runtime-logs
+old
+.tmp
+packages/server/data/*.sqlite
+packages/server/data/*.sqlite-*

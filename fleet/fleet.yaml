@@ -1,0 +1,24 @@
+defaultNamespace: project-commander
+
+helm:
+  releaseName: project-commander
+  chart: ./project-commander
+  values:
+    image:
+      repository: 222634406587.dkr.ecr.us-east-1.amazonaws.com/project-commander-app
+      tag: main
+    masterImage:
+      repository: 222634406587.dkr.ecr.us-east-1.amazonaws.com/project-commander-master
+      tag: main
+    global:
+      publicScheme: https
+      publicDomain: commander.smysnk.com
+    web:
+      ingress:
+        enabled: true
+        className: traefik
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-prod
+        tls:
+          enabled: true
+          secretName: tls-commander-smysnk-com

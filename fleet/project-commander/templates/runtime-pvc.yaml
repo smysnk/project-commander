@@ -1,0 +1,18 @@
+{{- if not .Values.controlPlane.storage.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "project-commander.runtimePvcName" . }}
+  labels:
+    {{- include "project-commander.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  accessModes:
+    {{- toYaml .Values.controlPlane.storage.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.controlPlane.storage.size }}
+  {{- if .Values.controlPlane.storage.storageClassName }}
+  storageClassName: {{ .Values.controlPlane.storage.storageClassName | quote }}
+  {{- end }}
+{{- end }}
