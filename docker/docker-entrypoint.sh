@@ -9,12 +9,12 @@ fi
 
 case "$cmd" in
   web)
-    cd /app
-    exec yarn workspace web start "$@"
+    cd /app/packages/web
+    exec node ./scripts/next-with-env.js start "$@"
     ;;
   server)
     cd /app
-    exec yarn workspace server start "$@"
+    exec node ./packages/server/src/index.js "$@"
     ;;
   *)
     exec "$cmd" "$@"

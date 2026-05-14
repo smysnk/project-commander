@@ -33,13 +33,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV YARN_NODE_LINKER=node-modules
 ENV SERVER_PORT=4000
 ENV WEB_PORT=3000
 
-RUN corepack enable \
-  && corepack prepare yarn@4.12.0 --activate \
-  && groupadd --gid 10001 commander \
+RUN groupadd --gid 10001 commander \
   && useradd --uid 10001 --gid 10001 --home-dir /home/commander --create-home --shell /usr/sbin/nologin commander \
   && mkdir -p /var/lib/project-commander \
   && chown -R commander:commander /var/lib/project-commander
