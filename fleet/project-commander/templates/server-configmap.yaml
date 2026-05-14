@@ -15,6 +15,9 @@
 {{- if or (not (hasKey $config "APP_URL")) (eq (printf "%v" (index $config "APP_URL")) "") }}
 {{- $_ := set $config "APP_URL" (include "project-commander.publicUrl" . | trim) -}}
 {{- end }}
+{{- if or (not (hasKey $config "WEB_URL")) (eq (printf "%v" (index $config "WEB_URL")) "") }}
+{{- $_ := set $config "WEB_URL" (include "project-commander.publicUrl" . | trim) -}}
+{{- end }}
 {{- if or (not (hasKey $config "WS_URL")) (eq (printf "%v" (index $config "WS_URL")) "") }}
 {{- $wsScheme := "ws" -}}
 {{- if eq (include "project-commander.publicScheme" . | trim) "https" -}}

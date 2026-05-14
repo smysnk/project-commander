@@ -901,9 +901,23 @@ const {
 } = logQueryProtocol;
 
 const WEBSOCKET_DISCONNECTED_ERROR = 'Websocket disconnected; reconnecting...';
+const WEBSOCKET_UNAUTHORIZED_CLOSE_CODES = new Set([4401, 4403]);
 const DEPLOY_SUDO_PASSWORD_PROMPT_TIMEOUT_SECONDS_FALLBACK = 120;
 const DEPLOY_SUDO_PASSWORD_PROMPT_TITLE = 'Project Commander requires sudo access to install or update a slave service.';
 const OVERLAY_LOG_FLUSH_DELAY_MS = 100;
+
+const redirectToLogin = (error = 'SessionExpired') => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const currentPath = `${window.location.pathname || '/'}${window.location.search || ''}${window.location.hash || ''}`;
+  const params = new URLSearchParams();
+  params.set('error', String(error || 'SessionExpired'));
+  if (currentPath && currentPath !== '/login') {
+    params.set('callbackUrl', currentPath);
+  }
+  window.location.assign(`/login?${params.toString()}`);
+};
 
 const appendOverlayLogEntry = (storeApi, entry, { overlaySeedRef }) => {
   const nextEntry = normalizeOverlayLogEntry(entry, {
@@ -1668,9 +1682,14 @@ const realtimeMiddleware = (storeApi) => {
       }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (wsRef.current === socket) {
         wsRef.current = null;
+      }
+      if (WEBSOCKET_UNAUTHORIZED_CLOSE_CODES.has(Number(event?.code))) {
+        isManualDisconnectRef.current = true;
+        redirectToLogin();
+        return;
       }
       if (!isManualDisconnectRef.current) {
         const currentError = String(storeApi.getState()?.uiInteractions?.error || '');

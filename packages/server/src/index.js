@@ -36,6 +36,11 @@ const {
   resolveAutoUpgradeCooldownMs,
 } = require('./hostAgentLifecycle');
 const {
+  isApiAuthConfigured,
+  readAuthenticatedUser,
+  readAuthenticatedUserFromHeaders,
+} = require('./auth/sessionAuth');
+const {
   parseMaxDepth,
   buildFolderPattern,
   isDirectory,
@@ -51,8 +56,13 @@ const PORT = Number(process.env.SERVER_PORT || 4000);
 const nodeEnv = String(process.env.NODE_ENV || '').toLowerCase();
 const lifecycleEvent = String(process.env.npm_lifecycle_event || '').toLowerCase();
 const isDevMode = nodeEnv === 'development' || nodeEnv === 'dev' || lifecycleEvent === 'dev';
+const runMigrationsOnStartupSetting = String(process.env.RUN_MIGRATIONS_ON_STARTUP || '')
+  .trim()
+  .toLowerCase();
 const shouldRunMigrationsOnStartup =
-  isDevMode && process.env.RUN_MIGRATIONS_ON_STARTUP !== 'false';
+  runMigrationsOnStartupSetting === 'true'
+  || runMigrationsOnStartupSetting === '1'
+  || (isDevMode && runMigrationsOnStartupSetting !== 'false');
 
 const discoveryConfig = {
   projectPath: path.resolve(process.env.PROJECT_PATH || process.cwd()),
@@ -73,6 +83,7 @@ const LOG_QUERY_MAX_LIMIT = 1200;
 const RUNTIME_LOG_SOURCES = new Set(['nextjs-client', 'node-backend', 'master-agent', 'agent-master']);
 const MASTER_LOG_SOURCES = new Set(['master-agent', 'agent-master']);
 const DEFAULT_LOCAL_SLAVE_SOCKET_PATH = '/tmp/project-commander/master.sock';
+const WS_UNAUTHORIZED_CLOSE_CODE = 4401;
 
 const isLoopbackHostTarget = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -1642,6 +1653,28 @@ const startServer = async () => {
   app.use(express.json());
   await apolloServer.start();
 
+  const requireAuthenticatedUser = async (req, res, next) => {
+    try {
+      if (!isApiAuthConfigured()) {
+        next();
+        return;
+      }
+
+      const user = await readAuthenticatedUser(req);
+      if (!user) {
+        res.status(401).json({
+          errors: [{ message: 'Authentication required.' }],
+        });
+        return;
+      }
+
+      req.authenticatedUser = user;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const wsHeartbeatTimer = setInterval(() => {
     for (const socket of wsClients) {
       const state = wsClientState.get(socket);
@@ -1658,7 +1691,22 @@ const startServer = async () => {
   }, WS_PING_INTERVAL_MS);
   wsHeartbeatTimer.unref?.();
 
-  wsServer.on('connection', (socket, request) => {
+  wsServer.on('connection', async (socket, request) => {
+    if (isApiAuthConfigured()) {
+      try {
+        const user = await readAuthenticatedUserFromHeaders({
+          headers: request?.headers || {},
+        });
+        if (!user) {
+          socket.close(WS_UNAUTHORIZED_CLOSE_CODE, 'Authentication required');
+          return;
+        }
+      } catch (error) {
+        socket.close(WS_UNAUTHORIZED_CLOSE_CODE, 'Authentication failed');
+        return;
+      }
+    }
+
     wsClients.add(socket);
     wsClientState.set(socket, {
       subscribed: false,
@@ -1817,8 +1865,15 @@ const startServer = async () => {
     '/graphql',
     cors({ origin: true, credentials: true }),
     express.json(),
-    expressMiddleware(apolloServer),
+    requireAuthenticatedUser,
+    expressMiddleware(apolloServer, {
+      context: async ({ req }) => ({
+        user: req?.authenticatedUser || null,
+      }),
+    }),
   );
+
+  app.use('/api/discovery', requireAuthenticatedUser);
 
   app.get('/api/discovery/config', (req, res) => {
     res.json({ config: discoveryConfig });

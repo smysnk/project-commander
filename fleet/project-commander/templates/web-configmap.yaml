@@ -9,6 +9,12 @@
 {{- if or (not (hasKey $config "WEB_PORT")) (eq (printf "%v" (index $config "WEB_PORT")) "") }}
 {{- $_ := set $config "WEB_PORT" (printf "%v" .Values.web.service.port) -}}
 {{- end }}
+{{- if or (not (hasKey $config "WEB_URL")) (eq (printf "%v" (index $config "WEB_URL")) "") }}
+{{- $_ := set $config "WEB_URL" (include "project-commander.publicUrl" . | trim) -}}
+{{- end }}
+{{- if or (not (hasKey $config "NEXTAUTH_URL")) (eq (printf "%v" (index $config "NEXTAUTH_URL")) "") }}
+{{- $_ := set $config "NEXTAUTH_URL" (include "project-commander.publicUrl" . | trim) -}}
+{{- end }}
 {{- if or (not (hasKey $config "SERVER_URL")) (eq (printf "%v" (index $config "SERVER_URL")) "") }}
 {{- $_ := set $config "SERVER_URL" (include "project-commander.controlPlaneInternalUrl" . | trim) -}}
 {{- end }}

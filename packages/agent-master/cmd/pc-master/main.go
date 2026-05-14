@@ -86,7 +86,7 @@ func run(socketPath string, slaveListenAddr string, slaveSharedKey string, logge
 	}
 	defer unixListener.Close()
 
-	if err := os.Chmod(socketPath, 0o600); err != nil {
+	if err := os.Chmod(socketPath, 0o660); err != nil {
 		return fmt.Errorf("chmod socket %s: %w", socketPath, err)
 	}
 

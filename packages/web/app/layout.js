@@ -1,5 +1,6 @@
 import './globals.css';
 import StoreProvider from '../src/store/StoreProvider';
+import { isAuthEnabled } from '../src/lib/auth-env';
 
 export const metadata = {
   title: 'Project Commander',
@@ -7,10 +8,11 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const authEnabled = isAuthEnabled();
   return (
     <html lang="en">
       <body>
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider authEnabled={authEnabled}>{children}</StoreProvider>
       </body>
     </html>
   );

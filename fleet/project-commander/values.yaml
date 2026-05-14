@@ -26,7 +26,7 @@ web:
   args:
     - web
   existingConfigMap: ""
-  existingSecret: ""
+  existingSecret: "project-commander-auth"
   service:
     type: ClusterIP
     port: 3000
@@ -57,7 +57,7 @@ web:
 controlPlane:
   replicaCount: 1
   existingServerConfigMap: ""
-  existingServerSecret: ""
+  existingServerSecret: "project-commander-auth"
   existingMasterConfigMap: ""
   existingMasterSecret: ""
   serverService:

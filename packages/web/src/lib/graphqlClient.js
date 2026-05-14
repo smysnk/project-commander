@@ -1,3 +1,16 @@
+const redirectToLogin = (error = 'SessionExpired') => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const currentPath = `${window.location.pathname || '/'}${window.location.search || ''}${window.location.hash || ''}`;
+  const params = new URLSearchParams();
+  params.set('error', String(error || 'SessionExpired'));
+  if (currentPath && currentPath !== '/login') {
+    params.set('callbackUrl', currentPath);
+  }
+  window.location.assign(`/login?${params.toString()}`);
+};
+
 export async function graphqlRequest({ query, variables = {}, endpoint = '/graphql' }) {
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -10,6 +23,9 @@ export async function graphqlRequest({ query, variables = {}, endpoint = '/graph
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      redirectToLogin();
+    }
     throw new Error(payload?.error || `GraphQL request failed (${response.status})`);
   }
 
