@@ -90,9 +90,26 @@ input {
   background: var(--accent-strong);
 }
 
+.menuButtonSecondary {
+  border-color: var(--line);
+  background: var(--chip);
+  color: var(--text);
+}
+
+.menuButtonSecondary:hover:enabled {
+  background: color-mix(in srgb, var(--chip) 72%, var(--line));
+}
+
 .menuButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.menuAuthLabel {
+  max-width: min(280px, 28vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workspace {

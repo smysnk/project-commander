@@ -336,7 +336,7 @@ const getDefaultDebugExpandedPaths = (selectedProject = null) => {
   return expanded;
 };
 
-export default function HomePageContainer() {
+export default function HomePageContainer({ authEnabled = false }) {
   const dispatch = useDispatch();
   const runtimeConfig = useSelector(selectRuntimeConfig);
   const leftWidthPct = useSelector(selectLeftWidthPct);
@@ -1449,7 +1449,7 @@ export default function HomePageContainer() {
                     <RuntimePanelProvider value={runtimePanelState}>
                       <TerminalPanelProvider value={terminalPanelState}>
                         <StatusBarProvider value={statusBarState}>
-                          <HomePageShellContainer />
+                          <HomePageShellContainer authEnabled={authEnabled} />
                         </StatusBarProvider>
                       </TerminalPanelProvider>
                     </RuntimePanelProvider>

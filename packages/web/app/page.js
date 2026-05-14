@@ -23,5 +23,5 @@ export default async function HomePage() {
     redirect(`/access-denied${params.size > 0 ? `?${params.toString()}` : ''}`);
   }
 
-  return <HomePageContainer />;
+  return <HomePageContainer authEnabled={authEnabled} />;
 }

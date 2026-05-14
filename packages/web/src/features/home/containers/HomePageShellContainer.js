@@ -1,3 +1,4 @@
+import { signOut, useSession } from 'next-auth/react';
 import ThemeDropdown from '../../../components/ThemeDropdown';
 import HostsSidebar from '../components/HostsSidebar';
 import ProjectListPane from '../components/ProjectListPane';
@@ -8,7 +9,27 @@ import {
 } from '../context/HomeLayoutContext';
 import { useStatusBarContext } from '../context/StatusBarContext';
 
-export default function HomePageShellContainer() {
+function AuthenticatedMenuControls() {
+  const { data: session, status } = useSession();
+  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
+  const isLoading = status === 'loading';
+
+  return (
+    <>
+      {email ? <span className="menuItem menuAuthLabel">{email}</span> : null}
+      <button
+        type="button"
+        className="menuButton menuButtonSecondary"
+        onClick={() => signOut({ callbackUrl: '/login' })}
+        disabled={isLoading}
+      >
+        {isLoading ? 'Loading…' : 'Logout'}
+      </button>
+    </>
+  );
+}
+
+export default function HomePageShellContainer({ authEnabled = false }) {
   const layoutState = useHomeLayoutContext();
   const {
     projectsCount = 0,
@@ -32,6 +53,7 @@ export default function HomePageShellContainer() {
           <span className="menuItem">Running: {runningCount}</span>
         </div>
         <div className="menuRight">
+          {authEnabled ? <AuthenticatedMenuControls /> : null}
           <ThemeDropdown />
         </div>
       </header>
