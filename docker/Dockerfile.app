@@ -15,6 +15,9 @@ COPY package.json yarn.lock ./
 COPY packages/agent-master/package.json ./packages/agent-master/package.json
 COPY packages/agent-shared/package.json ./packages/agent-shared/package.json
 COPY packages/agent-slave/package.json ./packages/agent-slave/package.json
+COPY packages/commander-client/package.json ./packages/commander-client/package.json
+COPY packages/commander-mcp/package.json ./packages/commander-mcp/package.json
+COPY packages/pcctl/package.json ./packages/pcctl/package.json
 COPY packages/server/package.json ./packages/server/package.json
 COPY packages/web/package.json ./packages/web/package.json
 COPY proto ./proto
