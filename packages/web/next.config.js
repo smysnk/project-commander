@@ -3,7 +3,10 @@ const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: process.env.NODE_ENV !== 'production' });
 const serverPort = String(process.env.SERVER_PORT || '4000');
-const internalServerUrl = String(process.env.SERVER_URL || '').trim() || `http://localhost:${serverPort}`;
+const defaultServerUrl = process.env.NODE_ENV === 'production'
+  ? 'http://project-commander-control-plane:4000'
+  : `http://localhost:${serverPort}`;
+const internalServerUrl = String(process.env.SERVER_URL || '').trim() || defaultServerUrl;
 const nextPublicServerPort = String(process.env.NEXT_PUBLIC_SERVER_PORT || '').trim();
 const nextPublicWsUrl = String(process.env.NEXT_PUBLIC_WS_URL || '').trim();
 
