@@ -7,6 +7,10 @@ const { DesiredProcess } = require('./desiredProcess');
 const { ProcessRun } = require('./processRun');
 const { ProcessRuntimeState } = require('./processRuntimeState');
 const { HostRuntimeState } = require('./hostRuntimeState');
+const { HostPathMapping } = require('./hostPathMapping');
+const { ProcessTemplate } = require('./processTemplate');
+const { AutomationApiToken } = require('./automationApiToken');
+const { RuntimeAuditEvent } = require('./runtimeAuditEvent');
 
 const initModelAssociations = () => {
   Host.hasMany(Project, {
@@ -36,6 +40,24 @@ const initModelAssociations = () => {
     foreignKey: 'hostId',
   });
 
+  Host.hasMany(HostPathMapping, {
+    as: 'pathMappings',
+    foreignKey: 'hostId',
+  });
+  HostPathMapping.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
+  Host.hasMany(ProcessTemplate, {
+    as: 'processTemplates',
+    foreignKey: 'hostId',
+  });
+  ProcessTemplate.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
   Project.hasMany(Service, {
     as: 'services',
     foreignKey: 'projectId',
@@ -59,6 +81,15 @@ const initModelAssociations = () => {
     foreignKey: 'projectId',
   });
   ProcessRun.belongsTo(Project, {
+    as: 'project',
+    foreignKey: 'projectId',
+  });
+
+  Project.hasMany(ProcessTemplate, {
+    as: 'processTemplates',
+    foreignKey: 'projectId',
+  });
+  ProcessTemplate.belongsTo(Project, {
     as: 'project',
     foreignKey: 'projectId',
   });
@@ -130,6 +161,10 @@ module.exports = {
   ProcessRun,
   ProcessRuntimeState,
   HostRuntimeState,
+  HostPathMapping,
+  ProcessTemplate,
+  AutomationApiToken,
+  RuntimeAuditEvent,
   Technology,
   PortRange,
   initModelAssociations,

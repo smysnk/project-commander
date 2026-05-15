@@ -29,6 +29,9 @@ const {
 } = require('./hostDeployment');
 const { createTerminalSessionManager } = require('./terminalSessionManager');
 const { createProcessRegistry } = require('./runtime/processRegistry');
+const { createHostPathMappingCatalog } = require('./hostPathMappings');
+const { createProcessTemplateCatalog } = require('./processTemplates');
+const { createRuntimeWaiter } = require('./runtimeWait');
 const {
   isHostVersionOutOfDate,
   createHostAgentAutoUpgradeController,
@@ -40,6 +43,9 @@ const {
   readAuthenticatedAccess,
   readAuthenticatedAccessFromHeaders,
 } = require('./auth/sessionAuth');
+const automationTokenStore = require('./auth/automationTokens');
+const { authorizeLifecycleAction } = require('./auth/lifecycleAccess');
+const { createRuntimeAuditLogger } = require('./runtimeAudit');
 const {
   parseMaxDepth,
   buildFolderPattern,
@@ -173,6 +179,22 @@ const startServer = async () => {
   const runtimeBackend = createRuntimeBackend();
   const processRegistry = createProcessRegistry({
     runtimeBackend,
+    logger: console,
+  });
+  const hostPathMappings = createHostPathMappingCatalog({
+    logger: console,
+  });
+  const processTemplates = createProcessTemplateCatalog({
+    hostPathMappings,
+    processRegistry,
+    logger: console,
+  });
+  const runtimeWait = createRuntimeWaiter({
+    processRegistry,
+    runtimeBackend,
+    processTemplates,
+  });
+  const runtimeAudit = createRuntimeAuditLogger({
     logger: console,
   });
   const customProjectPaths = new Set();
@@ -1649,6 +1671,14 @@ const startServer = async () => {
       sendHostTerminalInput,
       closeHostTerminalSession,
       processRegistry,
+      hostPathMappings,
+      processTemplates,
+      runtimeWait,
+      automationTokenStore,
+      lifecycleAccess: {
+        authorizeLifecycleAction,
+      },
+      runtimeAudit,
       runtimeBackend,
       serverVersion: SERVER_VERSION,
       serverProtocolVersion: EVENT_PROTOCOL_VERSION,
@@ -1880,6 +1910,14 @@ const startServer = async () => {
     expressMiddleware(apolloServer, {
       context: async ({ req }) => ({
         user: req?.authenticatedUser || null,
+        requestId: String(req?.headers?.['x-request-id'] || '').trim()
+          || `graphql-${Date.now()}-${crypto.randomUUID()}`,
+        toolName: String(
+          req?.headers?.['x-project-commander-tool']
+          || req?.headers?.['x-commander-tool']
+          || req?.headers?.['user-agent']
+          || 'graphql',
+        ).trim(),
       }),
     }),
   );

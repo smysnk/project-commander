@@ -27,6 +27,56 @@ const createResolverHarness = (overrides = {}) => {
       return overrides.queueProcessKillResult || { commandId: 'kill-1', status: 'queued' };
     },
   };
+  const hostPathMappings = {
+    async listHostPathMappings(input) {
+      calls.push({ method: 'listHostPathMappings', input });
+      return overrides.listHostPathMappingsResult || [];
+    },
+    async resolveHostPath(input) {
+      calls.push({ method: 'resolveHostPath', input });
+      return overrides.resolveHostPathResult || null;
+    },
+    async upsertHostPathMapping(input) {
+      calls.push({ method: 'upsertHostPathMapping', input });
+      return overrides.upsertHostPathMappingResult || null;
+    },
+    async deleteHostPathMapping(input) {
+      calls.push({ method: 'deleteHostPathMapping', input });
+      return overrides.deleteHostPathMappingResult ?? true;
+    },
+  };
+  const processTemplates = {
+    async listProcessTemplates(input) {
+      calls.push({ method: 'listProcessTemplates', input });
+      return overrides.listProcessTemplatesResult || [];
+    },
+    async resolveProcessTemplate(input) {
+      calls.push({ method: 'resolveProcessTemplate', input });
+      return overrides.resolveProcessTemplateResult || null;
+    },
+    async ensureProcessFromTemplate(input) {
+      calls.push({ method: 'ensureProcessFromTemplate', input });
+      return overrides.ensureProcessFromTemplateResult || null;
+    },
+    async upsertProcessTemplate(input) {
+      calls.push({ method: 'upsertProcessTemplate', input });
+      return overrides.upsertProcessTemplateResult || null;
+    },
+    async deleteProcessTemplate(input) {
+      calls.push({ method: 'deleteProcessTemplate', input });
+      return overrides.deleteProcessTemplateResult ?? true;
+    },
+  };
+  const runtimeWait = {
+    async waitForRuntime(input) {
+      calls.push({ method: 'waitForRuntime', input });
+      return overrides.waitForRuntimeResult || {
+        status: 'timeout',
+        elapsedMs: 0,
+        lastLogLines: [],
+      };
+    },
+  };
 
   const resolvers = createResolvers({
     discoveryConfig: { projectPath: '/tmp', folderPattern: '.*', maxDepth: 2 },
@@ -45,6 +95,12 @@ const createResolverHarness = (overrides = {}) => {
     sendHostTerminalInput: async () => true,
     closeHostTerminalSession: async () => true,
     processRegistry,
+    hostPathMappings,
+    processTemplates,
+    runtimeWait,
+    automationTokenStore: overrides.automationTokenStore,
+    lifecycleAccess: overrides.lifecycleAccess,
+    runtimeAudit: overrides.runtimeAudit,
     runtimeBackend: {
       name: 'go-master',
       getProjectRuntime: async () => ({}),
@@ -191,6 +247,222 @@ test('ensureDesiredProcess mutation forwards env entries and maps the created pr
   assert.equal(result.env[0].key, 'PORT');
 });
 
+test('path mapping queries and mutations forward to host path mapping catalog', async () => {
+  const mapping = {
+    id: 11,
+    hostId: 7,
+    agentUuid: 'slave-7',
+    logicalRoot: 'clearbox-public',
+    codexPathPrefix: '/Volumes/public-1/play',
+    hostPathPrefix: '/opt/project-commander/slave/play',
+    description: 'clearbox mounted play share',
+    enabled: true,
+    createdBy: 'test',
+    updatedBy: 'test',
+  };
+  const { resolvers, calls } = createResolverHarness({
+    listHostPathMappingsResult: [mapping],
+    resolveHostPathResult: {
+      inputPath: '/Volumes/public-1/play/varcad.io',
+      codexPath: '/Volumes/public-1/play/varcad.io',
+      hostPath: '/opt/project-commander/slave/play/varcad.io',
+      source: 'mapping',
+      approved: true,
+      matchedRoot: '/opt/project-commander/slave/play',
+      approvedRoots: ['/opt/project-commander/slave/play'],
+      mapping,
+    },
+    upsertHostPathMappingResult: mapping,
+  });
+
+  const mappings = await resolvers.Query.hostPathMappings(null, {
+    hostId: 7,
+    includeDisabled: true,
+  });
+  const resolved = await resolvers.Query.resolveHostPath(null, {
+    hostId: 7,
+    path: '/Volumes/public-1/play/varcad.io',
+  });
+  const upserted = await resolvers.Mutation.upsertHostPathMapping(null, {
+    hostId: 7,
+    logicalRoot: 'clearbox-public',
+    codexPathPrefix: '/Volumes/public-1/play',
+    hostPathPrefix: '/opt/project-commander/slave/play',
+    description: 'clearbox mounted play share',
+    enabled: true,
+    createdBy: 'test',
+  });
+  const deleted = await resolvers.Mutation.deleteHostPathMapping(null, {
+    id: 11,
+    hostId: 7,
+  });
+
+  assert.equal(calls[0].method, 'listHostPathMappings');
+  assert.equal(calls[0].input.includeDisabled, true);
+  assert.equal(mappings[0].codexPathPrefix, '/Volumes/public-1/play');
+  assert.equal(calls[1].method, 'resolveHostPath');
+  assert.equal(resolved.hostPath, '/opt/project-commander/slave/play/varcad.io');
+  assert.equal(resolved.mapping.id, 11);
+  assert.equal(calls[2].method, 'upsertHostPathMapping');
+  assert.equal(upserted.logicalRoot, 'clearbox-public');
+  assert.equal(calls[3].method, 'deleteHostPathMapping');
+  assert.equal(deleted, true);
+});
+
+test('process template queries and mutations forward to process template catalog', async () => {
+  const template = {
+    id: 31,
+    hostId: 7,
+    projectId: 19,
+    templateKey: 'node.dev',
+    displayName: 'Node dev',
+    packageKey: 'web',
+    packageRelativePath: '.',
+    processKeyTemplate: '{{package.key}}',
+    cwdTemplate: '{{project.hostPath}}/packages/web',
+    desiredState: 'running',
+    launchMode: 'shell',
+    command: 'yarn workspace web dev',
+    argsJson: ['--host', '0.0.0.0'],
+    envJson: { NODE_ENV: 'development' },
+    restartPolicy: 'manual',
+    healthChecksJson: [{ type: 'http', url: 'http://localhost:3010' }],
+    enabled: true,
+    allowCodex: true,
+    source: 'persisted',
+    scope: 'host_project',
+  };
+  const desiredProcess = {
+    id: 44,
+    hostId: 7,
+    projectId: 19,
+    slaveId: 'slave-7',
+    processKey: 'web',
+    packageKey: 'web',
+    packageRelativePath: '.',
+    projectPath: '/srv/varcad.io',
+    desiredState: 'running',
+    launchMode: 'shell',
+    cwd: '/srv/varcad.io/packages/web',
+    command: 'yarn workspace web dev',
+    argsJson: ['--host', '0.0.0.0'],
+    envJson: { NODE_ENV: 'development' },
+    restartPolicy: 'manual',
+    host: { agentUuid: 'slave-7', name: 'clearbox' },
+    project: { name: 'varcad.io', metadata: { path: '/srv/varcad.io' } },
+  };
+  const { resolvers, calls } = createResolverHarness({
+    listProcessTemplatesResult: [template],
+    resolveProcessTemplateResult: {
+      template,
+      desiredProcess,
+      healthChecksJson: template.healthChecksJson,
+    },
+    ensureProcessFromTemplateResult: {
+      template,
+      desiredProcess,
+      healthChecksJson: template.healthChecksJson,
+    },
+    upsertProcessTemplateResult: template,
+  });
+
+  const templates = await resolvers.Query.processTemplates(null, {
+    hostId: 7,
+    projectId: 19,
+    includeDisabled: true,
+  });
+  const resolved = await resolvers.Query.resolveProcessTemplate(null, {
+    hostId: 7,
+    projectId: 19,
+    templateKey: 'node.dev',
+    env: [{ key: 'NODE_ENV', value: 'development' }],
+  });
+  const ensured = await resolvers.Mutation.ensureProcessFromTemplate(null, {
+    hostId: 7,
+    projectId: 19,
+    templateKey: 'node.dev',
+    args: ['--host', '0.0.0.0'],
+  });
+  const upserted = await resolvers.Mutation.upsertProcessTemplate(null, {
+    hostId: 7,
+    projectId: 19,
+    templateKey: 'node.dev',
+    displayName: 'Node dev',
+    packageKey: 'web',
+    cwdTemplate: '{{project.hostPath}}/packages/web',
+    launchMode: 'shell',
+    command: 'yarn workspace web dev',
+    args: ['--host', '0.0.0.0'],
+    env: [{ key: 'NODE_ENV', value: 'development' }],
+    healthChecksJson: '[{"type":"http","url":"http://localhost:3010"}]',
+  });
+  const deleted = await resolvers.Mutation.deleteProcessTemplate(null, {
+    id: 31,
+    hostId: 7,
+  });
+
+  assert.equal(calls[0].method, 'listProcessTemplates');
+  assert.equal(calls[0].input.includeDisabled, true);
+  assert.equal(templates[0].templateKey, 'node.dev');
+  assert.equal(templates[0].env[0].key, 'NODE_ENV');
+  assert.match(templates[0].healthChecksJson, /localhost:3010/);
+  assert.equal(calls[1].method, 'resolveProcessTemplate');
+  assert.equal(calls[1].input.env[0].value, 'development');
+  assert.equal(resolved.cwd, '/srv/varcad.io/packages/web');
+  assert.equal(resolved.template.scope, 'host_project');
+  assert.equal(calls[2].method, 'ensureProcessFromTemplate');
+  assert.deepEqual(calls[2].input.args, ['--host', '0.0.0.0']);
+  assert.equal(ensured.id, 44);
+  assert.equal(calls[3].method, 'upsertProcessTemplate');
+  assert.deepEqual(calls[3].input.envJson, { NODE_ENV: 'development' });
+  assert.deepEqual(calls[3].input.healthChecksJson, [{ type: 'http', url: 'http://localhost:3010' }]);
+  assert.equal(upserted.packageKey, 'web');
+  assert.equal(calls[4].method, 'deleteProcessTemplate');
+  assert.equal(deleted, true);
+});
+
+test('waitForRuntime query forwards health checks and maps diagnostics', async () => {
+  const { resolvers, calls } = createResolverHarness({
+    waitForRuntimeResult: {
+      status: 'matched',
+      matchedCheck: 'log_pattern',
+      elapsedMs: 25,
+      observedRun: {
+        id: 501,
+        runId: 'run-501',
+        hostId: 7,
+        projectId: 19,
+        slaveId: 'slave-7',
+        packageKey: 'web',
+        processKey: 'web',
+        pid: 1234,
+        command: 'yarn dev',
+        argsJson: [],
+        status: 'running',
+      },
+      lastLogLines: ['Ready on http://localhost:3010'],
+      message: 'log check matched',
+    },
+  });
+
+  const result = await resolvers.Query.waitForRuntime(null, {
+    hostId: 7,
+    projectId: 19,
+    templateKey: 'node.dev',
+    processKey: 'web',
+    healthChecksJson: '[{"type":"log_pattern","pattern":"Ready"}]',
+    timeoutMs: 30000,
+  });
+
+  assert.equal(calls[0].method, 'waitForRuntime');
+  assert.equal(calls[0].input.templateKey, 'node.dev');
+  assert.match(calls[0].input.healthChecksJson, /Ready/);
+  assert.equal(result.status, 'matched');
+  assert.equal(result.matchedCheck, 'log_pattern');
+  assert.equal(result.observedRun.runId, 'run-501');
+  assert.deepEqual(result.lastLogLines, ['Ready on http://localhost:3010']);
+});
+
 test('ensureDesiredProcess mutation forwards desiredProcessId for edits', async () => {
   const { resolvers, calls } = createResolverHarness({
     ensureDesiredProcessResult: {
@@ -247,4 +519,61 @@ test('softKillProcess and hardKillProcess mutations queue kill commands with the
   assert.equal(calls[1].input.hard, true);
   assert.equal(calls[1].input.hostId, 9);
   assert.equal(hardResult.message, 'hard kill command queued');
+});
+
+test('lifecycle mutation writes runtime audit event with request and target metadata', async () => {
+  const auditEvents = [];
+  const { resolvers } = createResolverHarness({
+    runtimeAudit: {
+      async recordRuntimeAuditEvent(event) {
+        auditEvents.push(event);
+        return event;
+      },
+      async listRuntimeAuditEvents() {
+        return auditEvents;
+      },
+    },
+    ensureDesiredProcessResult: {
+      id: 303,
+      hostId: 7,
+      projectId: 19,
+      processKey: 'web',
+      packageKey: 'web',
+      projectPath: '/srv/varcad.io',
+      desiredState: 'running',
+      launchMode: 'shell',
+      cwd: '/srv/varcad.io',
+      command: 'yarn dev',
+      argsJson: [],
+      envJson: {},
+      restartPolicy: 'manual',
+    },
+  });
+
+  await resolvers.Mutation.ensureDesiredProcess(null, {
+    hostId: 7,
+    projectId: 19,
+    processKey: 'web',
+    packageKey: 'web',
+    launchMode: 'shell',
+    cwd: '/srv/varcad.io',
+    command: 'yarn dev',
+  }, {
+    requestId: 'req-phase-5',
+    toolName: 'project_commander.ensure_process',
+    user: {
+      subject: 'local-test',
+      name: 'local-test',
+    },
+  });
+
+  assert.equal(auditEvents.length, 1);
+  assert.equal(auditEvents[0].context.requestId, 'req-phase-5');
+  assert.equal(auditEvents[0].context.toolName, 'project_commander.ensure_process');
+  assert.equal(auditEvents[0].action, 'runtime:ensure');
+  assert.equal(auditEvents[0].hostId, 7);
+  assert.equal(auditEvents[0].projectId, 19);
+  assert.equal(auditEvents[0].desiredProcessId, 303);
+  assert.equal(auditEvents[0].processKey, 'web');
+  assert.equal(auditEvents[0].status, 'success');
 });

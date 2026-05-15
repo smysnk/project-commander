@@ -8,6 +8,7 @@ import {
   QUERY_DISCOVERY_DASHBOARD,
   QUERY_DESIRED_PROCESSES,
   QUERY_HOSTS,
+  QUERY_HOST_PATH_MAPPINGS,
   QUERY_OBSERVED_PROCESS_RUNS,
   QUERY_PROJECT_ENVIRONMENT,
   QUERY_PROJECT_LOGS,
@@ -411,7 +412,7 @@ export const useRuntimeRegistryQueries = ({
     }));
 
     try {
-      const [runtimeStateData, desiredProcessesData, observedRunsData] = await Promise.all([
+      const [runtimeStateData, desiredProcessesData, observedRunsData, hostPathMappingsData] = await Promise.all([
         graphqlRequest({
           query: QUERY_SLAVE_RUNTIME_STATE,
           variables,
@@ -427,6 +428,11 @@ export const useRuntimeRegistryQueries = ({
           variables,
           endpoint: graphqlEndpoint,
         }),
+        graphqlRequest({
+          query: QUERY_HOST_PATH_MAPPINGS,
+          variables: { ...variables, includeDisabled: true },
+          endpoint: graphqlEndpoint,
+        }),
       ]);
 
       const runtimeState = runtimeStateData?.slaveRuntimeState || null;
@@ -435,6 +441,9 @@ export const useRuntimeRegistryQueries = ({
         : [];
       const observedProcessRuns = Array.isArray(observedRunsData?.observedProcessRuns)
         ? observedRunsData.observedProcessRuns
+        : [];
+      const hostPathMappings = Array.isArray(hostPathMappingsData?.hostPathMappings)
+        ? hostPathMappingsData.hostPathMappings
         : [];
       const resolvedHostId = Number(runtimeState?.host?.id || parsedHostId || 0);
       const resolvedHostKey = Number.isInteger(resolvedHostId) && resolvedHostId > 0
@@ -445,6 +454,7 @@ export const useRuntimeRegistryQueries = ({
         slaveRuntimeState: runtimeState,
         desiredProcesses,
         observedProcessRuns,
+        hostPathMappings,
         loadedAt: new Date().toISOString(),
       };
       setRuntimeRegistryByHostId((current) => ({

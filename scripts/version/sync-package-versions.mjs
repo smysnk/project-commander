@@ -21,6 +21,9 @@ const packageJsonPaths = [
   path.join(repoRoot, 'packages/agent-master/package.json'),
   path.join(repoRoot, 'packages/agent-shared/package.json'),
   path.join(repoRoot, 'packages/agent-slave/package.json'),
+  path.join(repoRoot, 'packages/commander-client/package.json'),
+  path.join(repoRoot, 'packages/commander-mcp/package.json'),
+  path.join(repoRoot, 'packages/pcctl/package.json'),
   path.join(repoRoot, 'packages/server/package.json'),
   path.join(repoRoot, 'packages/web/package.json'),
 ];

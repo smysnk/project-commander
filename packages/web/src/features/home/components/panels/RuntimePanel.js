@@ -80,6 +80,7 @@ export default function RuntimePanel() {
     slaveRuntimeState,
     desiredProcesses,
     observedProcessRuns,
+    hostPathMappings,
     hostRuntimeState,
     runtimeLoading,
     runtimeActionBusy,
@@ -128,6 +129,7 @@ export default function RuntimePanel() {
     selectedHost?.protocolVersion || null,
   );
   const hostProjects = Array.isArray(selectedHost?.projects) ? selectedHost.projects : [];
+  const visibleHostPathMappings = Array.isArray(hostPathMappings) ? hostPathMappings : [];
 
   const onDraftFieldChange = (field, value) => {
     setDraft((current) => ({
@@ -366,6 +368,37 @@ export default function RuntimePanel() {
                 <span className="hostFieldValue">{slaveRuntimeState.hostRuntimeState.diskMount}</span>
               </div>
             ) : null}
+          </div>
+
+          <div className="hostRuntimeProcessSection">
+            <h4 className="runtimeSubsectionTitle">Shared Path Mappings</h4>
+            {visibleHostPathMappings.length > 0 ? (
+              <div className="hostRuntimeProcessList">
+                {visibleHostPathMappings.map((mapping) => (
+                  <div
+                    key={mapping.id || `${mapping.codexPathPrefix}:${mapping.hostPathPrefix}`}
+                    className="hostRuntimeProcessRow"
+                  >
+                    <div className="hostRuntimeProcessIdentity">
+                      <strong>{toDisplayValue(mapping.logicalRoot || mapping.codexPathPrefix)}</strong>
+                      <span className="hostRuntimeProcessMeta">
+                        {mapping.enabled === false ? 'disabled' : 'enabled'}
+                      </span>
+                    </div>
+                    <div className="hostRuntimeProcessMeta">
+                      <span title={mapping.codexPathPrefix}>
+                        Codex {toDisplayValue(mapping.codexPathPrefix)}
+                      </span>
+                      <span title={mapping.hostPathPrefix}>
+                        Host {toDisplayValue(mapping.hostPathPrefix)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="emptyState hostRuntimeEmptyState">No shared path mappings configured.</p>
+            )}
           </div>
 
           {showCreateForm ? (

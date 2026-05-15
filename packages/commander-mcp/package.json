@@ -1,0 +1,16 @@
+{
+  "name": "commander-mcp",
+  "version": "0.1.22",
+  "private": true,
+  "bin": {
+    "project-commander-mcp": "src/server.js"
+  },
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "commander-client": "workspace:*"
+  }
+}

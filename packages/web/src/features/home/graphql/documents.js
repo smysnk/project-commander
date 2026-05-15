@@ -195,6 +195,22 @@ export const QUERY_HOST_LOGS = `
   }
 `;
 
+export const QUERY_HOST_PATH_MAPPINGS = `
+  query HostPathMappings($hostId: Int, $agentUuid: String, $includeDisabled: Boolean) {
+    hostPathMappings(hostId: $hostId, agentUuid: $agentUuid, includeDisabled: $includeDisabled) {
+      id
+      hostId
+      agentUuid
+      logicalRoot
+      codexPathPrefix
+      hostPathPrefix
+      description
+      enabled
+      updatedAt
+    }
+  }
+`;
+
 export const QUERY_PROJECT_ENVIRONMENT = `
   query ProjectLaunchEnvironment($projectPath: String!) {
     projectLaunchEnvironment(projectPath: $projectPath) {

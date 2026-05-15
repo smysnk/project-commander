@@ -885,6 +885,9 @@ export default function HomePageContainer({ authEnabled = false }) {
   const selectedHostObservedProcessRuns = Array.isArray(selectedHostRuntimeBundle?.observedProcessRuns)
     ? selectedHostRuntimeBundle.observedProcessRuns
     : [];
+  const selectedHostPathMappings = Array.isArray(selectedHostRuntimeBundle?.hostPathMappings)
+    ? selectedHostRuntimeBundle.hostPathMappings
+    : [];
   const selectedHostHostRuntimeState = selectedHostSlaveRuntimeState?.hostRuntimeState
     || selectedHostRuntimeBundle?.hostRuntimeState
     || null;
@@ -1302,6 +1305,7 @@ export default function HomePageContainer({ authEnabled = false }) {
     slaveRuntimeState: selectedHostSlaveRuntimeState,
     desiredProcesses: selectedHostDesiredProcesses,
     observedProcessRuns: selectedHostObservedProcessRuns,
+    hostPathMappings: selectedHostPathMappings,
     hostRuntimeState: selectedHostHostRuntimeState,
     runtimeLoading: selectedHostRuntimeLoading,
     runtimeActionBusy: selectedHostRuntimeActionBusy,
@@ -1326,6 +1330,7 @@ export default function HomePageContainer({ authEnabled = false }) {
     selectedHostDesiredProcesses,
     selectedHostHostRuntimeState,
     selectedHostObservedProcessRuns,
+    selectedHostPathMappings,
     selectedHostRuntimeActionBusy,
     selectedHostRuntimeLoading,
     selectedHostSlaveRuntimeState,

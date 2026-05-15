@@ -1,6 +1,6 @@
 {
   "name": "project-discovery",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "private": true,
   "packageManager": "yarn@4.12.0",
   "workspaces": [
@@ -19,6 +19,7 @@
     "fleet:template": "helm template project-commander ./fleet/project-commander -f ./fleet/project-commander/values.yaml",
     "k8s:deploy:local": "bash ./scripts/deploy-fleet.sh",
     "start": "make start",
+    "pcctl": "yarn workspace pcctl start",
     "test": "yarn exec test-station run --config ./test-station.config.mjs",
     "test:coverage": "yarn exec test-station run --config ./test-station.config.mjs --coverage",
     "dev:web": "yarn workspace web dev",
