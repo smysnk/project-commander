@@ -1245,6 +1245,13 @@ const startServer = async () => {
     const runtimeBySlaveId = new Map();
     const runtimeByName = new Map();
     const runtimeByIp = new Map();
+    const runtimeIpCounts = new Map();
+    for (const runtimeHost of registeredHosts) {
+      const ip = String(runtimeHost?.ip || '').trim();
+      if (ip) {
+        runtimeIpCounts.set(ip, (runtimeIpCounts.get(ip) || 0) + 1);
+      }
+    }
     for (const runtimeHost of registeredHosts) {
       const slaveId = String(runtimeHost?.slaveId || '').trim().toLowerCase();
       const name = String(runtimeHost?.name || runtimeHost?.hostName || '').trim();
@@ -1255,7 +1262,7 @@ const startServer = async () => {
       if (name) {
         runtimeByName.set(name, runtimeHost);
       }
-      if (ip) {
+      if (ip && Number(runtimeIpCounts.get(ip) || 0) === 1) {
         runtimeByIp.set(ip, runtimeHost);
       }
     }

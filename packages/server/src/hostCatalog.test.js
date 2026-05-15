@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { allocateRuntimeHostName } = require('./hostCatalog');
+const {
+  allocateRuntimeHostName,
+  canMatchRuntimeHostByIp,
+} = require('./hostCatalog');
 
 test('allocateRuntimeHostName preserves the requested hostname when it is unclaimed', () => {
   const name = allocateRuntimeHostName({
@@ -55,4 +58,22 @@ test('allocateRuntimeHostName increments when address-qualified candidates are a
   });
 
   assert.equal(name, 'Joshuas-MacBook-Pro.local [127.0.0.1] #2');
+});
+
+test('canMatchRuntimeHostByIp rejects shared SNAT IPs for identified slave agents', () => {
+  const incomingIpCounts = new Map([['10.42.0.1', 2]]);
+
+  assert.equal(canMatchRuntimeHostByIp({
+    slaveId: 'cc4eed4e-ae47-438e-b118-069b57e815b1',
+    ip: '10.42.0.1',
+  }, incomingIpCounts), false);
+});
+
+test('canMatchRuntimeHostByIp allows unique IP fallback for identified slave agents', () => {
+  const incomingIpCounts = new Map([['192.168.1.250', 1]]);
+
+  assert.equal(canMatchRuntimeHostByIp({
+    slaveId: 'cc4eed4e-ae47-438e-b118-069b57e815b1',
+    ip: '192.168.1.250',
+  }, incomingIpCounts), true);
 });

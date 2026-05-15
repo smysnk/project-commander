@@ -371,6 +371,19 @@ const findHostByRuntimeIdentity = async (input, { transaction } = {}) => {
   return null;
 };
 
+const canMatchRuntimeHostByIp = (host, incomingIpCounts = new Map()) => {
+  const ip = normalizeHostIp(host?.ip);
+  if (!ip) {
+    return false;
+  }
+  // Slave id is the stable identity. Under Kubernetes NodePort/SNAT, multiple
+  // slaves can present the same IP, so IP fallback is safe only when unique.
+  if (normalizeHostAgentUuid(host?.slaveId || host?.agentUuid) && Number(incomingIpCounts.get(ip) || 0) > 1) {
+    return false;
+  }
+  return true;
+};
+
 const deleteHostById = async (hostIdInput) => {
   const hostId = Number(hostIdInput);
   if (!Number.isInteger(hostId) || hostId <= 0) {
@@ -401,6 +414,12 @@ const syncRegisteredHosts = async (registeredHosts) => {
       .map((entry) => normalizeRegisteredHost(entry))
       .filter(Boolean)
     : [];
+  const incomingIpCounts = normalizedHosts.reduce((counts, host) => {
+    if (host.ip) {
+      counts.set(host.ip, (counts.get(host.ip) || 0) + 1);
+    }
+    return counts;
+  }, new Map());
 
   const deduped = [];
   const seenKeys = new Set();
@@ -448,10 +467,12 @@ const syncRegisteredHosts = async (registeredHosts) => {
         existing = existingByAgentUuid.get(host.slaveId) || null;
       }
       if (!existing) {
-        existing = existingByIp.get(host.ip) || null;
+        existing = existingByName.get(normalizeHostNameKey(host.name)) || null;
       }
       if (!existing) {
-        existing = existingByName.get(normalizeHostNameKey(host.name)) || null;
+        existing = canMatchRuntimeHostByIp(host, incomingIpCounts)
+          ? (existingByIp.get(host.ip) || null)
+          : null;
       }
 
       const nextName = allocateRuntimeHostName({
@@ -627,6 +648,7 @@ const listHostsWithProjects = async () => Host.findAll({
 module.exports = {
   addManualHost,
   allocateRuntimeHostName,
+  canMatchRuntimeHostByIp,
   deleteHostById,
   getHostById,
   findHostByRuntimeIdentity,
