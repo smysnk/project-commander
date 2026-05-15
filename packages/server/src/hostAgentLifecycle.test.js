@@ -72,7 +72,7 @@ test('auto upgrade controller deploys upgrade for older host version', async () 
   assert.equal(attempts.length, 1);
 });
 
-test('auto upgrade controller deploys re-deploy for higher mismatched host version', async () => {
+test('auto upgrade controller ignores higher mismatched host versions', async () => {
   const attempts = [];
   const controller = createHostAgentAutoUpgradeController({
     targetVersion: '0.1.4',
@@ -90,9 +90,8 @@ test('auto upgrade controller deploys re-deploy for higher mismatched host versi
     version: '0.1.5',
   });
 
-  assert.equal(triggered, true);
-  assert.equal(attempts.length, 1);
-  assert.equal(attempts[0].deploymentAction, 'redeploy');
+  assert.equal(triggered, false);
+  assert.equal(attempts.length, 0);
 });
 
 test('auto upgrade controller ignores up-to-date hosts and missing persisted records', async () => {

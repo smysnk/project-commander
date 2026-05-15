@@ -78,8 +78,8 @@ controlPlane:
       PC_SERVER_CONSOLE_LOG_LEVEL: info
       PC_MASTER_SOCKET_PATH: /tmp/project-commander/master.sock
       PC_MASTER_ENDPOINT: commander.smysnk.com:30552
-      DB_DIALECT: sqlite
-      DB_STORAGE: /var/lib/project-commander/project-commander.sqlite
+      DB_DIALECT: postgres
+      DB_USE_DATABASE_URL: "true"
       PROJECT_PATH: /var/lib/project-commander/workspaces
       PROJECT_FOLDER_PATTERN: .*
       SCAN_MAX_DEPTH: "6"
@@ -109,4 +109,4 @@ controlPlane:
   affinity: {}
 
 database:
-  mode: sqlite
+  mode: postgres

@@ -347,7 +347,11 @@ log "Target host platform: ${TARGET_UNAME_S:-unknown}/${TARGET_UNAME_M:-unknown}
 log "Building pc-slave for ${GOOS}/${GOARCH}"
 (
   cd "${ROOT_DIR}/packages/agent-slave"
-  GOOS="${GOOS}" GOARCH="${GOARCH}" CGO_ENABLED=0 go build -o "${TMP_DIR}/pc-slave" ./cmd/pc-slave
+  BUILD_VERSION="$(node "${ROOT_DIR}/scripts/version/sync-package-versions.mjs" --print)"
+  GOOS="${GOOS}" GOARCH="${GOARCH}" CGO_ENABLED=0 go build \
+    -ldflags "-X main.buildVersion=${BUILD_VERSION}" \
+    -o "${TMP_DIR}/pc-slave" \
+    ./cmd/pc-slave
 )
 
 LAUNCHD_LABEL="com.projectcommander.${SERVICE_NAME}"

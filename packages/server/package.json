@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "0.1.5",
+  "version": "0.1.16",
   "private": true,
   "main": "src/index.js",
   "scripts": {
@@ -8,23 +8,23 @@
     "start": "node src/index.js",
     "migrate": "node src/migrate.js",
     "build": "node ../../scripts/version/sync-package-versions.mjs --quiet >/dev/null && echo 'No server build step required'",
-    "test": "yarn node --test src/graphql/index.test.js src/hostAgentLifecycle.test.js src/hostCatalog.test.js src/runtime/processRegistry.test.js",
+    "test": "yarn node --test src/graphql/index.test.js src/hostAgentLifecycle.test.js src/hostCatalog.test.js src/hostDeployment.test.js src/runtime/processRegistry.test.js",
     "agent:master:smoke": "node src/agent/smoke.js"
   },
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@grpc/grpc-js": "^1.14.0",
     "@grpc/proto-loader": "^0.8.0",
+    "cookie": "^1.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "graphql": "^16.9.0",
+    "next-auth": "^4.24.13",
     "pg": "^8.19.0",
     "sequelize": "^6.37.5",
     "sqlite3": "^5.1.7",
-    "ws": "^8.18.1",
-    "cookie": "^1.0.2",
-    "next-auth": "^4.24.13"
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

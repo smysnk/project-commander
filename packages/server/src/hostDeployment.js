@@ -55,6 +55,44 @@ const isLoopbackEndpointHost = (host) => {
   );
 };
 
+const listLocalInterfaceHosts = (networkInterfaces = os.networkInterfaces()) => {
+  const hosts = new Set();
+  if (!networkInterfaces || typeof networkInterfaces !== 'object') {
+    return hosts;
+  }
+
+  for (const entries of Object.values(networkInterfaces)) {
+    if (!Array.isArray(entries)) {
+      continue;
+    }
+    for (const entry of entries) {
+      const address = String(entry?.address || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
+      if (address) {
+        hosts.add(address);
+      }
+    }
+  }
+  return hosts;
+};
+
+const isCurrentMachineHost = (host, { networkInterfaces = os.networkInterfaces(), hostname = os.hostname() } = {}) => {
+  const normalized = String(host || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (isLoopbackEndpointHost(normalized)) {
+    return true;
+  }
+
+  const localHostname = String(hostname || '').trim().toLowerCase();
+  if (localHostname && normalized === localHostname) {
+    return true;
+  }
+
+  const localHosts = listLocalInterfaceHosts(networkInterfaces);
+  return localHosts.has(normalized);
+};
+
 const normalizeHostMetadata = (metadata) => (
   metadata && typeof metadata === 'object' && !Array.isArray(metadata)
     ? metadata
@@ -70,7 +108,7 @@ const resolveConnectionTarget = ({
   const normalizedHost = String(hostIp || normalizedMetadata.host || '').trim().replace(/^\[|\]$/g, '').toLowerCase();
   const sshUser = String(normalizedMetadata.sshUser || '').trim() || null;
   const sshPort = parsePositiveInt(normalizedMetadata.sshPort, 0);
-  const isLocal = isLoopbackEndpointHost(normalizedHost);
+  const isLocal = isCurrentMachineHost(normalizedHost);
 
   return {
     host: normalizedHost,
@@ -676,4 +714,6 @@ module.exports = {
   deploySlaveToHost,
   createRemoteHostDirectory,
   removeRemoteHostDirectory,
+  isCurrentMachineHost,
+  resolveConnectionTarget,
 };

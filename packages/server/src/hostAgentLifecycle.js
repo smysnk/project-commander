@@ -111,7 +111,7 @@ const createHostAgentAutoUpgradeController = ({
     }
 
     const hostVersion = String(runtimeHost?.version || '').trim();
-    if (!isHostVersionMismatch(hostVersion, normalizedTargetVersion)) {
+    if (!isHostVersionOutOfDate(hostVersion, normalizedTargetVersion)) {
       return false;
     }
 
@@ -137,10 +137,8 @@ const createHostAgentAutoUpgradeController = ({
     }
     lastAttemptByHostId.set(hostId, nowMs);
 
-    const deploymentAction = isHostVersionOutOfDate(hostVersion, normalizedTargetVersion)
-      ? 'upgrade'
-      : 'redeploy';
-    const requestLabel = deploymentAction === 'upgrade' ? 'upgrade' : 're-deploy';
+    const deploymentAction = 'upgrade';
+    const requestLabel = 'upgrade';
     const hostName = String(
       persistedHost?.name
       || runtimeHost?.name
