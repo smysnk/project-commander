@@ -393,14 +393,14 @@ func TestDiscoveredProjectsCollector_TopLevelWatchDepthOneIgnoresNestedDirectory
 	}
 }
 
-func TestDiscoveredProjectsCollector_DoesNotRescanWithoutDirectoryChanges(t *testing.T) {
+func TestDiscoveredProjectsCollector_DoesNotRescanFileOnlyChangesBeforeDiscoveryInterval(t *testing.T) {
 	rootDir := t.TempDir()
 	workspaceDir := filepath.Join(rootDir, "workspace")
 	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
 		t.Fatalf("create workspace directory failed: %v", err)
 	}
 
-	collector := newDiscoveredProjectsCollector(nil, rootDir, time.Millisecond, 6)
+	collector := newDiscoveredProjectsCollector(nil, rootDir, time.Hour, 6)
 	initial := collector.Collect(true)
 	if discoveredProjectByPath(initial, workspaceDir) != nil {
 		t.Fatalf("did not expect workspace to be discovered before marker files exist")
@@ -414,6 +414,44 @@ func TestDiscoveredProjectsCollector_DoesNotRescanWithoutDirectoryChanges(t *tes
 	if discoveredProjectByPath(unchanged, workspaceDir) != nil {
 		t.Fatalf("expected cached discovery result without directory change; got %q", workspaceDir)
 	}
+}
+
+func TestDiscoveredProjectsCollector_RescansFileOnlyChangesAfterDiscoveryInterval(t *testing.T) {
+	rootDir := t.TempDir()
+	workspaceDir := filepath.Join(rootDir, "workspace")
+	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
+		t.Fatalf("create workspace directory failed: %v", err)
+	}
+
+	collector := newDiscoveredProjectsCollector(nil, rootDir, time.Millisecond, 6)
+	initial := collector.Collect(true)
+	if discoveredProjectByPath(initial, workspaceDir) != nil {
+		t.Fatalf("did not expect workspace to be discovered before marker files exist")
+	}
+
+	writeDiscoveryFixtureFile(t, filepath.Join(workspaceDir, "package.json"), `{"name":"workspace"}`)
+	time.Sleep(10 * time.Millisecond)
+
+	refreshed := collector.Collect(false)
+	if discoveredProjectByPath(refreshed, workspaceDir) == nil {
+		t.Fatalf("expected interval discovery refresh to include %q", workspaceDir)
+	}
+}
+
+func TestDiscoveredProjectsCollector_ForcedRefreshFindsFileOnlyChanges(t *testing.T) {
+	rootDir := t.TempDir()
+	workspaceDir := filepath.Join(rootDir, "workspace")
+	if err := os.MkdirAll(workspaceDir, 0o755); err != nil {
+		t.Fatalf("create workspace directory failed: %v", err)
+	}
+
+	collector := newDiscoveredProjectsCollector(nil, rootDir, time.Hour, 6)
+	initial := collector.Collect(true)
+	if discoveredProjectByPath(initial, workspaceDir) != nil {
+		t.Fatalf("did not expect workspace to be discovered before marker files exist")
+	}
+
+	writeDiscoveryFixtureFile(t, filepath.Join(workspaceDir, "package.json"), `{"name":"workspace"}`)
 
 	refreshed := collector.Collect(true)
 	if discoveredProjectByPath(refreshed, workspaceDir) == nil {

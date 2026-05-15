@@ -53,10 +53,14 @@ func newDiscoveredProjectsCollector(
 	if normalizedDepth < 0 || normalizedDepth > defaultDiscoveryMaxDepth {
 		normalizedDepth = defaultDiscoveryMaxDepth
 	}
+	normalizedInterval := discoveryInterval
+	if normalizedInterval <= 0 {
+		normalizedInterval = defaultDiscoveryInterval
+	}
 	return &discoveredProjectsCollector{
 		logger:            logger,
 		projectPath:       strings.TrimSpace(projectPath),
-		discoveryInterval: discoveryInterval,
+		discoveryInterval: normalizedInterval,
 		discoveryMaxDepth: normalizedDepth,
 	}
 }
@@ -87,9 +91,14 @@ func (collector *discoveredProjectsCollector) Collect(force bool) []*slavev1.Dis
 	}
 
 	now := time.Now().UTC()
+	intervalElapsed := collector.hasScanned &&
+		!collector.lastRefreshAt.IsZero() &&
+		collector.discoveryInterval > 0 &&
+		now.Sub(collector.lastRefreshAt) >= collector.discoveryInterval
 	shouldRefresh := force ||
 		!collector.hasScanned ||
-		topLevelChanged
+		topLevelChanged ||
+		intervalElapsed
 	if !shouldRefresh {
 		return cloneDiscoveredProjects(collector.cached)
 	}
