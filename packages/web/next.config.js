@@ -1,7 +1,7 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: process.env.NODE_ENV !== 'production' });
 const serverPort = String(process.env.SERVER_PORT || '4000');
 const internalServerUrl = String(process.env.SERVER_URL || '').trim() || `http://localhost:${serverPort}`;
 const nextPublicServerPort = String(process.env.NEXT_PUBLIC_SERVER_PORT || '').trim();
