@@ -491,21 +491,8 @@ func (s *Server) Heartbeat(ctx context.Context, req *slavev1.HeartbeatRequest) (
 	s.slaveMu.Lock()
 	state := s.slaves[slaveID]
 	if state == nil {
-		peerIP, peerPort := parsePeerAddress(ctx)
-		state = &registeredSlaveState{
-			SlaveID:         slaveID,
-			HostName:        slaveID,
-			IP:              peerIP,
-			Port:            normalizeSlavePort(peerPort),
-			Version:         version,
-			ProtocolVersion: protocolVersion,
-			Status:          slaveStatusRegistered,
-			Health:          slaveHealthWarning,
-			Error:           "heartbeat received before registration",
-			RegisteredAt:    now,
-			LastSeenAt:      now,
-		}
-		s.slaves[slaveID] = state
+		s.slaveMu.Unlock()
+		return nil, status.Error(codes.FailedPrecondition, "slave is not registered")
 	}
 	if version != "" {
 		state.Version = version

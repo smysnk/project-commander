@@ -8,7 +8,9 @@ import (
 
 	masterv1 "github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/master/v1"
 	slavev1 "github.com/josh/project-commander/packages/agent-shared/gen/projectcommander/slave/v1"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func authorizedSlaveContext() context.Context {
@@ -232,6 +234,15 @@ func TestHeartbeatProcessLogChunksAreMirroredIntoMasterLogs(t *testing.T) {
 
 	server := NewServer(slog.Default(), "0.1.0", "/tmp/project-commander/master.sock", "shared-key")
 
+	if _, err := server.RegisterSlave(authorizedSlaveContext(), &slavev1.RegisterSlaveRequest{
+		RequestId: "register-process-logs",
+		SlaveId:   "slave-process-1",
+		HostName:  "process-log-host",
+		BootId:    "boot-process-1",
+	}); err != nil {
+		t.Fatalf("RegisterSlave returned error: %v", err)
+	}
+
 	if _, err := server.Heartbeat(authorizedSlaveContext(), &slavev1.HeartbeatRequest{
 		RequestId: "heartbeat-process-logs",
 		SlaveId:   "slave-process-1",
@@ -273,5 +284,30 @@ func TestHeartbeatProcessLogChunksAreMirroredIntoMasterLogs(t *testing.T) {
 	}
 	if !strings.Contains(response.GetEntries()[1].GetMessage(), "ready on 3000") {
 		t.Fatalf("expected mirrored message to contain appended output, got %q", response.GetEntries()[1].GetMessage())
+	}
+}
+
+func TestHeartbeatBeforeRegistrationRequestsExplicitRegister(t *testing.T) {
+	t.Parallel()
+
+	server := NewServer(slog.Default(), "0.1.0", "/tmp/project-commander/master.sock", "shared-key")
+
+	_, err := server.Heartbeat(authorizedSlaveContext(), &slavev1.HeartbeatRequest{
+		RequestId: "heartbeat-before-register",
+		SlaveId:   "slave-unregistered",
+		BootId:    "boot-unregistered",
+	})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("expected FailedPrecondition for heartbeat before registration, got %v", err)
+	}
+
+	response, err := server.ListRegisteredSlaves(context.Background(), &masterv1.ListRegisteredSlavesRequest{
+		RequestId: "list-after-unregistered-heartbeat",
+	})
+	if err != nil {
+		t.Fatalf("ListRegisteredSlaves returned error: %v", err)
+	}
+	if len(response.GetSlaves()) != 0 {
+		t.Fatalf("expected heartbeat before registration not to create placeholder slave, got %d", len(response.GetSlaves()))
 	}
 }
