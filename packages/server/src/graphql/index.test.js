@@ -210,6 +210,105 @@ test('slaveRuntimeState query maps desired processes, observed runs, and host te
   assert.equal(result.hostRuntimeState.diskMount, '/srv');
 });
 
+test('runtime process queries apply desired and observed run filters', async () => {
+  const { resolvers, calls } = createResolverHarness({
+    listDesiredProcessesResult: [
+      {
+        id: 101,
+        hostId: 7,
+        projectId: 3,
+        processKey: 'api',
+        packageKey: 'api',
+        cwd: '/srv/projects/api',
+        command: 'yarn',
+        argsJson: ['dev'],
+        envJson: {},
+        desiredState: 'running',
+        launchMode: 'exec',
+        host: { agentUuid: 'slave-7', name: 'blackbox' },
+        project: { name: 'api-project', metadata: { path: '/srv/projects/api' } },
+      },
+      {
+        id: 102,
+        hostId: 7,
+        projectId: 4,
+        processKey: 'worker',
+        packageKey: 'worker',
+        cwd: '/srv/projects/worker',
+        command: 'node',
+        argsJson: ['worker.js'],
+        envJson: {},
+        desiredState: 'stopped',
+        launchMode: 'exec',
+        host: { agentUuid: 'slave-7', name: 'blackbox' },
+        project: { name: 'worker-project', metadata: { path: '/srv/projects/worker' } },
+      },
+    ],
+    getSlaveRuntimeStateResult: {
+      host: {
+        id: 7,
+        agentUuid: 'slave-7',
+        ip: '192.168.1.7',
+        port: 42050,
+        name: 'blackbox',
+        source: 'runtime',
+        online: true,
+        health: 'healthy',
+        status: 'registered',
+        metadata: { directories: ['/srv/projects'] },
+      },
+      processRuns: [
+        {
+          id: 501,
+          runId: 'run-api',
+          hostId: 7,
+          projectId: 3,
+          slaveId: 'slave-7',
+          packageKey: 'api',
+          pid: 1234,
+          command: 'yarn',
+          argsJson: ['dev'],
+          cwd: '/srv/projects/api',
+          projectPath: '/srv/projects/api',
+          status: 'running',
+        },
+        {
+          id: 502,
+          runId: 'run-worker',
+          hostId: 7,
+          projectId: 4,
+          slaveId: 'slave-7',
+          packageKey: 'worker',
+          pid: 5678,
+          command: 'node',
+          argsJson: ['worker.js'],
+          cwd: '/srv/projects/worker',
+          projectPath: '/srv/projects/worker',
+          status: 'exited',
+        },
+      ],
+    },
+  });
+
+  const desired = await resolvers.Query.desiredProcesses(null, {
+    hostId: 7,
+    packageKey: 'api',
+    search: 'yarn',
+  });
+  const observed = await resolvers.Query.observedProcessRuns(null, {
+    hostId: 7,
+    status: 'running',
+    search: 'api',
+  });
+
+  assert.equal(desired.length, 1);
+  assert.equal(desired[0].packageKey, 'api');
+  assert.equal(observed.length, 1);
+  assert.equal(observed[0].runId, 'run-api');
+  assert.equal(calls[0].input.packageKey, 'api');
+  assert.equal(calls[0].input.search, 'yarn');
+});
+
 test('ensureDesiredProcess mutation forwards env entries and maps the created process', async () => {
   const { resolvers, calls } = createResolverHarness({
     ensureDesiredProcessResult: {

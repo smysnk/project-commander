@@ -490,8 +490,8 @@ const typeDefs = `#graphql
     resolveProcessTemplate(hostId: Int, agentUuid: String, projectId: Int, projectPath: String, codexPath: String, templateKey: String!, packageKey: String, packageRelativePath: String, processKey: String, allowUnapproved: Boolean, codexOnly: Boolean, env: [RuntimeEnvEntryInput!]): ResolvedProcessTemplate!
     waitForRuntime(hostId: Int, agentUuid: String, projectId: Int, projectPath: String, codexPath: String, runId: String, processKey: String, packageKey: String, templateKey: String, status: String, expectedStatus: String, expectedExitCode: Int, timeoutMs: Int, intervalMs: Int, healthChecksJson: String, url: String, method: String, bodyIncludes: String, port: Int, tcpHost: String, pattern: String, graphqlEndpoint: String, query: String, variablesJson: String): RuntimeWaitResult!
     slaveRuntimeState(hostId: Int, agentUuid: String): SlaveRuntimeStateSnapshot
-    desiredProcesses(hostId: Int, projectId: Int, agentUuid: String): [DesiredProcessDefinition!]!
-    observedProcessRuns(hostId: Int, agentUuid: String): [ObservedProcessRun!]!
+    desiredProcesses(hostId: Int, projectId: Int, agentUuid: String, projectPath: String, processKey: String, packageKey: String, desiredState: String, search: String): [DesiredProcessDefinition!]!
+    observedProcessRuns(hostId: Int, projectId: Int, agentUuid: String, projectPath: String, processKey: String, packageKey: String, status: String, runId: String, pid: Int, search: String): [ObservedProcessRun!]!
     terminalSession(hostId: Int!): TerminalSession
     discoveryConfig: DiscoveryConfig!
     discoveredProjects: ProjectDiscoveryResult!
@@ -1084,6 +1084,74 @@ const mapObservedProcessRunForGraphql = (processRun) => {
   };
 };
 
+const normalizeRuntimeFilterText = (value) => String(value || '').trim().toLowerCase();
+
+const matchesExactRuntimeFilter = (value, filterValue) => {
+  const normalizedFilter = normalizeRuntimeFilterText(filterValue);
+  if (!normalizedFilter) {
+    return true;
+  }
+  return normalizeRuntimeFilterText(value) === normalizedFilter;
+};
+
+const matchesNumericRuntimeFilter = (value, filterValue) => {
+  const normalizedFilter = Number(filterValue);
+  if (!Number.isInteger(normalizedFilter)) {
+    return true;
+  }
+  return Number(value) === normalizedFilter;
+};
+
+const matchesRuntimeSearch = (values, searchValue) => {
+  const normalizedSearch = normalizeRuntimeFilterText(searchValue);
+  if (!normalizedSearch) {
+    return true;
+  }
+  return values.some((value) => normalizeRuntimeFilterText(value).includes(normalizedSearch));
+};
+
+const filterDesiredProcessRows = (rows = [], filters = {}) => rows.filter((row) => (
+  matchesExactRuntimeFilter(row.projectPath, filters.projectPath)
+  && matchesExactRuntimeFilter(row.processKey, filters.processKey)
+  && matchesExactRuntimeFilter(row.packageKey, filters.packageKey)
+  && matchesExactRuntimeFilter(row.desiredState, filters.desiredState)
+  && matchesRuntimeSearch([
+    row.processKey,
+    row.packageKey,
+    row.projectName,
+    row.projectPath,
+    row.serviceName,
+    row.cwd,
+    row.command,
+    ...(Array.isArray(row.args) ? row.args : []),
+    row.restartPolicy,
+    row.desiredState,
+  ], filters.search)
+));
+
+const filterObservedProcessRunRows = (rows = [], filters = {}) => rows.filter((row) => (
+  matchesNumericRuntimeFilter(row.projectId, filters.projectId)
+  && matchesExactRuntimeFilter(row.projectPath, filters.projectPath)
+  && matchesExactRuntimeFilter(row.processKey, filters.processKey)
+  && matchesExactRuntimeFilter(row.packageKey, filters.packageKey)
+  && matchesExactRuntimeFilter(row.status, filters.status)
+  && matchesExactRuntimeFilter(row.runId, filters.runId)
+  && matchesNumericRuntimeFilter(row.pid, filters.pid)
+  && matchesRuntimeSearch([
+    row.runId,
+    row.processKey,
+    row.packageKey,
+    row.projectPath,
+    row.cwd,
+    row.command,
+    ...(Array.isArray(row.args) ? row.args : []),
+    row.status,
+    row.logPath,
+    row.reconciliationSource,
+    row.bootId,
+  ], filters.search)
+));
+
 const mapRuntimeWaitResultForGraphql = (result) => {
   if (!result || typeof result !== 'object') {
     return null;
@@ -1563,7 +1631,16 @@ const createResolvers = ({
       });
       return mapSlaveRuntimeStateForGraphql(runtimeState);
     },
-    desiredProcesses: async (_, { hostId, projectId, agentUuid }, context) => {
+    desiredProcesses: async (_, {
+      hostId,
+      projectId,
+      agentUuid,
+      projectPath,
+      processKey,
+      packageKey,
+      desiredState,
+      search,
+    }, context) => {
       authorizeGraphqlAction(context, {
         action: 'runtime:read',
         requiredScopes: ['runtime:read'],
@@ -1574,16 +1651,39 @@ const createResolvers = ({
         hostId,
         projectId,
         slaveId: agentUuid,
+        projectPath,
+        processKey,
+        packageKey,
+        desiredState,
+        search,
       });
-      return Array.isArray(desiredProcesses)
+      const rows = Array.isArray(desiredProcesses)
         ? desiredProcesses.map((entry) => mapDesiredProcessForGraphql(entry)).filter(Boolean)
         : [];
+      return filterDesiredProcessRows(rows, {
+        projectPath,
+        processKey,
+        packageKey,
+        desiredState,
+        search,
+      });
     },
-    observedProcessRuns: async (_, { hostId, agentUuid }, context) => {
+    observedProcessRuns: async (_, {
+      hostId,
+      projectId,
+      agentUuid,
+      projectPath,
+      processKey,
+      packageKey,
+      status,
+      runId,
+      pid,
+      search,
+    }, context) => {
       authorizeGraphqlAction(context, {
         action: 'runtime:read',
         requiredScopes: ['runtime:read'],
-        target: { hostId },
+        target: { hostId, projectId },
       });
       requireProcessRegistry('getSlaveRuntimeState');
       const runtimeState = await processRegistry.getSlaveRuntimeState({
@@ -1591,7 +1691,19 @@ const createResolvers = ({
         slaveId: agentUuid,
       });
       const runs = Array.isArray(runtimeState?.processRuns) ? runtimeState.processRuns : [];
-      return runs.map((entry) => mapObservedProcessRunForGraphql(entry)).filter(Boolean);
+      return filterObservedProcessRunRows(
+        runs.map((entry) => mapObservedProcessRunForGraphql(entry)).filter(Boolean),
+        {
+          projectId,
+          projectPath,
+          processKey,
+          packageKey,
+          status,
+          runId,
+          pid,
+          search,
+        },
+      );
     },
     terminalSession: async (_, { hostId }, context) => {
       authorizeGraphqlAction(context, {

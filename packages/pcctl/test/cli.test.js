@@ -212,6 +212,40 @@ test('process logs resolves run id before tailing logs', async () => {
   assert.equal(calls[1].input.projectPath, '/srv/app');
 });
 
+test('process ps forwards runtime filters', async () => {
+  const calls = [];
+  const result = await runWithClient([
+    'process',
+    'ps',
+    '--host',
+    'clearbox',
+    '--project',
+    'varcad.io',
+    '--status',
+    'running',
+    '--process-key',
+    'web',
+    '--package-key',
+    'web',
+    '--search',
+    'next',
+    '--json',
+  ], {
+    async listObservedRuns(input) {
+      calls.push(input);
+      return [];
+    },
+  });
+
+  assert.equal(result.exitCode, 0);
+  assert.equal(calls[0].host, 'clearbox');
+  assert.equal(calls[0].project, 'varcad.io');
+  assert.equal(calls[0].status, 'running');
+  assert.equal(calls[0].processKey, 'web');
+  assert.equal(calls[0].packageKey, 'web');
+  assert.equal(calls[0].search, 'next');
+});
+
 test('authorization failures return exit code 3', async () => {
   const error = new Error('User is not authorized.');
   error.status = 403;

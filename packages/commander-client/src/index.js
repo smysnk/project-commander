@@ -567,12 +567,18 @@ class CommanderClient {
       hostId: toOptionalInteger(input.hostId),
       projectId: toOptionalInteger(input.projectId),
       agentUuid: String(input.agentUuid || input.slaveId || '').trim() || null,
+      projectPath: String(input.projectPath || '').trim() || null,
+      processKey: String(input.processKey || '').trim() || null,
+      packageKey: String(input.packageKey || '').trim() || null,
+      desiredState: String(input.desiredState || '').trim() || null,
+      search: String(input.search || input.query || input.filter || '').trim() || null,
     };
     if (!variables.hostId && (input.host || input.hostName || input.project || input.projectPath)) {
       const { host, project } = await this.resolveHostAndProject(input);
       variables.hostId = Number(host.id);
       variables.agentUuid = host.agentUuid || variables.agentUuid;
       variables.projectId = toOptionalInteger(project.id);
+      variables.projectPath = variables.projectPath || project.path || null;
     }
     const data = await this.read(QUERY_DESIRED_PROCESSES, variables);
     return Array.isArray(data.desiredProcesses) ? data.desiredProcesses : [];
@@ -580,15 +586,28 @@ class CommanderClient {
 
   async listObservedRuns(input = {}) {
     let hostId = toOptionalInteger(input.hostId);
+    let projectId = toOptionalInteger(input.projectId);
     let agentUuid = String(input.agentUuid || input.slaveId || '').trim() || null;
     let projectPath = String(input.projectPath || '').trim();
     if (!hostId && (input.host || input.hostName || input.project || input.projectPath)) {
       const { host, project } = await this.resolveHostAndProject(input);
       hostId = Number(host.id);
+      projectId = toOptionalInteger(project.id);
       agentUuid = host.agentUuid || agentUuid;
       projectPath = projectPath || project.path || '';
     }
-    const data = await this.read(QUERY_OBSERVED_RUNS, { hostId, agentUuid });
+    const data = await this.read(QUERY_OBSERVED_RUNS, {
+      hostId,
+      projectId,
+      agentUuid,
+      projectPath: projectPath || null,
+      processKey: String(input.processKey || '').trim() || null,
+      packageKey: String(input.packageKey || '').trim() || null,
+      status: String(input.status || '').trim() || null,
+      runId: String(input.runId || '').trim() || null,
+      pid: toOptionalInteger(input.pid),
+      search: String(input.search || input.query || input.filter || '').trim() || null,
+    });
     const runs = Array.isArray(data.observedProcessRuns) ? data.observedProcessRuns : [];
     return projectPath ? runs.filter((run) => run.projectPath === projectPath) : runs;
   }

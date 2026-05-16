@@ -293,16 +293,56 @@ const QUERY_PROJECTS = `
 `;
 
 const QUERY_DESIRED_PROCESSES = `
-  query CommanderClientDesiredProcesses($hostId: Int, $projectId: Int, $agentUuid: String) {
-    desiredProcesses(hostId: $hostId, projectId: $projectId, agentUuid: $agentUuid) {
+  query CommanderClientDesiredProcesses(
+    $hostId: Int
+    $projectId: Int
+    $agentUuid: String
+    $projectPath: String
+    $processKey: String
+    $packageKey: String
+    $desiredState: String
+    $search: String
+  ) {
+    desiredProcesses(
+      hostId: $hostId
+      projectId: $projectId
+      agentUuid: $agentUuid
+      projectPath: $projectPath
+      processKey: $processKey
+      packageKey: $packageKey
+      desiredState: $desiredState
+      search: $search
+    ) {
       ${DESIRED_PROCESS_FIELDS}
     }
   }
 `;
 
 const QUERY_OBSERVED_RUNS = `
-  query CommanderClientObservedRuns($hostId: Int, $agentUuid: String) {
-    observedProcessRuns(hostId: $hostId, agentUuid: $agentUuid) {
+  query CommanderClientObservedRuns(
+    $hostId: Int
+    $projectId: Int
+    $agentUuid: String
+    $projectPath: String
+    $processKey: String
+    $packageKey: String
+    $status: String
+    $runId: String
+    $pid: Int
+    $search: String
+  ) {
+    observedProcessRuns(
+      hostId: $hostId
+      projectId: $projectId
+      agentUuid: $agentUuid
+      projectPath: $projectPath
+      processKey: $processKey
+      packageKey: $packageKey
+      status: $status
+      runId: $runId
+      pid: $pid
+      search: $search
+    ) {
       ${OBSERVED_RUN_FIELDS}
     }
   }

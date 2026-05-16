@@ -1770,6 +1770,31 @@ col.servicesCol {
   letter-spacing: 0.04em;
 }
 
+.runtimeSubsectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtimeFilterCount {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.68rem;
+}
+
+.runtimeFilterBar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 0.65fr) minmax(120px, 0.45fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.runtimeFilterInput,
+.runtimeFilterSelect {
+  min-width: 0;
+}
+
 .runtimeProcessList,
 .hostRuntimeProcessList {
   display: flex;
@@ -2159,7 +2184,8 @@ col.servicesCol {
   }
 
   .runtimeFieldGrid,
-  .runtimeProcessMetrics {
+  .runtimeProcessMetrics,
+  .runtimeFilterBar {
     grid-template-columns: 1fr;
   }
 }

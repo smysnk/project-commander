@@ -25,7 +25,7 @@ Usage:
   pcctl [global flags] templates list --host <host> --project <project> [--json]
   pcctl [global flags] process ensure --host <host> --project <project> --template <key> [--wait] [--json]
   pcctl [global flags] process restart --host <host> --project <project> [--process-key <key>] [--template <key>] [--wait]
-  pcctl [global flags] process ps [--host <host>] [--project <project>] [--json]
+  pcctl [global flags] process ps [--host <host>] [--project <project>] [--status <status>] [--process-key <key>] [--search <text>] [--json]
   pcctl [global flags] process logs --run-id <run-id> [--follow] [--json]
   pcctl [global flags] process soft-kill --run-id <run-id> [--json]
   pcctl [global flags] process hard-kill --run-id <run-id> [--json]
@@ -248,6 +248,8 @@ const processInput = (options = {}, runtimeOptions = {}) => ({
   intervalMs: intValue(options.intervalMs),
   runId: firstValue(options.runId),
   pid: intValue(options.pid),
+  status: firstValue(options.status),
+  search: firstValue(options.search, options.query, options.filter),
   hard: boolValue(options.hard),
   reason: firstValue(options.reason),
   privilegedScope: firstValue(options.privilegedScope),

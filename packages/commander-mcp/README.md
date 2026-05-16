@@ -128,6 +128,10 @@ project_commander.revoke_automation_token
 project_commander.list_runtime_audit_events
 ```
 
+Desired-process and observed-run list tools accept `projectPath`, `processKey`,
+`packageKey`, state/status, and `search` filters so Codex can work against a
+specific managed process without pulling the full host runtime set.
+
 Access modes are `observe`, `operate-template`, `operate-project`, `operate-host`, `admin`, and `full-access`. Full-access tokens are equivalent to a trusted local operator but still route through server-side authorization and audit logging. Disable them with:
 
 ```sh

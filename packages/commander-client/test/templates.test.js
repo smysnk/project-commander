@@ -162,6 +162,68 @@ test('optional numeric fields keep null values instead of coercing to zero', () 
   assert.equal(input.serviceId, null);
 });
 
+test('runtime list methods forward filter variables', async () => {
+  const requests = [];
+  const client = new CommanderClient({
+    fetch: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      requests.push(body);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: body.query.includes('CommanderClientDesiredProcesses')
+            ? { desiredProcesses: [] }
+            : { observedProcessRuns: [] },
+        }),
+      };
+    },
+  });
+
+  await client.listDesiredProcesses({
+    hostId: 3,
+    projectPath: '/srv/app',
+    processKey: 'web',
+    packageKey: 'web',
+    desiredState: 'running',
+    search: 'next',
+  });
+  await client.listObservedRuns({
+    hostId: 3,
+    projectId: 25,
+    projectPath: '/srv/app',
+    processKey: 'web',
+    packageKey: 'web',
+    status: 'running',
+    runId: 'run-1',
+    pid: 123,
+    search: 'next',
+  });
+
+  assert.deepEqual(requests[0].variables, {
+    hostId: 3,
+    projectId: null,
+    agentUuid: null,
+    projectPath: '/srv/app',
+    processKey: 'web',
+    packageKey: 'web',
+    desiredState: 'running',
+    search: 'next',
+  });
+  assert.deepEqual(requests[1].variables, {
+    hostId: 3,
+    projectId: 25,
+    agentUuid: null,
+    projectPath: '/srv/app',
+    processKey: 'web',
+    packageKey: 'web',
+    status: 'running',
+    runId: 'run-1',
+    pid: 123,
+    search: 'next',
+  });
+});
+
 test('templated ensure_process resolves codexPath to host-local cwd', async () => {
   const client = new CommanderClient({
     fetch: async () => ({ json: async () => ({}), ok: true, status: 200 }),

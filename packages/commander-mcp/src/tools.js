@@ -192,6 +192,10 @@ const toolDefinitions = [
       project: stringProperty('Project name.'),
       projectId: numberProperty('Project id.'),
       projectPath: stringProperty('Host-local project path.'),
+      processKey: stringProperty('Stable process key.'),
+      packageKey: stringProperty('Stable package/runtime slot key.'),
+      desiredState: stringProperty('Desired state filter.'),
+      search: stringProperty('Case-insensitive text search across process metadata.'),
     }),
   },
   {
@@ -203,6 +207,12 @@ const toolDefinitions = [
       agentUuid: stringProperty('Slave agent UUID.'),
       project: stringProperty('Project name.'),
       projectPath: stringProperty('Host-local project path.'),
+      processKey: stringProperty('Stable process key.'),
+      packageKey: stringProperty('Stable package/runtime slot key.'),
+      status: stringProperty('Observed run status filter.'),
+      runId: stringProperty('Observed run id filter.'),
+      pid: numberProperty('Process pid filter.'),
+      search: stringProperty('Case-insensitive text search across run metadata.'),
     }),
   },
   {

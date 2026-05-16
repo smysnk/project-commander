@@ -68,6 +68,94 @@ const buildDraftFromDesiredProcess = (desiredProcess) => ({
   logRoot: String(desiredProcess?.logRoot || '').trim(),
 });
 
+const emptyRuntimeFilters = () => ({
+  search: '',
+  projectPath: '',
+  status: '',
+});
+
+const normalizeFilterValue = (value) => String(value || '').trim().toLowerCase();
+
+const rowMatchesSearch = (values, search) => {
+  const normalizedSearch = normalizeFilterValue(search);
+  if (!normalizedSearch) {
+    return true;
+  }
+  return values.some((value) => normalizeFilterValue(value).includes(normalizedSearch));
+};
+
+const rowMatchesExact = (value, filterValue) => {
+  const normalizedFilter = normalizeFilterValue(filterValue);
+  if (!normalizedFilter) {
+    return true;
+  }
+  return normalizeFilterValue(value) === normalizedFilter;
+};
+
+const buildProjectFilterOptions = (hostProjects, runtimeRows) => {
+  const options = new Map();
+  for (const project of Array.isArray(hostProjects) ? hostProjects : []) {
+    const path = String(project?.path || '').trim();
+    if (path) {
+      options.set(path, String(project?.name || path).trim() || path);
+    }
+  }
+  for (const row of Array.isArray(runtimeRows) ? runtimeRows : []) {
+    const path = String(row?.projectPath || '').trim();
+    if (path && !options.has(path)) {
+      options.set(path, String(row?.projectName || path).trim() || path);
+    }
+  }
+  return Array.from(options.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+};
+
+const buildRuntimeStatusOptions = (runtimeRows, field) => Array.from(new Set(
+  (Array.isArray(runtimeRows) ? runtimeRows : [])
+    .map((row) => String(row?.[field] || '').trim())
+    .filter(Boolean),
+))
+  .sort((left, right) => left.localeCompare(right));
+
+const filterDesiredProcesses = (processes, filters) => (Array.isArray(processes) ? processes : [])
+  .filter((processDefinition) => (
+    rowMatchesExact(processDefinition.projectPath, filters.projectPath)
+    && rowMatchesExact(processDefinition.desiredState, filters.status)
+    && rowMatchesSearch([
+      processDefinition.processKey,
+      processDefinition.packageKey,
+      processDefinition.projectName,
+      processDefinition.projectPath,
+      processDefinition.serviceName,
+      processDefinition.cwd,
+      processDefinition.command,
+      ...(Array.isArray(processDefinition.args) ? processDefinition.args : []),
+      processDefinition.restartPolicy,
+      processDefinition.desiredState,
+    ], filters.search)
+  ));
+
+const filterObservedRuns = (runs, filters) => (Array.isArray(runs) ? runs : [])
+  .filter((observedRun) => (
+    rowMatchesExact(observedRun.projectPath, filters.projectPath)
+    && rowMatchesExact(observedRun.status, filters.status)
+    && rowMatchesSearch([
+      observedRun.runId,
+      observedRun.processKey,
+      observedRun.packageKey,
+      observedRun.projectPath,
+      observedRun.cwd,
+      observedRun.command,
+      ...(Array.isArray(observedRun.args) ? observedRun.args : []),
+      observedRun.status,
+      observedRun.pid,
+      observedRun.logPath,
+      observedRun.reconciliationSource,
+      observedRun.bootId,
+    ], filters.search)
+  ));
+
 export default function RuntimePanel() {
   const {
     runtimeConfig,
@@ -96,11 +184,15 @@ export default function RuntimePanel() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [draft, setDraft] = useState(() => buildDefaultDraft(selectedHost, selectedProject));
   const [editingDesiredProcessId, setEditingDesiredProcessId] = useState(null);
+  const [desiredProcessFilters, setDesiredProcessFilters] = useState(() => emptyRuntimeFilters());
+  const [observedRunFilters, setObservedRunFilters] = useState(() => emptyRuntimeFilters());
 
   useEffect(() => {
     setDraft(buildDefaultDraft(selectedHost, selectedProject));
     setShowCreateForm(false);
     setEditingDesiredProcessId(null);
+    setDesiredProcessFilters(emptyRuntimeFilters());
+    setObservedRunFilters(emptyRuntimeFilters());
   }, [selectedHost, selectedProject]);
 
   const backendName = toDisplayValue(
@@ -130,6 +222,50 @@ export default function RuntimePanel() {
   );
   const hostProjects = Array.isArray(selectedHost?.projects) ? selectedHost.projects : [];
   const visibleHostPathMappings = Array.isArray(hostPathMappings) ? hostPathMappings : [];
+  const desiredProjectFilterOptions = useMemo(
+    () => buildProjectFilterOptions(hostProjects, desiredProcesses),
+    [hostProjects, desiredProcesses],
+  );
+  const observedProjectFilterOptions = useMemo(
+    () => buildProjectFilterOptions(hostProjects, observedProcessRuns),
+    [hostProjects, observedProcessRuns],
+  );
+  const desiredStateFilterOptions = useMemo(
+    () => buildRuntimeStatusOptions(desiredProcesses, 'desiredState'),
+    [desiredProcesses],
+  );
+  const observedStatusFilterOptions = useMemo(
+    () => buildRuntimeStatusOptions(observedProcessRuns, 'status'),
+    [observedProcessRuns],
+  );
+  const filteredDesiredProcesses = useMemo(
+    () => filterDesiredProcesses(desiredProcesses, desiredProcessFilters),
+    [desiredProcesses, desiredProcessFilters],
+  );
+  const filteredObservedProcessRuns = useMemo(
+    () => filterObservedRuns(observedProcessRuns, observedRunFilters),
+    [observedProcessRuns, observedRunFilters],
+  );
+  const desiredFiltersActive = Boolean(
+    desiredProcessFilters.search || desiredProcessFilters.projectPath || desiredProcessFilters.status,
+  );
+  const observedFiltersActive = Boolean(
+    observedRunFilters.search || observedRunFilters.projectPath || observedRunFilters.status,
+  );
+
+  const updateDesiredFilter = (field, value) => {
+    setDesiredProcessFilters((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const updateObservedFilter = (field, value) => {
+    setObservedRunFilters((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
 
   const onDraftFieldChange = (field, value) => {
     setDraft((current) => ({
@@ -540,12 +676,65 @@ export default function RuntimePanel() {
           ) : null}
 
           <div className="runtimeProcessSection">
-            <h4 className="runtimeSubsectionTitle">Desired Processes</h4>
+            <div className="runtimeSubsectionHeader">
+              <h4 className="runtimeSubsectionTitle">Desired Processes</h4>
+              <span className="runtimeFilterCount">
+                {filteredDesiredProcesses.length}
+                {' / '}
+                {desiredProcesses.length}
+              </span>
+            </div>
+            <div className="runtimeFilterBar">
+              <input
+                type="search"
+                className="hostsAddInput runtimeFilterInput"
+                value={desiredProcessFilters.search}
+                onChange={(event) => updateDesiredFilter('search', event.target.value)}
+                placeholder="Filter desired processes"
+                aria-label="Filter desired processes"
+              />
+              <select
+                className="hostsAddInput runtimeFilterSelect"
+                value={desiredProcessFilters.projectPath}
+                onChange={(event) => updateDesiredFilter('projectPath', event.target.value)}
+                aria-label="Filter desired processes by project"
+              >
+                <option value="">All projects</option>
+                {desiredProjectFilterOptions.map((option) => (
+                  <option key={`desired-project-filter-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="hostsAddInput runtimeFilterSelect"
+                value={desiredProcessFilters.status}
+                onChange={(event) => updateDesiredFilter('status', event.target.value)}
+                aria-label="Filter desired processes by state"
+              >
+                <option value="">All states</option>
+                {desiredStateFilterOptions.map((state) => (
+                  <option key={`desired-state-filter-${state}`} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="hostTextActionButton"
+                onClick={() => setDesiredProcessFilters(emptyRuntimeFilters())}
+                disabled={!desiredFiltersActive}
+              >
+                Clear
+              </button>
+            </div>
             {desiredProcesses.length === 0 ? (
               <p className="emptyState">No managed processes have been declared for this host.</p>
+            ) : filteredDesiredProcesses.length === 0 ? (
+              <p className="emptyState">No desired processes match the current filters.</p>
             ) : (
               <div className="runtimeProcessList">
-                {desiredProcesses.map((processDefinition) => (
+                {filteredDesiredProcesses.map((processDefinition) => (
                   <div className="runtimeProcessRow" key={`desired-${processDefinition.id}`}>
                     <div className="runtimeProcessIdentity">
                       <TagChip className="logServiceTag">
@@ -586,12 +775,65 @@ export default function RuntimePanel() {
           </div>
 
           <div className="runtimeProcessSection">
-            <h4 className="runtimeSubsectionTitle">Observed Runs</h4>
+            <div className="runtimeSubsectionHeader">
+              <h4 className="runtimeSubsectionTitle">Observed Runs</h4>
+              <span className="runtimeFilterCount">
+                {filteredObservedProcessRuns.length}
+                {' / '}
+                {observedProcessRuns.length}
+              </span>
+            </div>
+            <div className="runtimeFilterBar">
+              <input
+                type="search"
+                className="hostsAddInput runtimeFilterInput"
+                value={observedRunFilters.search}
+                onChange={(event) => updateObservedFilter('search', event.target.value)}
+                placeholder="Filter observed runs"
+                aria-label="Filter observed runs"
+              />
+              <select
+                className="hostsAddInput runtimeFilterSelect"
+                value={observedRunFilters.projectPath}
+                onChange={(event) => updateObservedFilter('projectPath', event.target.value)}
+                aria-label="Filter observed runs by project"
+              >
+                <option value="">All projects</option>
+                {observedProjectFilterOptions.map((option) => (
+                  <option key={`observed-project-filter-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="hostsAddInput runtimeFilterSelect"
+                value={observedRunFilters.status}
+                onChange={(event) => updateObservedFilter('status', event.target.value)}
+                aria-label="Filter observed runs by status"
+              >
+                <option value="">All statuses</option>
+                {observedStatusFilterOptions.map((status) => (
+                  <option key={`observed-status-filter-${status}`} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="hostTextActionButton"
+                onClick={() => setObservedRunFilters(emptyRuntimeFilters())}
+                disabled={!observedFiltersActive}
+              >
+                Clear
+              </button>
+            </div>
             {observedProcessRuns.length === 0 ? (
               <p className="emptyState">No managed processes are currently running on this host.</p>
+            ) : filteredObservedProcessRuns.length === 0 ? (
+              <p className="emptyState">No observed runs match the current filters.</p>
             ) : (
               <div className="runtimeProcessList">
-                {observedProcessRuns.map((observedRun) => (
+                {filteredObservedProcessRuns.map((observedRun) => (
                   <div className="runtimeProcessRow" key={`observed-${observedRun.runId}`}>
                     <div className="runtimeProcessIdentity">
                       <TagChip className="logServiceTag">

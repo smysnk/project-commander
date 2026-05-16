@@ -36,7 +36,7 @@ pcctl projects list --host clearbox
 pcctl templates list --host clearbox --project varcad.io
 pcctl process ensure --host clearbox --project varcad.io --template docker-compose-web --wait --json
 pcctl process restart --host clearbox --project varcad.io --template docker-compose-web --wait
-pcctl process ps --host clearbox --project varcad.io
+pcctl process ps --host clearbox --project varcad.io --status running --search web
 pcctl process logs --run-id <run-id>
 pcctl process soft-kill --run-id <run-id>
 pcctl process hard-kill --run-id <run-id>
