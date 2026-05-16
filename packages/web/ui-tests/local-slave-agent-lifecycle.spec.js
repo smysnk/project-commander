@@ -39,6 +39,7 @@ async function installGraphqlMocks(page) {
   const state = {
     hosts: [],
     nextHostId: 1,
+    lastDeleteVariables: null,
   };
   const runtimeBackendInfoPayload = {
     name: "go-master",
@@ -151,6 +152,7 @@ async function installGraphqlMocks(page) {
 
     if (query.includes("mutation DeleteHost")) {
       const hostId = Number(variables.hostId);
+      state.lastDeleteVariables = { ...variables };
       state.hosts = state.hosts.filter((host) => Number(host.id) !== hostId);
       return ok({ deleteHost: true });
     }
@@ -178,12 +180,14 @@ async function installGraphqlMocks(page) {
 
     return ok({});
   });
+
+  return state;
 }
 
 test("adds local slave host, verifies local-socket deployment, and removes host", async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
 
-  await installGraphqlMocks(page);
+  const graphqlMockState = await installGraphqlMocks(page);
 
   try {
     await page.goto(appUrl, { waitUntil: "domcontentloaded" });
@@ -245,9 +249,22 @@ test("adds local slave host, verifies local-socket deployment, and removes host"
   await page.getByRole("tab", { name: "Runtime" }).click();
   await expect(page.locator(".statusMasterLink")).toContainText("Master link: connected");
 
-  page.once("dialog", (dialog) => dialog.accept());
-  await localhostCard.getByRole("button", { name: /Delete host localhost/i }).click();
+  await localhostCard.click({ button: "right" });
+  const contextMenu = page.getByRole("menu");
+  await expect(contextMenu.getByRole("menuitem", { name: "Delete host" })).toBeVisible();
+  await contextMenu.getByRole("menuitem", { name: "Delete host" }).click();
+
+  const deleteDialog = page.getByRole("dialog", { name: "Delete Host" });
+  await expect(deleteDialog).toBeVisible();
+  await expect(deleteDialog).toContainText("Remove contents of configured host directories");
+  await expect(deleteDialog).toContainText("~/play");
+  await deleteDialog.getByRole("checkbox").check();
+  await deleteDialog.getByRole("button", { name: "Delete" }).click();
 
   await expect(page.locator(".hostList .hostCard")).toHaveCount(0);
   await expect(page.locator(".hostsSidebarBody")).toContainText("No slave agents registered with master agent.");
+  expect(graphqlMockState.lastDeleteVariables).toMatchObject({
+    hostId: 1,
+    removeDirectoryContents: true,
+  });
 });
