@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { FiGitBranch, FiPlus, FiServer, FiTrash2, FiUpload } from 'react-icons/fi';
 import TagChip from '../../../components/TagChip';
 import { useHostsSidebarContext } from '../context/HostsSidebarContext';
@@ -85,6 +86,64 @@ export default function HostsSidebar() {
   const masterTargetValue = String(
     masterAgentInfo?.socketPath || masterAgentInfo?.target || '-',
   ).trim() || '-';
+  const [hostContextMenu, setHostContextMenu] = useState(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const pendingDeleteHost = deleteConfirmation?.host || null;
+  const pendingDeleteHostId = Number(pendingDeleteHost?.id || 0);
+  const pendingDeleteHostName = String(
+    pendingDeleteHost?.name || pendingDeleteHost?.ip || `#${pendingDeleteHostId}`,
+  ).trim() || `#${pendingDeleteHostId}`;
+  const pendingDeleteDirectories = normalizeHostDirectories(pendingDeleteHost?.directories);
+
+  useEffect(() => {
+    const closeContextMenu = () => setHostContextMenu(null);
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setHostContextMenu(null);
+        setDeleteConfirmation(null);
+      }
+    };
+
+    window.addEventListener('pointerdown', closeContextMenu);
+    window.addEventListener('resize', closeContextMenu);
+    window.addEventListener('scroll', closeContextMenu, true);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', closeContextMenu);
+      window.removeEventListener('resize', closeContextMenu);
+      window.removeEventListener('scroll', closeContextMenu, true);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  const openHostContextMenu = (event, host) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setHostContextMenu({
+      host,
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 220)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 120)),
+    });
+  };
+
+  const openDeleteConfirmation = (host) => {
+    setHostContextMenu(null);
+    setDeleteConfirmation({
+      host,
+      removeDirectoryContents: false,
+    });
+  };
+
+  const submitDeleteConfirmation = () => {
+    if (!pendingDeleteHost || !Number.isInteger(pendingDeleteHostId) || pendingDeleteHostId <= 0) {
+      setDeleteConfirmation(null);
+      return;
+    }
+
+    const removeDirectoryContents = Boolean(deleteConfirmation?.removeDirectoryContents);
+    setDeleteConfirmation(null);
+    onDeleteHost(pendingDeleteHost, { removeDirectoryContents });
+  };
 
   return (
     <aside
@@ -138,6 +197,7 @@ export default function HostsSidebar() {
                       type="button"
                       className={`collapsedHostButton ${isSelectedHost ? 'selected' : ''}`}
                       onClick={() => onSelectHost(hostId)}
+                      onContextMenu={(event) => openHostContextMenu(event, host)}
                       aria-label={`Select host ${hostName}`}
                       title={hostName}
                       data-testid={`collapsed-host-${hostId}`}
@@ -301,6 +361,7 @@ export default function HostsSidebar() {
                       className={`runtimeSection hostCard ${isSelectedHost ? 'selected' : ''}`}
                       key={`${host.id}-${host.name}`}
                       onClick={() => onSelectHost(hostId)}
+                      onContextMenu={(event) => openHostContextMenu(event, host)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event) => {
@@ -360,7 +421,7 @@ export default function HostsSidebar() {
                               className="hostsDeleteButton"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                onDeleteHost(host);
+                                openDeleteConfirmation(host);
                               }}
                               disabled={hostsLoading || deletingHostId === Number(host.id)}
                               aria-label={`Delete host ${host.name}`}
@@ -766,6 +827,99 @@ export default function HostsSidebar() {
           </div>
         )}
       </div>
+      {hostContextMenu ? (
+        <div
+          className="hostContextMenu"
+          role="menu"
+          style={{
+            left: `${hostContextMenu.x}px`,
+            top: `${hostContextMenu.y}px`,
+          }}
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="hostContextMenuItem danger"
+            role="menuitem"
+            onClick={() => openDeleteConfirmation(hostContextMenu.host)}
+            disabled={hostsLoading || deletingHostId === Number(hostContextMenu.host?.id)}
+          >
+            <FiTrash2 />
+            <span>Delete host</span>
+          </button>
+        </div>
+      ) : null}
+      {deleteConfirmation ? (
+        <div
+          className="hostDeleteModalBackdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setDeleteConfirmation(null);
+            }
+          }}
+        >
+          <div
+            className="hostDeleteModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="host-delete-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="hostDeleteModalHeader">
+              <h3 id="host-delete-title">Delete Host</h3>
+              <p>
+                Delete host
+                {' '}
+                <strong>{pendingDeleteHostName}</strong>
+                ?
+              </p>
+            </div>
+            <label className="hostDeleteCheckboxRow">
+              <input
+                type="checkbox"
+                checked={Boolean(deleteConfirmation.removeDirectoryContents)}
+                disabled={pendingDeleteDirectories.length === 0}
+                onChange={(event) => {
+                  setDeleteConfirmation((current) => (
+                    current
+                      ? { ...current, removeDirectoryContents: event.target.checked }
+                      : current
+                  ));
+                }}
+              />
+              <span>Remove contents of configured host directories before deleting the host record.</span>
+            </label>
+            {pendingDeleteDirectories.length > 0 ? (
+              <div className="hostDeleteDirectoryPreview">
+                {pendingDeleteDirectories.map((directoryPath) => (
+                  <code key={`${pendingDeleteHostId}-${directoryPath}`}>{directoryPath}</code>
+                ))}
+              </div>
+            ) : (
+              <p className="hostDeleteModalHint">No configured directories are attached to this host.</p>
+            )}
+            <div className="hostDeleteModalActions">
+              <button
+                type="button"
+                className="hostsAddAction hostDeleteCancelButton"
+                onClick={() => setDeleteConfirmation(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="hostsAddAction hostDeleteConfirmButton"
+                onClick={submitDeleteConfirmation}
+                disabled={deletingHostId === pendingDeleteHostId}
+              >
+                {deletingHostId === pendingDeleteHostId ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }

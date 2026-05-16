@@ -560,8 +560,8 @@ export const MUTATION_ADD_HOST = `
 `;
 
 export const MUTATION_DELETE_HOST = `
-  mutation DeleteHost($hostId: Int!) {
-    deleteHost(hostId: $hostId)
+  mutation DeleteHost($hostId: Int!, $removeDirectoryContents: Boolean) {
+    deleteHost(hostId: $hostId, removeDirectoryContents: $removeDirectoryContents)
   }
 `;
 

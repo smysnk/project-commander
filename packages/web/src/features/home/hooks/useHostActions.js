@@ -60,19 +60,11 @@ export const useHostActions = ({
     }
   }, [dispatch, graphqlEndpoint, loadHosts, manualHostIp, setError]);
 
-  const onDeleteHost = useCallback(async (host) => {
+  const onDeleteHost = useCallback(async (host, { removeDirectoryContents = false } = {}) => {
     const hostId = Number(host?.id);
-    const hostName = String(host?.name || '').trim() || String(host?.ip || '').trim() || `#${hostId}`;
     if (!Number.isInteger(hostId) || hostId <= 0) {
       setError('Unable to delete host: invalid host id.');
       return;
-    }
-
-    if (typeof window !== 'undefined') {
-      const confirmed = window.confirm(`Delete host "${hostName}"?`);
-      if (!confirmed) {
-        return;
-      }
     }
 
     setError('');
@@ -80,7 +72,7 @@ export const useHostActions = ({
     try {
       const data = await graphqlRequest({
         query: MUTATION_DELETE_HOST,
-        variables: { hostId },
+        variables: { hostId, removeDirectoryContents: Boolean(removeDirectoryContents) },
         endpoint: graphqlEndpoint,
       });
       if (!data?.deleteHost) {

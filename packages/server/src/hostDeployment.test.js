@@ -1,7 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const {
+  clearRemoteHostDirectoryContents,
   isCurrentMachineHost,
   resolveConnectionTarget,
 } = require('./hostDeployment');
@@ -41,5 +45,29 @@ test('resolveConnectionTarget normalizes same-machine LAN addresses to local exe
     assert.equal(target.sshUser, 'josh');
   } finally {
     os.networkInterfaces = originalNetworkInterfaces;
+  }
+});
+
+test('clearRemoteHostDirectoryContents removes children without deleting the directory', async () => {
+  const directoryPath = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-host-clear-'));
+  const nestedPath = path.join(directoryPath, 'nested');
+  fs.mkdirSync(nestedPath);
+  fs.writeFileSync(path.join(directoryPath, 'file.txt'), 'content');
+  fs.writeFileSync(path.join(nestedPath, 'child.txt'), 'content');
+
+  try {
+    await clearRemoteHostDirectoryContents({
+      hostId: 1,
+      hostName: 'localhost',
+      hostIp: '127.0.0.1',
+      hostMetadata: {},
+      directoryPath,
+      emitEvent: () => {},
+    });
+
+    assert.equal(fs.existsSync(directoryPath), true);
+    assert.deepEqual(fs.readdirSync(directoryPath), []);
+  } finally {
+    fs.rmSync(directoryPath, { recursive: true, force: true });
   }
 });

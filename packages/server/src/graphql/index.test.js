@@ -85,7 +85,10 @@ const createResolverHarness = (overrides = {}) => {
     addCustomProjectPath: async () => ({}),
     listHosts: async () => [],
     addHost: async () => ({}),
-    deleteHost: async () => true,
+    deleteHost: async (...args) => {
+      calls.push({ method: 'deleteHost', args });
+      return overrides.deleteHostResult ?? true;
+    },
     addHostDirectory: async () => ({}),
     removeHostDirectory: async () => ({}),
     checkoutHostProject: async () => ({}),
@@ -307,6 +310,19 @@ test('runtime process queries apply desired and observed run filters', async () 
   assert.equal(observed[0].runId, 'run-api');
   assert.equal(calls[0].input.packageKey, 'api');
   assert.equal(calls[0].input.search, 'yarn');
+});
+
+test('deleteHost mutation forwards directory content cleanup flag', async () => {
+  const { resolvers, calls } = createResolverHarness();
+
+  const deleted = await resolvers.Mutation.deleteHost(null, {
+    hostId: 7,
+    removeDirectoryContents: true,
+  });
+
+  assert.equal(deleted, true);
+  assert.equal(calls[0].method, 'deleteHost');
+  assert.deepEqual(calls[0].args, [7, { removeDirectoryContents: true }]);
 });
 
 test('ensureDesiredProcess mutation forwards env entries and maps the created process', async () => {

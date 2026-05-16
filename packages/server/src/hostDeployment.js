@@ -262,7 +262,7 @@ const runRemoteDirectoryOperation = async ({
   }
 
   const normalizedOperation = String(operation || '').trim().toLowerCase();
-  if (!['add', 'remove'].includes(normalizedOperation)) {
+  if (!['add', 'remove', 'clear-contents'].includes(normalizedOperation)) {
     throw new Error(`Unsupported remote directory operation: ${operation}`);
   }
 
@@ -336,6 +336,24 @@ if [[ "\${operation}" == "remove" ]]; then
   fi
   echo "[host-dir][error] directory is not empty and cannot be removed: \${target_path}" >&2
   exit 5
+fi
+
+if [[ "\${operation}" == "clear-contents" ]]; then
+  if [[ "\${target_path}" == "/" ]]; then
+    echo "[host-dir][error] refusing to clear contents of root directory" >&2
+    exit 7
+  fi
+  if [[ -e "\${target_path}" && ! -d "\${target_path}" ]]; then
+    echo "[host-dir][error] path exists but is not a directory: \${target_path}" >&2
+    exit 8
+  fi
+  if [[ ! -e "\${target_path}" ]]; then
+    echo "[host-dir] directory does not exist; nothing to clear: \${target_path}"
+    exit 0
+  fi
+  find "\${target_path}" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+  echo "[host-dir] cleared directory contents: \${target_path}"
+  exit 0
 fi
 
 echo "[host-dir][error] unknown operation: \${operation}" >&2
@@ -444,6 +462,23 @@ const removeRemoteHostDirectory = async ({
   hostIp,
   hostMetadata,
   operation: 'remove',
+  directoryPath,
+  emitEvent,
+});
+
+const clearRemoteHostDirectoryContents = async ({
+  hostId,
+  hostName,
+  hostIp,
+  hostMetadata,
+  directoryPath,
+  emitEvent,
+}) => runRemoteDirectoryOperation({
+  hostId,
+  hostName,
+  hostIp,
+  hostMetadata,
+  operation: 'clear-contents',
   directoryPath,
   emitEvent,
 });
@@ -714,6 +749,7 @@ module.exports = {
   deploySlaveToHost,
   createRemoteHostDirectory,
   removeRemoteHostDirectory,
+  clearRemoteHostDirectoryContents,
   isCurrentMachineHost,
   resolveConnectionTarget,
 };

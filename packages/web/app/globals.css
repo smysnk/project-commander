@@ -1431,6 +1431,128 @@ col.servicesCol {
   outline-offset: 1px;
 }
 
+.hostContextMenu {
+  position: fixed;
+  z-index: 90;
+  min-width: 190px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 8px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  box-shadow: 0 14px 36px color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.hostContextMenuItem {
+  width: 100%;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hostContextMenuItem:hover:enabled {
+  background: color-mix(in srgb, var(--chip) 74%, var(--line));
+}
+
+.hostContextMenuItem.danger {
+  color: var(--error);
+}
+
+.hostContextMenuItem:disabled {
+  opacity: 0.58;
+  cursor: default;
+}
+
+.hostDeleteModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.hostDeleteModal {
+  width: min(520px, 100%);
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--card);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--text) 24%, transparent);
+}
+
+.hostDeleteModalHeader h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.hostDeleteModalHeader p {
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.hostDeleteCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--chip);
+  color: var(--text);
+}
+
+.hostDeleteCheckboxRow input {
+  margin-top: 3px;
+}
+
+.hostDeleteDirectoryPreview {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.hostDeleteDirectoryPreview code {
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: color-mix(in srgb, var(--chip) 78%, var(--card));
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.hostDeleteModalHint {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.hostDeleteModalActions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hostDeleteCancelButton {
+  color: var(--muted);
+}
+
+.hostDeleteConfirmButton {
+  border-color: var(--error);
+  color: #fff;
+  background: var(--error);
+}
+
 .hostCardTitle {
   display: inline-flex;
   align-items: center;

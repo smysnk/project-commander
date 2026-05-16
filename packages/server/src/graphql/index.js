@@ -511,7 +511,7 @@ const typeDefs = `#graphql
     ): DiscoveryConfig!
     addProject(projectPath: String!): ProjectDiscoveryResult!
     addHost(ip: String!): Host!
-    deleteHost(hostId: Int!): Boolean!
+    deleteHost(hostId: Int!, removeDirectoryContents: Boolean): Boolean!
     addHostDirectory(hostId: Int!, directoryPath: String!): Host!
     removeHostDirectory(hostId: Int!, directoryPath: String!): Host!
     upgradeHostAgent(hostId: Int!): Host!
@@ -1877,13 +1877,15 @@ const createResolvers = ({
         error: 'Slave not registered with master yet.',
       });
     },
-    deleteHost: async (_, { hostId }, context) => {
+    deleteHost: async (_, { hostId, removeDirectoryContents }, context) => {
       authorizeGraphqlAction(context, {
         action: 'hosts:write',
         requiredScopes: ['hosts:write'],
         target: { hostId },
       });
-      return deleteHostFn(hostId);
+      return deleteHostFn(hostId, {
+        removeDirectoryContents: Boolean(removeDirectoryContents),
+      });
     },
     addHostDirectory: async (_, { hostId, directoryPath }, context) => {
       authorizeGraphqlAction(context, {

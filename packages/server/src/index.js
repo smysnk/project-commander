@@ -26,6 +26,7 @@ const {
   deploySlaveToHost,
   createRemoteHostDirectory,
   removeRemoteHostDirectory,
+  clearRemoteHostDirectoryContents,
 } = require('./hostDeployment');
 const { createTerminalSessionManager } = require('./terminalSessionManager');
 const { createProcessRegistry } = require('./runtime/processRegistry');
@@ -1415,12 +1416,45 @@ const startServer = async () => {
     });
     return host;
   };
-  const deleteHost = async (hostId) => {
-    const deleted = await deleteHostById(hostId);
+  const deleteHost = async (hostId, { removeDirectoryContents = false } = {}) => {
+    const parsedHostId = Number(hostId);
+    if (!Number.isInteger(parsedHostId) || parsedHostId <= 0) {
+      throw new Error('hostId must be a positive integer');
+    }
+
+    const shouldRemoveDirectoryContents = Boolean(removeDirectoryContents);
+    const host = shouldRemoveDirectoryContents ? await getHostById(parsedHostId) : null;
+    if (shouldRemoveDirectoryContents && !host) {
+      return false;
+    }
+
+    if (shouldRemoveDirectoryContents) {
+      const hostIp = String(host?.ip || '').trim();
+      if (!hostIp) {
+        throw new Error(`Host ${host?.name || parsedHostId} is missing an IP address.`);
+      }
+
+      const directories = getHostDirectoriesFromMetadata(host?.metadata);
+      for (const directoryPath of directories) {
+        await clearRemoteHostDirectoryContents({
+          hostId: parsedHostId,
+          hostName: host?.name,
+          hostIp,
+          hostMetadata: host?.metadata,
+          directoryPath,
+          emitEvent: emitRuntimeEvent,
+        });
+      }
+    }
+
+    const deleted = await deleteHostById(parsedHostId);
     emitBackendLog({
       message: deleted
-        ? `Host deleted: ${hostId}`
-        : `Delete host skipped (not found): ${hostId}`,
+        ? `Host deleted: ${parsedHostId}${shouldRemoveDirectoryContents ? ' (directory contents removed)' : ''}`
+        : `Delete host skipped (not found): ${parsedHostId}`,
+      hostId: parsedHostId,
+      hostName: host?.name,
+      hostIp: host?.ip,
     });
     return deleted;
   };
