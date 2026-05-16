@@ -249,7 +249,12 @@ test("adds local slave host, verifies local-socket deployment, and removes host"
   await page.getByRole("tab", { name: "Runtime" }).click();
   await expect(page.locator(".statusMasterLink")).toContainText("Master link: connected");
 
-  await localhostCard.click({ button: "right" });
+  await localhostCard.dispatchEvent("contextmenu", {
+    bubbles: true,
+    cancelable: true,
+    clientX: 160,
+    clientY: 160,
+  });
   const contextMenu = page.getByRole("menu");
   await expect(contextMenu.getByRole("menuitem", { name: "Delete host" })).toBeVisible();
   await contextMenu.getByRole("menuitem", { name: "Delete host" }).click();
