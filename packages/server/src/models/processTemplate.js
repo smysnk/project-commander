@@ -106,7 +106,7 @@ ProcessTemplate.init(
       field: 'launch_mode',
     },
     command: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     argsJson: {

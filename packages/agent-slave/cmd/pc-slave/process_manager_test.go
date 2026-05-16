@@ -18,13 +18,13 @@ func newTestProcessManager(t *testing.T, projectPath string) *processManager {
 	t.Helper()
 	rootDir := t.TempDir()
 	manager, err := newProcessManager(nil, config{
-		SlaveID:        "slave-test",
-		ProjectPath:    projectPath,
-		LaunchCommand:  defaultWorkloadLaunchCommand,
-		WatchInterval:  100 * time.Millisecond,
-		BootID:         "boot-test",
-		StateRoot:      filepath.Join(rootDir, "state"),
-		ProcessLogRoot: filepath.Join(rootDir, "logs"),
+		SlaveID:                  "slave-test",
+		ProjectPath:              projectPath,
+		LaunchCommand:            defaultWorkloadLaunchCommand,
+		WatchInterval:            100 * time.Millisecond,
+		BootID:                   "boot-test",
+		StateRoot:                filepath.Join(rootDir, "state"),
+		ProcessLogRoot:           filepath.Join(rootDir, "logs"),
 		RuntimeArtifactRetention: 24 * time.Hour,
 		MaxRetainedBootLogs:      10,
 	})
@@ -100,6 +100,64 @@ func TestProcessManager_StartsManagedProcessAndWritesSidecarAndLog(t *testing.T)
 	stateFilePath := filepath.Join(manager.processStateRoot, sanitizeStateToken("api")+".json")
 	if _, err := os.Stat(stateFilePath); err != nil {
 		t.Fatalf("expected state sidecar %s to exist: %v", stateFilePath, err)
+	}
+}
+
+func TestProcessManager_DoesNotRelaunchCompletedNeverProcess(t *testing.T) {
+	projectPath := t.TempDir()
+	writeFile(t, filepath.Join(projectPath, "package.json"), "{}\n")
+	markerPath := filepath.Join(projectPath, "once.log")
+	manager := newTestProcessManager(t, projectPath)
+	desired := testDesiredProcess(projectPath, "once", "printf 'once\\n' >> once.log", "never")
+
+	if err := manager.ReconcileDesiredProcesses(t.Context(), []*slavev1.DesiredProcess{desired}, reconciliationSourceStartup); err != nil {
+		t.Fatalf("ReconcileDesiredProcesses returned error: %v", err)
+	}
+
+	if ok := waitForManagerCondition(5*time.Second, func() bool {
+		return readLineCount(markerPath) == 1
+	}); !ok {
+		t.Fatalf("expected one-shot process to run once")
+	}
+
+	if ok := waitForManagerCondition(5*time.Second, func() bool {
+		if err := manager.ReconcileDesiredProcesses(t.Context(), []*slavev1.DesiredProcess{desired}, reconciliationSourceTick); err != nil {
+			t.Fatalf("ReconcileDesiredProcesses returned error: %v", err)
+		}
+		if err := manager.Tick(t.Context()); err != nil {
+			t.Fatalf("Tick returned error: %v", err)
+		}
+		return manager.RunningServices() == 0
+	}); !ok {
+		t.Fatalf("expected completed one-shot process to be finalized")
+	}
+
+	for i := 0; i < 3; i++ {
+		if err := manager.ReconcileDesiredProcesses(t.Context(), []*slavev1.DesiredProcess{desired}, reconciliationSourceTick); err != nil {
+			t.Fatalf("ReconcileDesiredProcesses returned error: %v", err)
+		}
+		if err := manager.Tick(t.Context()); err != nil {
+			t.Fatalf("Tick returned error: %v", err)
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	if lineCount := readLineCount(markerPath); lineCount != 1 {
+		t.Fatalf("expected one-shot process not to relaunch, got %d runs", lineCount)
+	}
+
+	changes := manager.DrainPendingReconciliationChanges()
+	foundExited := false
+	for _, change := range changes {
+		if change == nil || change.GetObservedRun() == nil {
+			continue
+		}
+		if change.GetChangeType() == changeTypeExited && change.GetObservedRun().GetProcessKey() == desired.GetProcessKey() {
+			foundExited = true
+			break
+		}
+	}
+	if !foundExited {
+		t.Fatalf("expected exited reconciliation change, got %v", changes)
 	}
 }
 

@@ -96,7 +96,7 @@ DesiredProcess.init(
       allowNull: false,
     },
     command: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     argsJson: {

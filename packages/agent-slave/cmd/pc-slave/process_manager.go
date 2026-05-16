@@ -99,6 +99,7 @@ type processManager struct {
 
 	mu              sync.Mutex
 	processes       map[string]*managedProcess
+	completedNever  map[string]string
 	pendingChanges  []*slavev1.ProcessReconciliationChange
 	runtimeSequence int64
 }
@@ -134,6 +135,7 @@ func newProcessManager(logger *slog.Logger, cfg config) (*processManager, error)
 		artifactRetention:    cfg.RuntimeArtifactRetention,
 		maxRetainedBootLogs:  cfg.MaxRetainedBootLogs,
 		processes:            map[string]*managedProcess{},
+		completedNever:       map[string]string{},
 		pendingChanges:       make([]*slavev1.ProcessReconciliationChange, 0, 8),
 	}
 	if err := manager.cleanupRuntimeArtifacts(); err != nil {
@@ -352,6 +354,57 @@ func desiredProcessMatchesRun(desired *slavev1.DesiredProcess, run *slavev1.Obse
 		strings.TrimSpace(desired.GetCwd()) == strings.TrimSpace(run.GetCwd()) &&
 		strings.TrimSpace(desired.GetEnvHash()) == strings.TrimSpace(run.GetEnvHash()) &&
 		strings.Join(desired.GetArgs(), "\x1f") == strings.Join(run.GetArgs(), "\x1f")
+}
+
+func shouldRestartExitedDesiredProcess(desired *slavev1.DesiredProcess) bool {
+	if desired == nil || !strings.EqualFold(desired.GetDesiredState(), "running") {
+		return false
+	}
+	restartPolicy := strings.TrimSpace(strings.ToLower(desired.GetRestartPolicy()))
+	if restartPolicy == "" {
+		restartPolicy = "restart_on_package_change"
+	}
+	return restartPolicy != "never"
+}
+
+func completedNeverFingerprint(desired *slavev1.DesiredProcess) string {
+	if desired == nil {
+		return ""
+	}
+	fingerprint := strings.TrimSpace(desired.GetLaunchFingerprint())
+	if fingerprint != "" {
+		return fingerprint
+	}
+	return computeLaunchFingerprint(
+		desired.GetLaunchMode(),
+		desired.GetCommand(),
+		append([]string{}, desired.GetArgs()...),
+		desired.GetCwd(),
+		desired.GetEnvHash(),
+	)
+}
+
+func shouldRememberCompletedNeverProcess(desired *slavev1.DesiredProcess) bool {
+	if desired == nil || !strings.EqualFold(desired.GetDesiredState(), "running") {
+		return false
+	}
+	return strings.TrimSpace(strings.ToLower(desired.GetRestartPolicy())) == "never"
+}
+
+func (manager *processManager) hasCompletedNeverProcessLocked(desired *slavev1.DesiredProcess) bool {
+	if !shouldRememberCompletedNeverProcess(desired) {
+		return false
+	}
+	processKey := strings.TrimSpace(desired.GetProcessKey())
+	if processKey == "" {
+		return false
+	}
+	expected := completedNeverFingerprint(desired)
+	if strings.TrimSpace(manager.completedNever[processKey]) == expected {
+		return true
+	}
+	delete(manager.completedNever, processKey)
+	return false
 }
 
 func mergeProcessEnvironment(entries []*slavev1.ProcessEnvEntry, managedMarkers map[string]string) []string {
@@ -584,12 +637,16 @@ func (manager *processManager) ReconcileDesiredProcesses(ctx context.Context, de
 		desiredProcess := desiredMap[processKey]
 		managed := manager.processes[processKey]
 		if strings.EqualFold(desiredProcess.GetDesiredState(), "stopped") {
+			delete(manager.completedNever, strings.TrimSpace(desiredProcess.GetProcessKey()))
 			if managed != nil {
 				manager.stopManagedProcessLocked(managed, processStatusKilled, "desired state is stopped", reconciliationSourceKill, true)
 			}
 			continue
 		}
 		if managed == nil {
+			if manager.hasCompletedNeverProcessLocked(desiredProcess) {
+				continue
+			}
 			if err := manager.startDesiredProcessLocked(desiredProcess, source, false); err != nil {
 				manager.logger.Error("failed to launch desired process", "process_key", desiredProcess.GetProcessKey(), "error", err.Error())
 				manager.appendChange(changeTypeMissing, "failed to launch desired process: "+err.Error(), desiredProcess, nil)
@@ -597,8 +654,24 @@ func (manager *processManager) ReconcileDesiredProcesses(ctx context.Context, de
 			continue
 		}
 		managed.desired = cloneDesiredProcess(desiredProcess)
+		if managed.exitResult != nil {
+			exitResult := managed.exitResult
+			managed.exitResult = nil
+			manager.finalizeExitedProcessLocked(managed, exitResult, "managed process exited", source)
+			if !shouldRestartExitedDesiredProcess(desiredProcess) {
+				continue
+			}
+			if err := manager.startDesiredProcessLocked(desiredProcess, source, false); err != nil {
+				manager.logger.Error("failed to restart exited desired process", "process_key", desiredProcess.GetProcessKey(), "error", err.Error())
+				manager.appendChange(changeTypeMissing, "failed to restart exited desired process: "+err.Error(), desiredProcess, nil)
+			}
+			continue
+		}
 		if !processExists(int(managed.run.GetPid())) {
 			manager.finalizeExitedProcessLocked(managed, nil, "process no longer exists", source)
+			if !shouldRestartExitedDesiredProcess(desiredProcess) {
+				continue
+			}
 			if err := manager.startDesiredProcessLocked(desiredProcess, source, false); err != nil {
 				manager.logger.Error("failed to restart missing desired process", "process_key", desiredProcess.GetProcessKey(), "error", err.Error())
 				manager.appendChange(changeTypeMissing, "failed to restart missing desired process: "+err.Error(), desiredProcess, nil)
@@ -929,6 +1002,7 @@ func (manager *processManager) startDesiredProcessLocked(desired *slavev1.Desire
 	if desired == nil {
 		return fmt.Errorf("desired process is invalid")
 	}
+	delete(manager.completedNever, strings.TrimSpace(desired.GetProcessKey()))
 	processLogRoot := manager.processLogRoot
 	if strings.TrimSpace(desired.GetLogRoot()) != "" {
 		processLogRoot = strings.TrimSpace(desired.GetLogRoot())
@@ -1050,6 +1124,11 @@ func (manager *processManager) finalizeExitedProcessLocked(managed *managedProce
 	run.ReconciliationSource = source
 	delete(manager.processes, run.GetProcessKey())
 	manager.removePersistedState(managed)
+	if shouldRememberCompletedNeverProcess(managed.desired) {
+		manager.completedNever[strings.TrimSpace(run.GetProcessKey())] = completedNeverFingerprint(managed.desired)
+	} else {
+		delete(manager.completedNever, strings.TrimSpace(run.GetProcessKey()))
+	}
 	manager.appendChange(changeTypeExited, reason, managed.desired, run)
 }
 

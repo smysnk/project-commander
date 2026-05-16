@@ -68,7 +68,7 @@ module.exports = {
         allowNull: false,
       },
       command: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: false,
       },
       args_json: {
@@ -199,7 +199,7 @@ module.exports = {
         allowNull: true,
       },
       command: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: false,
       },
       args_json: {

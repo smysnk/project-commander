@@ -70,7 +70,7 @@ module.exports = {
         defaultValue: 'shell',
       },
       command: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: false,
       },
       args_json: {

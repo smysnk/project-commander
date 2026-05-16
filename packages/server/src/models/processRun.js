@@ -85,7 +85,7 @@ ProcessRun.init(
       field: 'launch_fingerprint',
     },
     command: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
     },
     argsJson: {
