@@ -167,8 +167,10 @@ test('slaveRuntimeState query maps desired processes, observed runs, and host te
           serviceId: 9,
           slaveId: 'slave-7',
           bootId: 'boot-7',
-          processKey: 'api-dev',
           packageKey: 'api',
+          desiredProcess: {
+            processKey: 'api-dev',
+          },
           pid: 1234,
           pgid: 1234,
           command: 'yarn',

@@ -1139,6 +1139,11 @@ const createProcessRegistry = ({
       where: { hostId: host.id },
       include: [
         {
+          model: DesiredProcessModel,
+          as: 'desiredProcess',
+          required: false,
+        },
+        {
           model: ProcessRuntimeStateModel,
           as: 'runtimeState',
           required: false,
