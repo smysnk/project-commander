@@ -1061,7 +1061,7 @@ const mapObservedProcessRunForGraphql = (processRun) => {
     serviceId: Number.isInteger(Number(record.serviceId)) ? Number(record.serviceId) : null,
     slaveId: record.slaveId ? String(record.slaveId).trim() : null,
     bootId: record.bootId ? String(record.bootId).trim() : null,
-    processKey: String(record.packageKey || record.processKey || '').trim(),
+    processKey: String(record.processKey || record.packageKey || '').trim(),
     packageKey: String(record.packageKey || '').trim(),
     projectPath: record.projectPath ? String(record.projectPath).trim() : null,
     pid: Number(record.pid || 0),

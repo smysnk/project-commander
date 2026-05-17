@@ -167,6 +167,7 @@ test('slaveRuntimeState query maps desired processes, observed runs, and host te
           serviceId: 9,
           slaveId: 'slave-7',
           bootId: 'boot-7',
+          processKey: 'api-dev',
           packageKey: 'api',
           pid: 1234,
           pgid: 1234,
@@ -209,6 +210,8 @@ test('slaveRuntimeState query maps desired processes, observed runs, and host te
   assert.equal(result.desiredProcesses.length, 1);
   assert.equal(result.desiredProcesses[0].env[0].key, 'NODE_ENV');
   assert.equal(result.observedRuns.length, 1);
+  assert.equal(result.observedRuns[0].processKey, 'api-dev');
+  assert.equal(result.observedRuns[0].packageKey, 'api');
   assert.equal(result.observedRuns[0].runtimeState.cpuPercent, 1.5);
   assert.equal(result.hostRuntimeState.diskMount, '/srv');
 });
