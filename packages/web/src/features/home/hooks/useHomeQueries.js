@@ -6,7 +6,9 @@ import {
 } from '../../../store';
 import {
   QUERY_DISCOVERY_DASHBOARD,
+  QUERY_DEPLOYMENT_INSTANCES,
   QUERY_DESIRED_PROCESSES,
+  QUERY_HOST_RUNTIME_ENV,
   QUERY_HOSTS,
   QUERY_HOST_PATH_MAPPINGS,
   QUERY_OBSERVED_PROCESS_RUNS,
@@ -17,6 +19,7 @@ import {
   QUERY_RUNTIME_BACKEND_INFO,
   QUERY_RUNTIME_CONFIG,
   QUERY_SLAVE_RUNTIME_STATE,
+  QUERY_SLAVE_RUNTIME_TELEMETRY,
 } from '../graphql/documents';
 import { normalizeHostRecord } from '../lib/homeUtils';
 import {
@@ -412,7 +415,14 @@ export const useRuntimeRegistryQueries = ({
     }));
 
     try {
-      const [runtimeStateData, desiredProcessesData, observedRunsData, hostPathMappingsData] = await Promise.all([
+      const [
+        runtimeStateData,
+        desiredProcessesData,
+        observedRunsData,
+        hostPathMappingsData,
+        deploymentInstancesData,
+        hostRuntimeEnvData,
+      ] = await Promise.all([
         graphqlRequest({
           query: QUERY_SLAVE_RUNTIME_STATE,
           variables,
@@ -433,6 +443,16 @@ export const useRuntimeRegistryQueries = ({
           variables: { ...variables, includeDisabled: true },
           endpoint: graphqlEndpoint,
         }),
+        graphqlRequest({
+          query: QUERY_DEPLOYMENT_INSTANCES,
+          variables,
+          endpoint: graphqlEndpoint,
+        }),
+        graphqlRequest({
+          query: QUERY_HOST_RUNTIME_ENV,
+          variables,
+          endpoint: graphqlEndpoint,
+        }),
       ]);
 
       const runtimeState = runtimeStateData?.slaveRuntimeState || null;
@@ -445,6 +465,12 @@ export const useRuntimeRegistryQueries = ({
       const hostPathMappings = Array.isArray(hostPathMappingsData?.hostPathMappings)
         ? hostPathMappingsData.hostPathMappings
         : [];
+      const deploymentInstances = Array.isArray(deploymentInstancesData?.deploymentInstances)
+        ? deploymentInstancesData.deploymentInstances
+        : [];
+      const hostRuntimeEnv = Array.isArray(hostRuntimeEnvData?.hostRuntimeEnv?.env)
+        ? hostRuntimeEnvData.hostRuntimeEnv.env
+        : [];
       const resolvedHostId = Number(runtimeState?.host?.id || parsedHostId || 0);
       const resolvedHostKey = Number.isInteger(resolvedHostId) && resolvedHostId > 0
         ? resolvedHostId
@@ -455,6 +481,8 @@ export const useRuntimeRegistryQueries = ({
         desiredProcesses,
         observedProcessRuns,
         hostPathMappings,
+        deploymentInstances,
+        hostRuntimeEnv,
         loadedAt: new Date().toISOString(),
       };
       setRuntimeRegistryByHostId((current) => ({
@@ -478,7 +506,71 @@ export const useRuntimeRegistryQueries = ({
     setRuntimeRegistryLoadingByHostId,
   ]);
 
+  const loadSlaveRuntimeTelemetry = useCallback(async ({
+    hostId,
+    agentUuid,
+  } = {}) => {
+    const parsedHostId = Number.parseInt(String(hostId ?? '').trim(), 10);
+    const normalizedAgentUuid = String(agentUuid || '').trim();
+    if ((!Number.isInteger(parsedHostId) || parsedHostId <= 0) && !normalizedAgentUuid) {
+      return null;
+    }
+
+    const variables = {
+      hostId: Number.isInteger(parsedHostId) && parsedHostId > 0 ? parsedHostId : null,
+      agentUuid: normalizedAgentUuid || null,
+    };
+    const hostKey = Number.isInteger(parsedHostId) && parsedHostId > 0
+      ? parsedHostId
+      : normalizedAgentUuid;
+
+    try {
+      const telemetryData = await graphqlRequest({
+        query: QUERY_SLAVE_RUNTIME_TELEMETRY,
+        variables,
+        endpoint: graphqlEndpoint,
+      });
+      const runtimeState = telemetryData?.slaveRuntimeState || null;
+      const observedProcessRuns = Array.isArray(runtimeState?.observedRuns)
+        ? runtimeState.observedRuns
+        : [];
+      const resolvedHostId = Number(runtimeState?.host?.id || parsedHostId || 0);
+      const resolvedHostKey = Number.isInteger(resolvedHostId) && resolvedHostId > 0
+        ? resolvedHostId
+        : hostKey;
+      const loadedAt = new Date().toISOString();
+
+      setRuntimeRegistryByHostId((current) => {
+        const previous = current?.[resolvedHostKey] || current?.[hostKey] || {};
+        return {
+          ...(current || {}),
+          [resolvedHostKey]: {
+            ...previous,
+            slaveRuntimeState: runtimeState,
+            observedProcessRuns,
+            telemetryLoadedAt: loadedAt,
+            loadedAt: previous.loadedAt || loadedAt,
+          },
+        };
+      });
+
+      return {
+        slaveRuntimeState: runtimeState,
+        observedProcessRuns,
+        telemetryLoadedAt: loadedAt,
+      };
+    } catch (runtimeRegistryError) {
+      setError(runtimeRegistryError.message || 'Unable to load slave runtime telemetry');
+      return null;
+    }
+  }, [
+    graphqlEndpoint,
+    setError,
+    setRuntimeRegistryByHostId,
+  ]);
+
   return {
     loadSlaveRuntimeBundle,
+    loadSlaveRuntimeTelemetry,
   };
 };

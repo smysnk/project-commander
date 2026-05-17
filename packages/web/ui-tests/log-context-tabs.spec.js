@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installWebSocketMock } = require('./helpers/wsMock');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const PROJECT_PATH = '/tmp/mock-project';
@@ -274,22 +275,26 @@ test('switches tab/log contexts across runtime, master, and host selections', as
     return;
   }
 
+  await selectWorkspacePanel(page, 'Logs');
   const logStream = page.getByTestId('log-stream');
   await expect(logStream).toBeVisible();
-  await expect(logStream).toContainText('project-log-line');
+  await expect(logStream).toContainText('runtime-node-health');
+  await expect(logStream).toContainText('master-only-heartbeat');
   await expect(logStream).not.toContainText('host-one-heartbeat');
 
-  await page.locator('.hostsSidebarToggle').click();
-  await page.getByTestId('collapsed-master-agent').click();
+  await selectWorkspacePanel(page, 'Hosts');
+  await page.locator('.masterHostRow').click();
+  await selectWorkspacePanel(page, 'Logs');
   await expect(logStream).toContainText('master-only-heartbeat');
   await expect(logStream).toContainText('runtime-node-health');
   await expect(logStream).not.toContainText('host-one-heartbeat');
 
-  await page.getByTestId('collapsed-host-1').click();
+  await selectWorkspacePanel(page, 'Hosts');
+  await page.locator('.hostList .hostCard').filter({ hasText: /blackbox/i }).first().click();
+  await selectWorkspacePanel(page, 'Logs');
   await expect(logStream).toContainText('host-one-heartbeat');
   await expect(logStream).not.toContainText('host-two-heartbeat');
   await expect(logStream).not.toContainText('master-only-heartbeat');
 
-  await page.getByRole('tab', { name: 'Terminal' }).click();
-  await expect(page.getByRole('tab', { name: 'Terminal' })).toHaveClass(/active/);
+  await selectWorkspacePanel(page, 'Terminal');
 });

@@ -14,6 +14,26 @@ const createResolverHarness = (overrides = {}) => {
       calls.push({ method: 'listDesiredProcesses', input });
       return overrides.listDesiredProcessesResult || [];
     },
+    async listDeploymentInstances(input) {
+      calls.push({ method: 'listDeploymentInstances', input });
+      return overrides.listDeploymentInstancesResult || [];
+    },
+    async getHostRuntimeEnv(input) {
+      calls.push({ method: 'getHostRuntimeEnv', input });
+      return overrides.getHostRuntimeEnvResult || null;
+    },
+    async upsertDeploymentInstance(input) {
+      calls.push({ method: 'upsertDeploymentInstance', input });
+      return overrides.upsertDeploymentInstanceResult || null;
+    },
+    async deleteDeploymentInstance(input) {
+      calls.push({ method: 'deleteDeploymentInstance', input });
+      return overrides.deleteDeploymentInstanceResult ?? true;
+    },
+    async setHostRuntimeEnv(input) {
+      calls.push({ method: 'setHostRuntimeEnv', input });
+      return overrides.setHostRuntimeEnvResult || null;
+    },
     async ensureDesiredProcess(input) {
       calls.push({ method: 'ensureDesiredProcess', input });
       return overrides.ensureDesiredProcessResult || null;
@@ -315,6 +335,106 @@ test('runtime process queries apply desired and observed run filters', async () 
   assert.equal(observed[0].runId, 'run-api');
   assert.equal(calls[0].input.packageKey, 'api');
   assert.equal(calls[0].input.search, 'yarn');
+});
+
+test('deployment and host env GraphQL operations support multiple deployment configurations', async () => {
+  const localDeployment = {
+    id: 301,
+    hostId: 7,
+    projectId: 3,
+    deploymentKey: 'local',
+    displayName: 'Local dev',
+    deploymentPath: '/srv/projects/api/local',
+    envJson: { WEB_PORT: '3015', SERVER_PORT: '4015' },
+    logRoot: '/tmp/project-commander/local',
+  };
+  const stagingDeployment = {
+    id: 302,
+    hostId: 7,
+    projectId: 3,
+    deploymentKey: 'staging',
+    displayName: 'Staging dev',
+    deploymentPath: '/srv/projects/api/staging',
+    envJson: { WEB_PORT: '3025', SERVER_PORT: '4025' },
+    logRoot: '/tmp/project-commander/staging',
+  };
+  const host = {
+    id: 7,
+    agentUuid: 'slave-7',
+    ip: '192.168.1.7',
+    port: 42050,
+    name: 'blackbox',
+    source: 'runtime',
+    metadata: {
+      runtimeEnv: {
+        COMFY_SERVER_URL: 'http://192.168.1.251:8188',
+      },
+    },
+  };
+  const { resolvers, calls } = createResolverHarness({
+    listDeploymentInstancesResult: [localDeployment, stagingDeployment],
+    getHostRuntimeEnvResult: {
+      host,
+      envJson: host.metadata.runtimeEnv,
+    },
+    upsertDeploymentInstanceResult: stagingDeployment,
+    setHostRuntimeEnvResult: {
+      host,
+      envJson: {
+        COMFY_SERVER_URL: 'http://192.168.1.251:8188',
+        SHARED_CACHE_ROOT: '/mnt/cache',
+      },
+    },
+  });
+
+  const deployments = await resolvers.Query.deploymentInstances(null, {
+    hostId: 7,
+    projectId: 3,
+  });
+  const hostEnv = await resolvers.Query.hostRuntimeEnv(null, {
+    hostId: 7,
+  });
+  const savedDeployment = await resolvers.Mutation.ensureDeploymentInstance(null, {
+    hostId: 7,
+    projectId: 3,
+    deploymentKey: 'staging',
+    displayName: 'Staging dev',
+    deploymentPath: '/srv/projects/api/staging',
+    env: [
+      { key: 'WEB_PORT', value: '3025' },
+      { key: 'SERVER_PORT', value: '4025' },
+    ],
+    logRoot: '/tmp/project-commander/staging',
+  });
+  const savedHostEnv = await resolvers.Mutation.setHostRuntimeEnv(null, {
+    hostId: 7,
+    env: [
+      { key: 'COMFY_SERVER_URL', value: 'http://192.168.1.251:8188' },
+      { key: 'SHARED_CACHE_ROOT', value: '/mnt/cache' },
+    ],
+  });
+  const deleted = await resolvers.Mutation.deleteDeploymentInstance(null, {
+    deploymentId: 302,
+    deleteDesiredProcesses: true,
+  });
+
+  assert.equal(deployments.length, 2);
+  assert.equal(deployments[0].deploymentKey, 'local');
+  assert.equal(deployments[0].env.find((entry) => entry.key === 'WEB_PORT').value, '3015');
+  assert.equal(hostEnv.env[0].key, 'COMFY_SERVER_URL');
+  assert.equal(savedDeployment.deploymentKey, 'staging');
+  assert.equal(savedDeployment.env.find((entry) => entry.key === 'SERVER_PORT').value, '4025');
+  assert.equal(savedHostEnv.env.find((entry) => entry.key === 'SHARED_CACHE_ROOT').value, '/mnt/cache');
+  assert.equal(deleted, true);
+  assert.deepEqual(calls.map((call) => call.method).slice(0, 5), [
+    'listDeploymentInstances',
+    'getHostRuntimeEnv',
+    'upsertDeploymentInstance',
+    'setHostRuntimeEnv',
+    'deleteDeploymentInstance',
+  ]);
+  assert.deepEqual(calls[2].input.envJson, { WEB_PORT: '3025', SERVER_PORT: '4025' });
+  assert.equal(calls[4].input.deleteDesiredProcesses, true);
 });
 
 test('deleteHost mutation forwards directory content cleanup flag', async () => {

@@ -1,5 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const { installWebSocketMock } = require("./helpers/wsMock");
+const { selectWorkspacePanel } = require("./helpers/workspacePanels");
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 
@@ -199,12 +200,13 @@ test("shows slave-agent host logs in logs pane when host is selected and no proj
 
   await expect(page.locator(".projectRow")).toHaveCount(0);
 
+  await selectWorkspacePanel(page, "Hosts");
   const blackboxHost = page.locator(".hostList .hostCard").filter({ hasText: /blackbox/i }).first();
   await expect(blackboxHost).toBeVisible();
   await blackboxHost.click();
   await expect(blackboxHost).toHaveClass(/selected/);
 
-  await page.getByRole("tab", { name: "Logs" }).click();
+  await selectWorkspacePanel(page, "Logs");
 
   const logStream = page.getByTestId("log-stream");
   await expect(logStream).toBeVisible();

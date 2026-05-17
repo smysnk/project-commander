@@ -53,6 +53,10 @@ export const QUERY_HOSTS = `
       version
       protocolVersion
       directories
+      runtimeEnv {
+        key
+        value
+      }
       projectCount
       projects {
         id
@@ -283,10 +287,14 @@ export const QUERY_SLAVE_RUNTIME_STATE = `
         status
         lastSeenAt
         error
-        version
-        protocolVersion
-        directories
-        projectCount
+      version
+      protocolVersion
+      directories
+      runtimeEnv {
+        key
+        value
+      }
+      projectCount
         projects {
           id
           name
@@ -297,6 +305,9 @@ export const QUERY_SLAVE_RUNTIME_STATE = `
         id
         hostId
         projectId
+        deploymentId
+        deploymentKey
+        deploymentName
         serviceId
         slaveId
         hostName
@@ -327,6 +338,9 @@ export const QUERY_SLAVE_RUNTIME_STATE = `
         desiredProcessId
         hostId
         projectId
+        deploymentId
+        deploymentKey
+        deploymentName
         serviceId
         slaveId
         bootId
@@ -382,12 +396,125 @@ export const QUERY_SLAVE_RUNTIME_STATE = `
   }
 `;
 
-export const QUERY_DESIRED_PROCESSES = `
-  query DesiredProcesses($hostId: Int, $projectId: Int, $agentUuid: String) {
-    desiredProcesses(hostId: $hostId, projectId: $projectId, agentUuid: $agentUuid) {
+export const QUERY_SLAVE_RUNTIME_TELEMETRY = `
+  query SlaveRuntimeTelemetry($hostId: Int, $agentUuid: String) {
+    slaveRuntimeState(hostId: $hostId, agentUuid: $agentUuid) {
+      host {
+        id
+        agentUuid
+        ip
+        name
+        online
+        health
+        status
+        lastSeenAt
+        error
+        version
+        protocolVersion
+      }
+      observedRuns {
+        id
+        runId
+        desiredProcessId
+        hostId
+        projectId
+        deploymentId
+        deploymentKey
+        deploymentName
+        slaveId
+        bootId
+        processKey
+        packageKey
+        projectPath
+        pid
+        pgid
+        launchFingerprint
+        command
+        args
+        cwd
+        envHash
+        status
+        startedAt
+        lastSeenAt
+        exitedAt
+        exitCode
+        exitSignal
+        logPath
+        adopted
+        reconciliationSource
+        runtimeState {
+          sampledAt
+          cpuPercent
+          memoryPercent
+          rssBytes
+          vmsBytes
+          readBytes
+          writeBytes
+          readOps
+          writeOps
+          openFds
+          threadCount
+          status
+        }
+      }
+      hostRuntimeState {
+        sampledAt
+        cpuPercent
+        load1m
+        load5m
+        load15m
+        memoryTotalBytes
+        memoryUsedBytes
+        memoryAvailableBytes
+        diskTotalBytes
+        diskUsedBytes
+        diskAvailableBytes
+        diskMount
+      }
+    }
+  }
+`;
+
+export const QUERY_DEPLOYMENT_INSTANCES = `
+  query DeploymentInstances($hostId: Int, $projectId: Int) {
+    deploymentInstances(hostId: $hostId, projectId: $projectId) {
       id
       hostId
       projectId
+      deploymentKey
+      displayName
+      deploymentPath
+      env {
+        key
+        value
+      }
+      logRoot
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const QUERY_HOST_RUNTIME_ENV = `
+  query HostRuntimeEnv($hostId: Int, $agentUuid: String) {
+    hostRuntimeEnv(hostId: $hostId, agentUuid: $agentUuid) {
+      env {
+        key
+        value
+      }
+    }
+  }
+`;
+
+export const QUERY_DESIRED_PROCESSES = `
+  query DesiredProcesses($hostId: Int, $projectId: Int, $deploymentId: Int, $deploymentKey: String, $agentUuid: String) {
+    desiredProcesses(hostId: $hostId, projectId: $projectId, deploymentId: $deploymentId, deploymentKey: $deploymentKey, agentUuid: $agentUuid) {
+      id
+      hostId
+      projectId
+      deploymentId
+      deploymentKey
+      deploymentName
       serviceId
       slaveId
       hostName
@@ -416,13 +543,16 @@ export const QUERY_DESIRED_PROCESSES = `
 `;
 
 export const QUERY_OBSERVED_PROCESS_RUNS = `
-  query ObservedProcessRuns($hostId: Int, $agentUuid: String) {
-    observedProcessRuns(hostId: $hostId, agentUuid: $agentUuid) {
+  query ObservedProcessRuns($hostId: Int, $deploymentId: Int, $deploymentKey: String, $agentUuid: String) {
+    observedProcessRuns(hostId: $hostId, deploymentId: $deploymentId, deploymentKey: $deploymentKey, agentUuid: $agentUuid) {
       id
       runId
       desiredProcessId
       hostId
       projectId
+      deploymentId
+      deploymentKey
+      deploymentName
       serviceId
       slaveId
       bootId
@@ -659,6 +789,8 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
     $hostId: Int
     $agentUuid: String
     $projectId: Int
+    $deploymentId: Int
+    $deploymentKey: String
     $projectPath: String
     $serviceId: Int
     $processKey: String
@@ -680,6 +812,8 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
       hostId: $hostId
       agentUuid: $agentUuid
       projectId: $projectId
+      deploymentId: $deploymentId
+      deploymentKey: $deploymentKey
       projectPath: $projectPath
       serviceId: $serviceId
       processKey: $processKey
@@ -699,6 +833,9 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
       id
       hostId
       projectId
+      deploymentId
+      deploymentKey
+      deploymentName
       processKey
       packageKey
       projectPath
@@ -713,12 +850,70 @@ export const MUTATION_ENSURE_DESIRED_PROCESS = `
   }
 `;
 
+export const MUTATION_ENSURE_DEPLOYMENT_INSTANCE = `
+  mutation EnsureDeploymentInstance(
+    $hostId: Int!
+    $projectId: Int
+    $projectPath: String
+    $deploymentKey: String!
+    $displayName: String
+    $deploymentPath: String
+    $env: [RuntimeEnvEntryInput!]
+    $logRoot: String
+  ) {
+    ensureDeploymentInstance(
+      hostId: $hostId
+      projectId: $projectId
+      projectPath: $projectPath
+      deploymentKey: $deploymentKey
+      displayName: $displayName
+      deploymentPath: $deploymentPath
+      env: $env
+      logRoot: $logRoot
+      createdBy: "runtime-panel"
+      updatedBy: "runtime-panel"
+    ) {
+      id
+      hostId
+      projectId
+      deploymentKey
+      displayName
+      deploymentPath
+      env {
+        key
+        value
+      }
+      logRoot
+      updatedAt
+    }
+  }
+`;
+
+export const MUTATION_DELETE_DEPLOYMENT_INSTANCE = `
+  mutation DeleteDeploymentInstance($deploymentId: Int!, $deleteDesiredProcesses: Boolean) {
+    deleteDeploymentInstance(deploymentId: $deploymentId, deleteDesiredProcesses: $deleteDesiredProcesses)
+  }
+`;
+
+export const MUTATION_SET_HOST_RUNTIME_ENV = `
+  mutation SetHostRuntimeEnv($hostId: Int!, $env: [RuntimeEnvEntryInput!]!) {
+    setHostRuntimeEnv(hostId: $hostId, env: $env) {
+      env {
+        key
+        value
+      }
+    }
+  }
+`;
+
 export const MUTATION_DELETE_DESIRED_PROCESS = `
   mutation DeleteDesiredProcessDefinition(
     $desiredProcessId: Int
     $hostId: Int
     $agentUuid: String
     $projectId: Int
+    $deploymentId: Int
+    $deploymentKey: String
     $projectPath: String
     $packageKey: String
     $processKey: String
@@ -728,6 +923,8 @@ export const MUTATION_DELETE_DESIRED_PROCESS = `
       hostId: $hostId
       agentUuid: $agentUuid
       projectId: $projectId
+      deploymentId: $deploymentId
+      deploymentKey: $deploymentKey
       projectPath: $projectPath
       packageKey: $packageKey
       processKey: $processKey

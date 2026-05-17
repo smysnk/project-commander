@@ -1,5 +1,12 @@
 const normalizeEmail = (value) => value.trim().toLowerCase();
 
+const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
+
+export const isAuthExplicitlyDisabled = () => (
+  isTruthy(process.env.PROJECT_COMMANDER_AUTH_DISABLED)
+  || isTruthy(process.env.AUTH_DISABLED)
+);
+
 export const parseAllowedUsers = (value) => {
   if (!value) {
     return [];
@@ -47,6 +54,9 @@ export const getAuthSessionCookieName = () => (
 );
 
 export const isAuthEnabled = () => {
+  if (isAuthExplicitlyDisabled()) {
+    return false;
+  }
   const env = readAuthEnv();
   return Boolean(env.nextAuthSecret && env.googleClientId && env.googleClientSecret);
 };

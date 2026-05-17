@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installWebSocketMock } = require('./helpers/wsMock');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 
@@ -219,18 +220,14 @@ test('defaults to master selection and scopes logs by selected master/slave cont
     try {
       window.localStorage.setItem('project-discovery:panel-state', JSON.stringify({
         panelProjectList: {
-          leftWidthPct: 50,
           selectedProjectPath: '',
         },
         panelProjectExplorer: {
-          mode: 'logs',
           isFollowMode: true,
         },
         uiInteractions: {
-          leftPanelMode: 'runtime',
-          hostsSidebarCollapsed: false,
-          hostsSidebarWidthPx: 360,
           selectedHostId: 'master-agent',
+          activeWorkspacePanel: 'hosts',
           activeLogContextKey: 'runtime',
           selectedLogServices: [],
           disabledLogLevels: [],
@@ -261,9 +258,9 @@ test('defaults to master selection and scopes logs by selected master/slave cont
   await expect(masterRow).toBeVisible();
   await expect(masterRow).toHaveClass(/selected/);
   await expect(page.locator('.hostList .hostCard.selected')).toHaveCount(0);
-  await expect(page.getByRole('tab', { name: 'Logs' })).toHaveClass(/active/);
+  await expect(page.locator('.workspacePanelNav').getByRole('button', { name: 'Hosts', exact: true })).toHaveAttribute('aria-current', 'page');
 
-  await page.getByRole('tab', { name: 'Logs' }).click();
+  await selectWorkspacePanel(page, 'Logs');
 
   const logStream = page.getByTestId('log-stream');
   await expect(logStream).toBeVisible();
@@ -273,9 +270,11 @@ test('defaults to master selection and scopes logs by selected master/slave cont
   await expect(logStream).not.toContainText('other-slave-uuid-log');
   await expect(logStream.locator('.logHostTag')).toHaveCount(0);
 
+  await selectWorkspacePanel(page, 'Hosts');
   const selectedHostRow = page.locator('.hostList .hostCard').filter({ hasText: /blackbox/i }).first();
   await expect(selectedHostRow).toBeVisible();
   await selectedHostRow.click();
+  await selectWorkspacePanel(page, 'Logs');
 
   await expect(logStream).toContainText('selected-slave-uuid-log');
   await expect(logStream).not.toContainText('other-slave-uuid-log');
@@ -285,6 +284,7 @@ test('defaults to master selection and scopes logs by selected master/slave cont
   await expect(logStream.locator('.logServiceTag').filter({ hasText: 'node-backend' })).toHaveCount(0);
   await expect(logStream.locator('.logServiceTag').filter({ hasText: 'agent-master' })).toHaveCount(0);
 
+  await selectWorkspacePanel(page, 'Hosts');
   await expect(selectedHostRow).toHaveClass(/selected/);
   await expect(selectedHostRow.locator('.hostHealthDot')).toHaveClass(/healthy/);
   await expect(selectedHostRow).toContainText('(online)');

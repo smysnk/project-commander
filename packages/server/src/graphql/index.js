@@ -122,8 +122,29 @@ const typeDefs = `#graphql
     version: String
     protocolVersion: String
     directories: [String!]!
+    runtimeEnv: [RuntimeEnvEntry!]!
     projectCount: Int!
     projects: [HostProject!]!
+  }
+
+  type DeploymentInstance {
+    id: Int!
+    hostId: Int!
+    projectId: Int!
+    deploymentKey: String!
+    displayName: String
+    deploymentPath: String
+    env: [RuntimeEnvEntry!]!
+    logRoot: String
+    createdBy: String
+    updatedBy: String
+    createdAt: String
+    updatedAt: String
+  }
+
+  type HostRuntimeEnv {
+    host: Host!
+    env: [RuntimeEnvEntry!]!
   }
 
   type HostPathMapping {
@@ -248,6 +269,9 @@ const typeDefs = `#graphql
     id: Int!
     hostId: Int!
     projectId: Int!
+    deploymentId: Int
+    deploymentKey: String
+    deploymentName: String
     serviceId: Int
     slaveId: String
     hostName: String
@@ -275,6 +299,9 @@ const typeDefs = `#graphql
     hostId: Int!
     agentUuid: String
     projectId: Int!
+    deploymentId: Int
+    deploymentKey: String
+    deploymentName: String
     projectPath: String
     processKey: String!
     packageKey: String!
@@ -326,6 +353,9 @@ const typeDefs = `#graphql
     desiredProcessId: Int
     hostId: Int!
     projectId: Int!
+    deploymentId: Int
+    deploymentKey: String
+    deploymentName: String
     serviceId: Int
     slaveId: String
     bootId: String
@@ -487,11 +517,13 @@ const typeDefs = `#graphql
     hostPathMappings(hostId: Int, agentUuid: String, includeDisabled: Boolean): [HostPathMapping!]!
     resolveHostPath(hostId: Int, agentUuid: String, path: String!, allowUnapproved: Boolean): ResolvedHostPath!
     processTemplates(hostId: Int, agentUuid: String, projectId: Int, projectPath: String, codexPath: String, includeDisabled: Boolean, codexOnly: Boolean, allowUnapproved: Boolean): [ProcessTemplate!]!
-    resolveProcessTemplate(hostId: Int, agentUuid: String, projectId: Int, projectPath: String, codexPath: String, templateKey: String!, packageKey: String, packageRelativePath: String, processKey: String, allowUnapproved: Boolean, codexOnly: Boolean, env: [RuntimeEnvEntryInput!]): ResolvedProcessTemplate!
+    resolveProcessTemplate(hostId: Int, agentUuid: String, projectId: Int, deploymentId: Int, deploymentKey: String, projectPath: String, codexPath: String, templateKey: String!, packageKey: String, packageRelativePath: String, processKey: String, allowUnapproved: Boolean, codexOnly: Boolean, env: [RuntimeEnvEntryInput!]): ResolvedProcessTemplate!
     waitForRuntime(hostId: Int, agentUuid: String, projectId: Int, projectPath: String, codexPath: String, runId: String, processKey: String, packageKey: String, templateKey: String, status: String, expectedStatus: String, expectedExitCode: Int, timeoutMs: Int, intervalMs: Int, healthChecksJson: String, url: String, method: String, bodyIncludes: String, port: Int, tcpHost: String, pattern: String, graphqlEndpoint: String, query: String, variablesJson: String): RuntimeWaitResult!
     slaveRuntimeState(hostId: Int, agentUuid: String): SlaveRuntimeStateSnapshot
-    desiredProcesses(hostId: Int, projectId: Int, agentUuid: String, projectPath: String, processKey: String, packageKey: String, desiredState: String, search: String): [DesiredProcessDefinition!]!
-    observedProcessRuns(hostId: Int, projectId: Int, agentUuid: String, projectPath: String, processKey: String, packageKey: String, status: String, runId: String, pid: Int, search: String): [ObservedProcessRun!]!
+    deploymentInstances(hostId: Int, projectId: Int, deploymentKey: String): [DeploymentInstance!]!
+    hostRuntimeEnv(hostId: Int, agentUuid: String): HostRuntimeEnv
+    desiredProcesses(hostId: Int, projectId: Int, deploymentId: Int, deploymentKey: String, agentUuid: String, projectPath: String, processKey: String, packageKey: String, desiredState: String, search: String): [DesiredProcessDefinition!]!
+    observedProcessRuns(hostId: Int, projectId: Int, deploymentId: Int, deploymentKey: String, agentUuid: String, projectPath: String, processKey: String, packageKey: String, status: String, runId: String, pid: Int, search: String): [ObservedProcessRun!]!
     terminalSession(hostId: Int!): TerminalSession
     discoveryConfig: DiscoveryConfig!
     discoveredProjects: ProjectDiscoveryResult!
@@ -570,6 +602,8 @@ const typeDefs = `#graphql
       hostId: Int
       agentUuid: String
       projectId: Int
+      deploymentId: Int
+      deploymentKey: String
       projectPath: String
       codexPath: String
       templateKey: String!
@@ -593,6 +627,8 @@ const typeDefs = `#graphql
       hostId: Int
       agentUuid: String
       projectId: Int
+      deploymentId: Int
+      deploymentKey: String
       projectPath: String
       serviceId: Int
       processKey: String
@@ -614,10 +650,32 @@ const typeDefs = `#graphql
       hostId: Int
       agentUuid: String
       projectId: Int
+      deploymentId: Int
+      deploymentKey: String
       projectPath: String
       packageKey: String
       processKey: String
     ): Boolean!
+    ensureDeploymentInstance(
+      hostId: Int!
+      projectId: Int
+      projectPath: String
+      deploymentKey: String!
+      displayName: String
+      deploymentPath: String
+      env: [RuntimeEnvEntryInput!]
+      logRoot: String
+      createdBy: String
+      updatedBy: String
+    ): DeploymentInstance!
+    deleteDeploymentInstance(
+      deploymentId: Int!
+      deleteDesiredProcesses: Boolean
+    ): Boolean!
+    setHostRuntimeEnv(
+      hostId: Int!
+      env: [RuntimeEnvEntryInput!]!
+    ): HostRuntimeEnv!
     softKillProcess(
       hostId: Int
       agentUuid: String
@@ -691,6 +749,7 @@ const mapHostForGraphql = (host, fallback = {}) => {
   const projectCount = Number.isInteger(explicitProjectCount) && explicitProjectCount >= 0
     ? explicitProjectCount
     : mappedProjects.length;
+  const hostMetadata = host?.metadata && typeof host.metadata === 'object' ? host.metadata : {};
 
   return {
     id: Number(host.id),
@@ -712,6 +771,7 @@ const mapHostForGraphql = (host, fallback = {}) => {
     directories: Array.isArray(host?.directories)
       ? host.directories.map((directory) => String(directory || '').trim()).filter(Boolean)
       : [],
+    runtimeEnv: mapRuntimeEnvEntries(hostMetadata.runtimeEnv || hostMetadata.runtimeEnvJson || {}),
     projectCount,
     projects: mappedProjects,
   };
@@ -786,6 +846,43 @@ const mapRuntimeEnvEntries = (entriesOrObject) => {
     }))
     .filter((entry) => entry.key)
     .sort((left, right) => left.key.localeCompare(right.key));
+};
+
+const mapDeploymentInstanceForGraphql = (deployment) => {
+  const record = toPlainRecord(deployment);
+  if (!record) {
+    return null;
+  }
+  const id = Number(record.id);
+  const hostId = Number(record.hostId);
+  const projectId = Number(record.projectId);
+  if (!Number.isInteger(id) || id <= 0 || !Number.isInteger(hostId) || hostId <= 0 || !Number.isInteger(projectId) || projectId <= 0) {
+    return null;
+  }
+  return {
+    id,
+    hostId,
+    projectId,
+    deploymentKey: String(record.deploymentKey || '').trim(),
+    displayName: record.displayName ? String(record.displayName).trim() : null,
+    deploymentPath: record.deploymentPath ? String(record.deploymentPath).trim() : null,
+    env: mapRuntimeEnvEntries(record.envJson),
+    logRoot: record.logRoot ? String(record.logRoot).trim() : null,
+    createdBy: record.createdBy ? String(record.createdBy).trim() : null,
+    updatedBy: record.updatedBy ? String(record.updatedBy).trim() : null,
+    createdAt: record.createdAt ? String(record.createdAt) : null,
+    updatedAt: record.updatedAt ? String(record.updatedAt) : null,
+  };
+};
+
+const mapHostRuntimeEnvForGraphql = (result) => {
+  if (!result?.host) {
+    return null;
+  }
+  return {
+    host: mapHostForGraphql(toPlainRecord(result.host)),
+    env: mapRuntimeEnvEntries(result.envJson),
+  };
 };
 
 const serializeJsonField = (value, fallback) => {
@@ -943,6 +1040,9 @@ const mapResolvedProcessTemplateForGraphql = (resolved) => {
     hostId: Number(desiredProcess.hostId),
     agentUuid: desiredProcess.slaveId ? String(desiredProcess.slaveId).trim() : null,
     projectId: Number(desiredProcess.projectId),
+    deploymentId: Number.isInteger(Number(desiredProcess.deploymentId)) ? Number(desiredProcess.deploymentId) : null,
+    deploymentKey: desiredProcess.deploymentKey ? String(desiredProcess.deploymentKey).trim() : null,
+    deploymentName: desiredProcess.deploymentKey ? String(desiredProcess.deploymentKey).trim() : null,
     projectPath: desiredProcess.projectPath ? String(desiredProcess.projectPath).trim() : null,
     processKey: String(desiredProcess.processKey || '').trim(),
     packageKey: String(desiredProcess.packageKey || '').trim(),
@@ -967,6 +1067,7 @@ const mapDesiredProcessForGraphql = (desiredProcess) => {
   const host = toPlainRecord(record.host);
   const project = toPlainRecord(record.project);
   const service = toPlainRecord(record.service);
+  const deployment = toPlainRecord(record.deployment);
   const id = Number(record.id);
   const hostId = Number(record.hostId);
   const projectId = Number(record.projectId);
@@ -977,6 +1078,11 @@ const mapDesiredProcessForGraphql = (desiredProcess) => {
     id,
     hostId,
     projectId,
+    deploymentId: Number.isInteger(Number(record.deploymentId)) ? Number(record.deploymentId) : null,
+    deploymentKey: deployment?.deploymentKey ? String(deployment.deploymentKey).trim() : null,
+    deploymentName: deployment?.displayName || deployment?.deploymentKey
+      ? String(deployment.displayName || deployment.deploymentKey).trim()
+      : null,
     serviceId: Number.isInteger(Number(record.serviceId)) ? Number(record.serviceId) : null,
     slaveId: host?.agentUuid ? String(host.agentUuid).trim() : null,
     hostName: host?.name ? String(host.name).trim() : null,
@@ -985,7 +1091,7 @@ const mapDesiredProcessForGraphql = (desiredProcess) => {
     processKey: String(record.processKey || '').trim(),
     packageKey: String(record.packageKey || '').trim(),
     packageRelativePath: record.packageRelativePath ? String(record.packageRelativePath).trim() : null,
-    projectPath: project?.metadata?.path || project?.path || null,
+    projectPath: deployment?.deploymentPath || project?.metadata?.path || project?.path || null,
     desiredState: String(record.desiredState || 'running').trim() || 'running',
     launchMode: String(record.launchMode || 'exec').trim() || 'exec',
     cwd: String(record.cwd || '').trim(),
@@ -1058,6 +1164,15 @@ const mapObservedProcessRunForGraphql = (processRun) => {
     desiredProcessId: Number.isInteger(Number(record.desiredProcessId)) ? Number(record.desiredProcessId) : null,
     hostId,
     projectId,
+    deploymentId: Number.isInteger(Number(record.deploymentId || record.desiredProcess?.deploymentId))
+      ? Number(record.deploymentId || record.desiredProcess?.deploymentId)
+      : null,
+    deploymentKey: record.deployment?.deploymentKey || record.desiredProcess?.deployment?.deploymentKey
+      ? String(record.deployment?.deploymentKey || record.desiredProcess?.deployment?.deploymentKey).trim()
+      : null,
+    deploymentName: record.deployment?.displayName || record.desiredProcess?.deployment?.displayName || record.deployment?.deploymentKey || record.desiredProcess?.deployment?.deploymentKey
+      ? String(record.deployment?.displayName || record.desiredProcess?.deployment?.displayName || record.deployment?.deploymentKey || record.desiredProcess?.deployment?.deploymentKey).trim()
+      : null,
     serviceId: Number.isInteger(Number(record.serviceId)) ? Number(record.serviceId) : null,
     slaveId: record.slaveId ? String(record.slaveId).trim() : null,
     bootId: record.bootId ? String(record.bootId).trim() : null,
@@ -1112,6 +1227,8 @@ const matchesRuntimeSearch = (values, searchValue) => {
 
 const filterDesiredProcessRows = (rows = [], filters = {}) => rows.filter((row) => (
   matchesExactRuntimeFilter(row.projectPath, filters.projectPath)
+  && matchesNumericRuntimeFilter(row.deploymentId, filters.deploymentId)
+  && matchesExactRuntimeFilter(row.deploymentKey, filters.deploymentKey)
   && matchesExactRuntimeFilter(row.processKey, filters.processKey)
   && matchesExactRuntimeFilter(row.packageKey, filters.packageKey)
   && matchesExactRuntimeFilter(row.desiredState, filters.desiredState)
@@ -1120,6 +1237,8 @@ const filterDesiredProcessRows = (rows = [], filters = {}) => rows.filter((row) 
     row.packageKey,
     row.projectName,
     row.projectPath,
+    row.deploymentKey,
+    row.deploymentName,
     row.serviceName,
     row.cwd,
     row.command,
@@ -1131,6 +1250,8 @@ const filterDesiredProcessRows = (rows = [], filters = {}) => rows.filter((row) 
 
 const filterObservedProcessRunRows = (rows = [], filters = {}) => rows.filter((row) => (
   matchesNumericRuntimeFilter(row.projectId, filters.projectId)
+  && matchesNumericRuntimeFilter(row.deploymentId, filters.deploymentId)
+  && matchesExactRuntimeFilter(row.deploymentKey, filters.deploymentKey)
   && matchesExactRuntimeFilter(row.projectPath, filters.projectPath)
   && matchesExactRuntimeFilter(row.processKey, filters.processKey)
   && matchesExactRuntimeFilter(row.packageKey, filters.packageKey)
@@ -1142,6 +1263,8 @@ const filterObservedProcessRunRows = (rows = [], filters = {}) => rows.filter((r
     row.processKey,
     row.packageKey,
     row.projectPath,
+    row.deploymentKey,
+    row.deploymentName,
     row.cwd,
     row.command,
     ...(Array.isArray(row.args) ? row.args : []),
@@ -1538,6 +1661,8 @@ const createResolvers = ({
         hostId: args.hostId,
         agentUuid: args.agentUuid,
         projectId: args.projectId,
+        deploymentId: args.deploymentId,
+        deploymentKey: args.deploymentKey,
         projectPath: args.projectPath,
         codexPath: args.codexPath,
         includeDisabled: args.includeDisabled,
@@ -1634,6 +1759,8 @@ const createResolvers = ({
     desiredProcesses: async (_, {
       hostId,
       projectId,
+      deploymentId,
+      deploymentKey,
       agentUuid,
       projectPath,
       processKey,
@@ -1650,6 +1777,8 @@ const createResolvers = ({
       const desiredProcesses = await processRegistry.listDesiredProcesses({
         hostId,
         projectId,
+        deploymentId,
+        deploymentKey,
         slaveId: agentUuid,
         projectPath,
         processKey,
@@ -1662,15 +1791,51 @@ const createResolvers = ({
         : [];
       return filterDesiredProcessRows(rows, {
         projectPath,
+        deploymentId,
+        deploymentKey,
         processKey,
         packageKey,
         desiredState,
         search,
       });
     },
+    deploymentInstances: async (_, {
+      hostId,
+      projectId,
+      deploymentKey,
+    }, context) => {
+      authorizeGraphqlAction(context, {
+        action: 'runtime:read',
+        requiredScopes: ['runtime:read'],
+        target: { hostId, projectId },
+      });
+      requireProcessRegistry('listDeploymentInstances');
+      const deployments = await processRegistry.listDeploymentInstances({
+        hostId,
+        projectId,
+        deploymentKey,
+      });
+      return Array.isArray(deployments)
+        ? deployments.map((entry) => mapDeploymentInstanceForGraphql(entry)).filter(Boolean)
+        : [];
+    },
+    hostRuntimeEnv: async (_, { hostId, agentUuid }, context) => {
+      authorizeGraphqlAction(context, {
+        action: 'runtime:read',
+        requiredScopes: ['runtime:read'],
+        target: { hostId },
+      });
+      requireProcessRegistry('getHostRuntimeEnv');
+      return mapHostRuntimeEnvForGraphql(await processRegistry.getHostRuntimeEnv({
+        hostId,
+        slaveId: agentUuid,
+      }));
+    },
     observedProcessRuns: async (_, {
       hostId,
       projectId,
+      deploymentId,
+      deploymentKey,
       agentUuid,
       projectPath,
       processKey,
@@ -1695,6 +1860,8 @@ const createResolvers = ({
         runs.map((entry) => mapObservedProcessRunForGraphql(entry)).filter(Boolean),
         {
           projectId,
+          deploymentId,
+          deploymentKey,
           projectPath,
           processKey,
           packageKey,
@@ -2124,6 +2291,8 @@ const createResolvers = ({
           hostId: args.hostId,
           agentUuid: args.agentUuid,
           projectId: args.projectId,
+          deploymentId: args.deploymentId,
+          deploymentKey: args.deploymentKey,
           projectPath: args.projectPath,
           codexPath: args.codexPath,
           templateKey: args.templateKey,
@@ -2165,6 +2334,8 @@ const createResolvers = ({
           hostId: args.hostId,
           slaveId: args.agentUuid,
           projectId: args.projectId,
+          deploymentId: args.deploymentId,
+          deploymentKey: args.deploymentKey,
           projectPath: args.projectPath,
           serviceId: args.serviceId,
           processKey: args.processKey,
@@ -2213,11 +2384,91 @@ const createResolvers = ({
           hostId: args.hostId,
           slaveId: args.agentUuid,
           projectId: args.projectId,
+          deploymentId: args.deploymentId,
+          deploymentKey: args.deploymentKey,
           projectPath: args.projectPath,
           packageKey: args.packageKey,
           processKey: args.processKey,
         }),
       });
+    },
+    ensureDeploymentInstance: async (_, args, context) => {
+      requireProcessRegistry('upsertDeploymentInstance');
+      const deployment = await executeAuditedMutation(context, {
+        action: 'runtime:deployments:write',
+        scope: 'runtime:ensure',
+        requiredScopes: ['runtime:ensure'],
+        target: {
+          hostId: args.hostId,
+          projectId: args.projectId,
+          path: args.deploymentPath || args.projectPath,
+        },
+        input: args,
+        execute: () => processRegistry.upsertDeploymentInstance({
+          hostId: args.hostId,
+          projectId: args.projectId,
+          projectPath: args.projectPath,
+          deploymentKey: args.deploymentKey,
+          displayName: args.displayName,
+          deploymentPath: args.deploymentPath,
+          envJson: Array.isArray(args.env)
+            ? args.env.reduce((accumulator, entry) => {
+              const key = String(entry?.key || '').trim();
+              if (!key) {
+                return accumulator;
+              }
+              accumulator[key] = entry?.value == null ? '' : String(entry.value);
+              return accumulator;
+            }, {})
+            : {},
+          logRoot: args.logRoot,
+          createdBy: args.createdBy,
+          updatedBy: args.updatedBy,
+        }),
+      });
+      return mapDeploymentInstanceForGraphql(deployment);
+    },
+    deleteDeploymentInstance: async (_, args, context) => {
+      requireProcessRegistry('deleteDeploymentInstance');
+      return executeAuditedMutation(context, {
+        action: 'runtime:deployments:delete',
+        scope: 'runtime:delete',
+        requiredScopes: ['runtime:delete'],
+        target: {
+          desiredProcessId: args.deploymentId,
+        },
+        input: args,
+        execute: () => processRegistry.deleteDeploymentInstance({
+          deploymentId: args.deploymentId,
+          deleteDesiredProcesses: args.deleteDesiredProcesses,
+        }),
+      });
+    },
+    setHostRuntimeEnv: async (_, args, context) => {
+      requireProcessRegistry('setHostRuntimeEnv');
+      const result = await executeAuditedMutation(context, {
+        action: 'runtime:host-env:write',
+        scope: 'runtime:ensure',
+        requiredScopes: ['runtime:ensure'],
+        target: {
+          hostId: args.hostId,
+        },
+        input: args,
+        execute: () => processRegistry.setHostRuntimeEnv({
+          hostId: args.hostId,
+          envJson: Array.isArray(args.env)
+            ? args.env.reduce((accumulator, entry) => {
+              const key = String(entry?.key || '').trim();
+              if (!key) {
+                return accumulator;
+              }
+              accumulator[key] = entry?.value == null ? '' : String(entry.value);
+              return accumulator;
+            }, {})
+            : {},
+        }),
+      });
+      return mapHostRuntimeEnvForGraphql(result);
     },
     softKillProcess: async (_, args, context) => {
       requireProcessRegistry('queueProcessKill');

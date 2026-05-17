@@ -156,11 +156,19 @@ const shouldUseSecureAuthCookies = () => {
 
 const isTruthy = (value) => ['1', 'true', 'yes', 'on'].includes(String(value || '').trim().toLowerCase());
 
+const isAuthExplicitlyDisabled = () => (
+  isTruthy(process.env.PROJECT_COMMANDER_AUTH_DISABLED)
+  || isTruthy(process.env.AUTH_DISABLED)
+);
+
 const isApiAuthConfigured = () => Boolean(
-  getEffectiveAuthSecret()
-  || getAutomationTokenRecords().length > 0
-  || isTruthy(process.env.PROJECT_COMMANDER_AUTH_REQUIRED)
-  || isTruthy(process.env.PROJECT_COMMANDER_AUTOMATION_TOKEN_AUTH_ENABLED),
+  !isAuthExplicitlyDisabled()
+  && (
+    getEffectiveAuthSecret()
+    || getAutomationTokenRecords().length > 0
+    || isTruthy(process.env.PROJECT_COMMANDER_AUTH_REQUIRED)
+    || isTruthy(process.env.PROJECT_COMMANDER_AUTOMATION_TOKEN_AUTH_ENABLED)
+  ),
 );
 
 const isAllowedUserEmail = (
@@ -263,6 +271,7 @@ const readAuthenticatedUser = async (request) => readAuthenticatedUserFromHeader
 module.exports = {
   getAutomationTokenRecords,
   getEffectiveAuthSecret,
+  isAuthExplicitlyDisabled,
   isAllowedUserEmail,
   isApiAuthConfigured,
   parseAllowedUsers,

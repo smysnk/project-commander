@@ -7,7 +7,7 @@ import {
   setUiDisabledLogLevels,
   setUiSelectedLogServices,
 } from '../../../store';
-import { LEFT_PANEL_MODE } from '../constants/ui';
+import { WORKSPACE_PANEL } from '../constants/ui';
 import { formatClientLogArgs, toIsoTimestamp } from '../lib/homeUtils';
 import {
   buildLogStreams,
@@ -53,8 +53,7 @@ const shouldIgnoreClientConsoleMessage = (message) => {
 
 export default function useLogsPanelController({
   dispatch,
-  leftPanelMode,
-  rightTab,
+  activeWorkspacePanel,
   followLogs,
   selectedProjectPath,
   projectLogs,
@@ -87,8 +86,7 @@ export default function useLogsPanelController({
   toCanonicalServiceIconKey,
   renderLogTagRow,
 }) {
-  const isProjectLogContext = leftPanelMode === LEFT_PANEL_MODE.PROJECTS;
-  const isMasterLogContext = leftPanelMode !== LEFT_PANEL_MODE.PROJECTS && isMasterSidebarSelected;
+  const isLogsPanelActive = activeWorkspacePanel === WORKSPACE_PANEL.LOGS;
   const normalizedSelectedProcessLogTarget = (
     selectedProcessLogTarget && typeof selectedProcessLogTarget === 'object'
       ? selectedProcessLogTarget
@@ -97,22 +95,30 @@ export default function useLogsPanelController({
   const processTargetHostId = Number(normalizedSelectedProcessLogTarget?.hostId || 0);
   const selectedHostId = Number(selectedHost?.id || 0);
   const isProcessLogContext = (
-    leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
-    && !isMasterLogContext
+    isLogsPanelActive
     && selectedHost != null
     && Boolean(String(normalizedSelectedProcessLogTarget?.runId || '').trim())
     && Number.isInteger(selectedHostId)
     && selectedHostId > 0
     && processTargetHostId === selectedHostId
   );
+  const isMasterLogContext = isLogsPanelActive && !isProcessLogContext && isMasterSidebarSelected;
   const isHostLogContext = (
-    leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
+    isLogsPanelActive
     && !isMasterLogContext
     && !isProcessLogContext
     && selectedHost != null
   );
+  const isProjectLogContext = (
+    isLogsPanelActive
+    && !isProcessLogContext
+    && !isMasterLogContext
+    && !isHostLogContext
+    && Boolean(selectedProjectPath)
+  );
   const isRuntimeLogContext = (
-    leftPanelMode !== LEFT_PANEL_MODE.PROJECTS
+    isLogsPanelActive
+    && !isProjectLogContext
     && !isMasterLogContext
     && !isProcessLogContext
     && !isHostLogContext
@@ -277,16 +283,16 @@ export default function useLogsPanelController({
     return Array.isArray(entries) ? entries : [];
   }, [queryContextEntry]);
   useEffect(() => {
-    if (rightTab !== 'logs' || !followLogs) {
+    if (!isLogsPanelActive || !followLogs) {
       return;
     }
     scrollLogsToEnd('auto');
   }, [
     followLogs,
+    isLogsPanelActive,
     overlayLogs,
     projectLogs,
     queryContextEntry?.receivedAt,
-    rightTab,
     scrollLogsToEnd,
   ]);
   const projectLogServiceOptions = useMemo(() => {
@@ -340,7 +346,7 @@ export default function useLogsPanelController({
       })
       .filter(Boolean);
   }, [activeLogContextKey, queryContextEntry]);
-  const shouldUseTailViewerQuery = rightTab === 'logs' && (
+  const shouldUseTailViewerQuery = isLogsPanelActive && (
     isProjectLogContext
     || isHostLogContext
     || isProcessLogContext
@@ -553,7 +559,7 @@ export default function useLogsPanelController({
   ]);
 
   useEffect(() => {
-    if (leftPanelMode !== LEFT_PANEL_MODE.PROJECTS || !selectedProjectPath) {
+    if (!isLogsPanelActive || !isProjectLogContext || !selectedProjectPath) {
       return;
     }
     if (shouldUseTailViewerQuery) {
@@ -564,7 +570,13 @@ export default function useLogsPanelController({
       fullRefresh: true,
       serviceNames: null,
     });
-  }, [leftPanelMode, loadProjectLogs, selectedProjectPath, shouldUseTailViewerQuery]);
+  }, [
+    isLogsPanelActive,
+    isProjectLogContext,
+    loadProjectLogs,
+    selectedProjectPath,
+    shouldUseTailViewerQuery,
+  ]);
 
   const localLogStreams = useMemo(() => {
     const hasActiveProjectServiceFilters = isProjectLogContext

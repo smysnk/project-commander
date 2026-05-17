@@ -2,8 +2,11 @@ import { useCallback } from 'react';
 import { graphqlRequest } from '../../../lib/graphqlClient';
 import {
   MUTATION_DELETE_DESIRED_PROCESS,
+  MUTATION_DELETE_DEPLOYMENT_INSTANCE,
+  MUTATION_ENSURE_DEPLOYMENT_INSTANCE,
   MUTATION_ENSURE_DESIRED_PROCESS,
   MUTATION_HARD_KILL_PROCESS,
+  MUTATION_SET_HOST_RUNTIME_ENV,
   MUTATION_SOFT_KILL_PROCESS,
 } from '../graphql/documents';
 
@@ -45,6 +48,8 @@ export default function useRuntimeRegistryActions({
         hostId,
         agentUuid: String(input?.agentUuid || '').trim() || null,
         projectId: Number.isInteger(Number(input?.projectId)) ? Number(input.projectId) : null,
+        deploymentId: Number.isInteger(Number(input?.deploymentId)) ? Number(input.deploymentId) : null,
+        deploymentKey: String(input?.deploymentKey || '').trim() || null,
         projectPath: String(input?.projectPath || '').trim() || null,
         serviceId: Number.isInteger(Number(input?.serviceId)) ? Number(input.serviceId) : null,
         processKey: String(input?.processKey || '').trim() || null,
@@ -75,7 +80,7 @@ export default function useRuntimeRegistryActions({
       if (!variables.packageKey) {
         throw new Error('Package key is required.');
       }
-      if (!variables.processKey) {
+      if (!variables.processKey && !variables.deploymentId && !variables.deploymentKey) {
         variables.processKey = variables.packageKey;
       }
       if (!variables.cwd) {
@@ -117,6 +122,8 @@ export default function useRuntimeRegistryActions({
           hostId,
           agentUuid: String(input?.agentUuid || '').trim() || null,
           projectId: Number.isInteger(Number(input?.projectId)) ? Number(input.projectId) : null,
+          deploymentId: Number.isInteger(Number(input?.deploymentId)) ? Number(input.deploymentId) : null,
+          deploymentKey: String(input?.deploymentKey || '').trim() || null,
           projectPath: String(input?.projectPath || '').trim() || null,
           packageKey: String(input?.packageKey || '').trim() || null,
           processKey: String(input?.processKey || '').trim() || null,
@@ -130,6 +137,115 @@ export default function useRuntimeRegistryActions({
       return true;
     }).catch((error) => {
       setError(error.message || 'Unable to delete managed process');
+      return null;
+    });
+  }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
+
+  const ensureDeploymentInstance = useCallback(async (input = {}) => {
+    const hostId = Number(input?.hostId);
+    if (!Number.isInteger(hostId) || hostId <= 0) {
+      setError('A valid host is required to configure a deployment.');
+      return null;
+    }
+
+    return withBusyHostAction(hostId, async () => {
+      setError('');
+      const variables = {
+        hostId,
+        projectId: Number.isInteger(Number(input?.projectId)) ? Number(input.projectId) : null,
+        projectPath: String(input?.projectPath || '').trim() || null,
+        deploymentKey: String(input?.deploymentKey || '').trim(),
+        displayName: String(input?.displayName || '').trim() || null,
+        deploymentPath: String(input?.deploymentPath || '').trim() || null,
+        env: Array.isArray(input?.env)
+          ? input.env
+            .map((entry) => ({
+              key: String(entry?.key || '').trim(),
+              value: entry?.value == null ? '' : String(entry.value),
+            }))
+            .filter((entry) => entry.key)
+          : [],
+        logRoot: String(input?.logRoot || '').trim() || null,
+      };
+      if (!variables.deploymentKey) {
+        throw new Error('Deployment key is required.');
+      }
+      await graphqlRequest({
+        query: MUTATION_ENSURE_DEPLOYMENT_INSTANCE,
+        variables,
+        endpoint: graphqlEndpoint,
+      });
+      await loadSlaveRuntimeBundle({
+        hostId,
+        agentUuid: String(input?.agentUuid || '').trim() || null,
+      });
+      return true;
+    }).catch((error) => {
+      setError(error.message || 'Unable to save deployment');
+      return null;
+    });
+  }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
+
+  const deleteDeploymentInstance = useCallback(async (input = {}) => {
+    const hostId = Number(input?.hostId);
+    const deploymentId = Number(input?.deploymentId);
+    if (!Number.isInteger(hostId) || hostId <= 0 || !Number.isInteger(deploymentId) || deploymentId <= 0) {
+      setError('A valid host and deployment are required to delete a deployment.');
+      return null;
+    }
+
+    return withBusyHostAction(hostId, async () => {
+      setError('');
+      await graphqlRequest({
+        query: MUTATION_DELETE_DEPLOYMENT_INSTANCE,
+        variables: {
+          deploymentId,
+          deleteDesiredProcesses: Boolean(input?.deleteDesiredProcesses),
+        },
+        endpoint: graphqlEndpoint,
+      });
+      await loadSlaveRuntimeBundle({
+        hostId,
+        agentUuid: String(input?.agentUuid || '').trim() || null,
+      });
+      return true;
+    }).catch((error) => {
+      setError(error.message || 'Unable to delete deployment');
+      return null;
+    });
+  }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
+
+  const setHostRuntimeEnv = useCallback(async (input = {}) => {
+    const hostId = Number(input?.hostId);
+    if (!Number.isInteger(hostId) || hostId <= 0) {
+      setError('A valid host is required to configure runtime env.');
+      return null;
+    }
+
+    return withBusyHostAction(hostId, async () => {
+      setError('');
+      await graphqlRequest({
+        query: MUTATION_SET_HOST_RUNTIME_ENV,
+        variables: {
+          hostId,
+          env: Array.isArray(input?.env)
+            ? input.env
+              .map((entry) => ({
+                key: String(entry?.key || '').trim(),
+                value: entry?.value == null ? '' : String(entry.value),
+              }))
+              .filter((entry) => entry.key)
+            : [],
+        },
+        endpoint: graphqlEndpoint,
+      });
+      await loadSlaveRuntimeBundle({
+        hostId,
+        agentUuid: String(input?.agentUuid || '').trim() || null,
+      });
+      return true;
+    }).catch((error) => {
+      setError(error.message || 'Unable to save host runtime env');
       return null;
     });
   }, [graphqlEndpoint, loadSlaveRuntimeBundle, setError, withBusyHostAction]);
@@ -187,6 +303,9 @@ export default function useRuntimeRegistryActions({
   return {
     ensureDesiredProcess,
     deleteDesiredProcess,
+    ensureDeploymentInstance,
+    deleteDeploymentInstance,
+    setHostRuntimeEnv,
     softKillProcess: softKillProcessAction,
     hardKillProcess: hardKillProcessAction,
   };

@@ -513,9 +513,7 @@ func (s *Server) Heartbeat(ctx context.Context, req *slavev1.HeartbeatRequest) (
 		runtimeState.Status = runtimeStateStatusConnected
 		runtimeState.HostTelemetry = coarseHostTelemetryFromHeartbeat(req)
 		s.replaceObservedRunsLocked(runtimeState, req.GetObservedRuns())
-		if len(req.GetProcessTelemetry()) > 0 {
-			s.replaceProcessTelemetryLocked(runtimeState, req.GetProcessTelemetry())
-		}
+		s.replaceProcessTelemetryLocked(runtimeState, req.GetProcessTelemetry())
 		runtimeState.UpdatedAt = now
 		runtimePayload = runtimeStatePayload(slaveID, runtimeState, s.desiredProcessesForSlaveLocked(slaveID))
 	}

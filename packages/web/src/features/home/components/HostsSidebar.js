@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FiGitBranch, FiPlus, FiServer, FiTrash2, FiUpload } from 'react-icons/fi';
+import { FiGitBranch, FiPlus, FiTrash2, FiUpload } from 'react-icons/fi';
 import TagChip from '../../../components/TagChip';
 import { useHostsSidebarContext } from '../context/HostsSidebarContext';
 import {
@@ -26,9 +26,6 @@ const isLoopbackTarget = (value) => {
 
 export default function HostsSidebar() {
   const {
-    hostsSidebarCollapsed,
-    hostsSidebarWidthPx,
-    onToggleSidebarCollapsed,
     hostsLoading,
     addingHost,
     deletingHostId,
@@ -146,71 +143,11 @@ export default function HostsSidebar() {
   };
 
   return (
-    <aside
-      className={`hostsSidebar ${hostsSidebarCollapsed ? 'collapsed' : ''}`}
-      style={hostsSidebarCollapsed ? undefined : { width: `${hostsSidebarWidthPx}px` }}
-    >
+    <aside className="hostsSidebar hostsSidebarPanelMode workspacePanelBody">
       <div className="hostsSidebarHeader">
-        {!hostsSidebarCollapsed ? (
-          <h2 className="hostsSidebarHeaderTitle">Master Agent</h2>
-        ) : null}
-        <button
-          type="button"
-          className="hostsSidebarToggle"
-          onClick={onToggleSidebarCollapsed}
-          aria-label={hostsSidebarCollapsed ? 'Expand hosts sidebar' : 'Collapse hosts sidebar'}
-          title={hostsSidebarCollapsed ? 'Expand hosts sidebar' : 'Collapse hosts sidebar'}
-        >
-          {hostsSidebarCollapsed ? '›' : '‹'}
-        </button>
+        <h2 className="hostsSidebarHeaderTitle">Master Agent</h2>
       </div>
       <div className="hostsSidebarBody">
-        {hostsSidebarCollapsed ? (
-          <div className="hostsSidebarCollapsedBody">
-            <button
-              type="button"
-              className={`collapsedHostButton ${isMasterSidebarSelected ? 'selected' : ''}`}
-              onClick={onSelectMasterHost}
-              aria-label="Select master agent"
-              title="Master Agent"
-              data-testid="collapsed-master-agent"
-            >
-              <span className={`collapsedHostHealthDot ${masterConnectionHealthClass}`} aria-hidden="true" />
-              <FiServer />
-            </button>
-            {hostsLoading ? (
-              <span className="collapsedHostsEmpty" aria-label="Loading hosts">...</span>
-            ) : null}
-            {!hostsLoading && hosts.length === 0 ? (
-              <span className="collapsedHostsEmpty" aria-label="No hosts">-</span>
-            ) : null}
-            {hosts.length > 0 ? (
-              <div className="collapsedHostList" role="list" aria-label="Slave agents">
-                {hosts.map((host) => {
-                  const hostId = Number(host?.id) || 0;
-                  const isSelectedHost = Number(selectedHostId) === hostId;
-                  const hostHealthClass = toHostHealthClassName(host?.health);
-                  const hostName = String(host?.name || host?.ip || hostId).trim() || String(hostId);
-                  return (
-                    <button
-                      key={`collapsed-host-${hostId}`}
-                      type="button"
-                      className={`collapsedHostButton ${isSelectedHost ? 'selected' : ''}`}
-                      onClick={() => onSelectHost(hostId)}
-                      onContextMenu={(event) => openHostContextMenu(event, host)}
-                      aria-label={`Select host ${hostName}`}
-                      title={hostName}
-                      data-testid={`collapsed-host-${hostId}`}
-                    >
-                      <span className={`collapsedHostHealthDot ${hostHealthClass}`} aria-hidden="true" />
-                      <FiServer />
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        ) : (
           <div className="runtimePanel hostsSidebarPanel">
             <div
               className={`runtimeSection hostCard masterHostRow ${isMasterSidebarSelected ? 'selected' : ''}`}
@@ -825,7 +762,6 @@ export default function HostsSidebar() {
               </div>
             ) : null}
           </div>
-        )}
       </div>
       {hostContextMenu ? (
         <div

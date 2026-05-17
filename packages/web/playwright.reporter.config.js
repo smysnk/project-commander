@@ -39,6 +39,7 @@ module.exports = defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
+      PROJECT_COMMANDER_AUTH_DISABLED: '1',
       WEB_PORT: String(webPort),
     },
   },

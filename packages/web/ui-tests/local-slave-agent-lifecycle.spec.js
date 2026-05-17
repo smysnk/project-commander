@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { selectWorkspacePanel } = require("./helpers/workspacePanels");
 
 const DEFAULT_APP_URL = "http://localhost:3000";
 
@@ -203,6 +204,7 @@ test("adds local slave host, verifies local-socket deployment, and removes host"
     return;
   }
 
+  await selectWorkspacePanel(page, "Hosts");
   await expect(page.locator(".hostList .hostCard")).toHaveCount(0);
 
   const addHostResult = await page.evaluate(async () => {
@@ -234,6 +236,7 @@ test("adds local slave host, verifies local-socket deployment, and removes host"
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator(".appShell")).toBeVisible({ timeout: 3_000 });
 
+  await selectWorkspacePanel(page, "Hosts");
   const localhostCard = page.locator(".hostList .hostCard").filter({ hasText: /localhost/i });
   await expect(localhostCard).toBeVisible();
   await expect(localhostCard).toContainText(/registered/i);
@@ -246,9 +249,10 @@ test("adds local slave host, verifies local-socket deployment, and removes host"
   await expect(localhostCard).toContainText("3 detected");
   await expect(localhostCard).toContainText("Version");
   await expect(localhostCard).toContainText("0.1.0 (Proto v1)");
-  await page.getByRole("tab", { name: "Runtime" }).click();
+  await selectWorkspacePanel(page, "Runtime");
   await expect(page.locator(".statusMasterLink")).toContainText("Master link: connected");
 
+  await selectWorkspacePanel(page, "Hosts");
   await localhostCard.dispatchEvent("contextmenu", {
     bubbles: true,
     cancelable: true,

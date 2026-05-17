@@ -51,6 +51,11 @@ ProcessRun.init(
       allowNull: false,
       field: 'project_id',
     },
+    deploymentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'deployment_id',
+    },
     serviceId: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -184,6 +189,9 @@ ProcessRun.init(
       },
       {
         fields: ['project_id'],
+      },
+      {
+        fields: ['deployment_id'],
       },
       {
         fields: ['slave_id'],

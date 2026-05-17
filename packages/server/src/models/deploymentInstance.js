@@ -1,7 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../db');
 
-class DesiredProcess extends Model {}
+class DeploymentInstance extends Model {}
 
 const dialect = sequelize.getDialect();
 const isPostgres = dialect === 'postgres';
@@ -42,17 +42,12 @@ const writeStructuredValue = (model, fieldName, value, fallback) => {
   model.setDataValue(fieldName, normalized);
 };
 
-DesiredProcess.init(
+DeploymentInstance.init(
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
-    },
-    processKey: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      field: 'process_key',
     },
     hostId: {
       type: DataTypes.INTEGER,
@@ -64,57 +59,20 @@ DesiredProcess.init(
       allowNull: false,
       field: 'project_id',
     },
-    deploymentId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: 'deployment_id',
-    },
-    serviceId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: 'service_id',
-    },
-    packageKey: {
+    deploymentKey: {
       type: DataTypes.STRING,
       allowNull: false,
-      field: 'package_key',
+      field: 'deployment_key',
     },
-    packageRelativePath: {
+    displayName: {
       type: DataTypes.STRING,
       allowNull: true,
-      field: 'package_relative_path',
+      field: 'display_name',
     },
-    desiredState: {
+    deploymentPath: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'running',
-      field: 'desired_state',
-    },
-    launchMode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'exec',
-      field: 'launch_mode',
-    },
-    cwd: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    command: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    argsJson: {
-      type: structuredDataType,
-      allowNull: false,
-      field: 'args_json',
-      defaultValue: isSqlite ? '[]' : [],
-      get() {
-        return parseStructuredValue(this.getDataValue('argsJson'), []);
-      },
-      set(value) {
-        writeStructuredValue(this, 'argsJson', value, []);
-      },
+      allowNull: true,
+      field: 'deployment_path',
     },
     envJson: {
       type: structuredDataType,
@@ -128,26 +86,10 @@ DesiredProcess.init(
         writeStructuredValue(this, 'envJson', value, {});
       },
     },
-    envHash: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      field: 'env_hash',
-    },
-    launchFingerprint: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      field: 'launch_fingerprint',
-    },
     logRoot: {
       type: DataTypes.STRING,
       allowNull: true,
       field: 'log_root',
-    },
-    restartPolicy: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'manual',
-      field: 'restart_policy',
     },
     createdBy: {
       type: DataTypes.STRING,
@@ -162,20 +104,13 @@ DesiredProcess.init(
   },
   {
     sequelize,
-    modelName: 'DesiredProcess',
-    tableName: 'desired_processes',
+    modelName: 'DeploymentInstance',
+    tableName: 'deployment_instances',
     underscored: true,
     indexes: [
       {
         unique: true,
-        fields: ['host_id', 'project_id', 'deployment_id', 'process_key'],
-      },
-      {
-        unique: true,
-        fields: ['host_id', 'process_key'],
-      },
-      {
-        fields: ['process_key'],
+        fields: ['host_id', 'project_id', 'deployment_key'],
       },
       {
         fields: ['host_id'],
@@ -183,13 +118,10 @@ DesiredProcess.init(
       {
         fields: ['project_id'],
       },
-      {
-        fields: ['deployment_id'],
-      },
     ],
   },
 );
 
 module.exports = {
-  DesiredProcess,
+  DeploymentInstance,
 };

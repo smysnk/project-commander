@@ -228,6 +228,76 @@ func TestRegisterHeartbeatAndReconciliationPopulateRuntimeState(t *testing.T) {
 	}
 }
 
+func TestHeartbeatClearsProcessTelemetryWhenNoSamplesAreReported(t *testing.T) {
+	t.Parallel()
+
+	server := NewServer(slog.Default(), "0.1.0", "/tmp/project-commander/master.sock", "shared-key")
+
+	if _, err := server.RegisterSlave(authorizedSlaveContext(), &slavev1.RegisterSlaveRequest{
+		RequestId: "register-clear-telemetry",
+		SlaveId:   "slave-clear-telemetry",
+		HostName:  "builder",
+		Version:   "0.1.0",
+		BootId:    "boot-clear",
+	}); err != nil {
+		t.Fatalf("RegisterSlave returned error: %v", err)
+	}
+
+	if _, err := server.Heartbeat(authorizedSlaveContext(), &slavev1.HeartbeatRequest{
+		RequestId: "heartbeat-with-telemetry",
+		SlaveId:   "slave-clear-telemetry",
+		BootId:    "boot-clear",
+		ProcessTelemetry: []*slavev1.ProcessTelemetrySample{
+			{
+				RunId:      "run-clear-1",
+				ProcessKey: "worker",
+				Pid:        4321,
+				SampledAt:  "2026-03-09T01:00:00Z",
+				CpuPercent: 14.2,
+				Status:     "running",
+			},
+		},
+		ObservedRuns: []*slavev1.ObservedProcessRun{
+			{
+				RunId:       "run-clear-1",
+				ProcessKey:  "worker",
+				ProjectPath: "/workspace/project-b",
+				PackageKey:  "worker",
+				Pid:         4321,
+				Command:     "yarn",
+				Cwd:         "/workspace/project-b",
+				Status:      "running",
+			},
+		},
+	}); err != nil {
+		t.Fatalf("Heartbeat returned error: %v", err)
+	}
+
+	if _, err := server.Heartbeat(authorizedSlaveContext(), &slavev1.HeartbeatRequest{
+		RequestId:        "heartbeat-without-telemetry",
+		SlaveId:          "slave-clear-telemetry",
+		BootId:           "boot-clear",
+		ProcessTelemetry: nil,
+		ObservedRuns:     nil,
+	}); err != nil {
+		t.Fatalf("Heartbeat returned error: %v", err)
+	}
+
+	runtimeStateResponse, err := server.GetSlaveRuntimeState(context.Background(), &masterv1.GetSlaveRuntimeStateRequest{
+		RequestId: "runtime-clear-telemetry",
+		SlaveId:   "slave-clear-telemetry",
+	})
+	if err != nil {
+		t.Fatalf("GetSlaveRuntimeState returned error: %v", err)
+	}
+	if got := len(runtimeStateResponse.GetRuntimeState().GetObservedRuns()); got != 0 {
+		t.Fatalf("expected observed runs to be cleared, got %d", got)
+	}
+	if got := len(runtimeStateResponse.GetRuntimeState().GetProcessTelemetry()); got != 0 {
+		t.Fatalf("expected process telemetry to be cleared, got %d", got)
+	}
+}
+
 func TestHeartbeatProcessLogChunksAreMirroredIntoMasterLogs(t *testing.T) {
 	logRoot := t.TempDir()
 	t.Setenv("PC_MASTER_LOG_DIR", logRoot)

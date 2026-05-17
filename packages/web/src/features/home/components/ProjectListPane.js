@@ -6,7 +6,6 @@ import { useProjectsPaneContext } from '../context/ProjectsPaneContext';
 
 export default function ProjectListPane() {
   const {
-    leftWidthPct,
     projects,
     loading,
     selectedProjectPath,
@@ -36,7 +35,7 @@ export default function ProjectListPane() {
     maxFraction: 0.22,
   });
   return (
-    <section className="leftPanel" style={{ width: `${leftWidthPct}%` }}>
+    <section className="projectsPanel workspacePanelBody">
       <div
         ref={tableWrapRef}
         className="projectTableWrap"
@@ -93,13 +92,13 @@ export default function ProjectListPane() {
                     className={`projectRow ${selected ? 'selected' : ''}`}
                     onClick={() => onSelectProject(project.path)}
                   >
-                    <td className="projectHostCell" title={hostLabel}>
+                    <td className="projectHostCell" title={hostLabel} data-label="Host">
                       <TagChip className="projectHostChip" title={hostLabel} fullWidth>
                         {hostLabel}
                       </TagChip>
                     </td>
-                    <td className={`appNameCell ${isAppRunning ? '' : 'stopped'}`}>{project.name}</td>
-                    <td className="iconsCell servicesCol">
+                    <td className={`appNameCell ${isAppRunning ? '' : 'stopped'}`} data-label="Name">{project.name}</td>
+                    <td className="iconsCell servicesCol" data-label="Packages">
                       <div className="serviceIcons">
                         {discoveredServiceKeys.map((serviceKey) => {
                           const guessedIcon = discoveredServiceIconMap[serviceKey] || findServiceIcon(serviceKey);
@@ -176,7 +175,7 @@ export default function ProjectListPane() {
                         </button>
                       </div>
                     </td>
-                    <td className="iconsCell typesCol">
+                    <td className="iconsCell typesCol" data-label="Stack">
                       <div className="typeIcons">
                         {ORDERED_TYPE_ICON_KEYS.map((iconKey) => {
                           const iconDef = PROJECT_TYPE_ICONS[iconKey];

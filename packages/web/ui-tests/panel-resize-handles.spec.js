@@ -1,4 +1,8 @@
 const { test, expect } = require('@playwright/test');
+const {
+  expectSingleWorkspacePanel,
+  selectWorkspacePanel,
+} = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 
@@ -109,21 +113,7 @@ async function installGraphqlMocks(page) {
   });
 }
 
-async function dragDividerToX(page, dividerLocator, targetX) {
-  const dividerBox = await dividerLocator.boundingBox();
-  expect(dividerBox).toBeTruthy();
-  if (!dividerBox) {
-    return;
-  }
-  const startX = dividerBox.x + (dividerBox.width / 2);
-  const startY = dividerBox.y + (dividerBox.height / 2);
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  await page.mouse.move(targetX, startY, { steps: 18 });
-  await page.mouse.up();
-}
-
-test('sidebar and content drag handles stay aligned with horizontal cursor resizing', async ({ page, baseURL }) => {
+test('single-panel shell does not render legacy split-pane resize handles', async ({ page, baseURL }) => {
   const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
   await installGraphqlMocks(page);
 
@@ -142,79 +132,18 @@ test('sidebar and content drag handles stay aligned with horizontal cursor resiz
   }
 
   const workspace = page.locator('.workspace');
-  const mainPanels = page.locator('.mainPanels');
-  const hostsSidebar = page.locator('.hostsSidebar');
-  const leftPanel = page.locator('.leftPanel');
-  const sidebarDivider = page.getByTestId('sidebar-divider');
-  const contentDivider = page.getByTestId('content-divider');
+  const viewport = page.locator('.workspacePanelViewport');
 
   await expect(workspace).toBeVisible();
-  await expect(mainPanels).toBeVisible();
-  await expect(hostsSidebar).toBeVisible();
-  await expect(leftPanel).toBeVisible();
-  await expect(sidebarDivider).toBeVisible();
-  await expect(contentDivider).toBeVisible();
+  await expect(viewport).toBeVisible();
+  await expect(page.locator('.mainPanels')).toHaveCount(0);
+  await expect(page.getByTestId('sidebar-divider')).toHaveCount(0);
+  await expect(page.getByTestId('content-divider')).toHaveCount(0);
+  await expect(page.locator('.divider')).toHaveCount(0);
 
-  const workspaceBox = await workspace.boundingBox();
-  expect(workspaceBox).toBeTruthy();
-  if (!workspaceBox) {
-    return;
-  }
-
-  const targetSidebarWidth = Math.max(240, Math.min(460, Math.round(workspaceBox.width * 0.28)));
-  const targetSidebarX = workspaceBox.x + targetSidebarWidth;
-
-  await dragDividerToX(page, sidebarDivider, targetSidebarX);
-  await page.waitForTimeout(220);
-  await expect.poll(async () => {
-    const box = await hostsSidebar.boundingBox();
-    return box ? box.width : 0;
-  }).toBeGreaterThan(targetSidebarWidth - 20);
-
-  const [sidebarBoxAfter, sidebarDividerBoxAfter] = await Promise.all([
-    hostsSidebar.boundingBox(),
-    sidebarDivider.boundingBox(),
-  ]);
-  expect(sidebarBoxAfter).toBeTruthy();
-  expect(sidebarDividerBoxAfter).toBeTruthy();
-
-  if (sidebarBoxAfter && sidebarDividerBoxAfter) {
-    const sidebarWidthDelta = Math.abs(sidebarBoxAfter.width - targetSidebarWidth);
-    const sidebarDividerCenterX = sidebarDividerBoxAfter.x + (sidebarDividerBoxAfter.width / 2);
-    const sidebarCursorDelta = Math.abs(sidebarDividerCenterX - targetSidebarX);
-
-    expect(sidebarWidthDelta).toBeLessThanOrEqual(20);
-    expect(sidebarCursorDelta).toBeLessThanOrEqual(14);
-  }
-
-  const mainPanelsBox = await mainPanels.boundingBox();
-  expect(mainPanelsBox).toBeTruthy();
-  if (!mainPanelsBox) {
-    return;
-  }
-
-  const targetContentRatio = 0.62;
-  const targetContentX = mainPanelsBox.x + (mainPanelsBox.width * targetContentRatio);
-  await dragDividerToX(page, contentDivider, targetContentX);
-  const expectedLeftWidth = mainPanelsBox.width * targetContentRatio;
-  await expect.poll(async () => {
-    const box = await contentDivider.boundingBox();
-    return box ? box.x + (box.width / 2) : 0;
-  }).toBeGreaterThan(targetContentX - 30);
-
-  const [leftPanelBoxAfter, contentDividerBoxAfter] = await Promise.all([
-    leftPanel.boundingBox(),
-    contentDivider.boundingBox(),
-  ]);
-  expect(leftPanelBoxAfter).toBeTruthy();
-  expect(contentDividerBoxAfter).toBeTruthy();
-
-  if (leftPanelBoxAfter && contentDividerBoxAfter) {
-    const leftWidthDelta = Math.abs(leftPanelBoxAfter.width - expectedLeftWidth);
-    const contentDividerCenterX = contentDividerBoxAfter.x + (contentDividerBoxAfter.width / 2);
-    const contentCursorDelta = Math.abs(contentDividerCenterX - targetContentX);
-
-    expect(leftWidthDelta).toBeLessThanOrEqual(36);
-    expect(contentCursorDelta).toBeLessThanOrEqual(20);
-  }
+  await expectSingleWorkspacePanel(page, 'projects');
+  await selectWorkspacePanel(page, 'Hosts');
+  await expectSingleWorkspacePanel(page, 'hosts');
+  await selectWorkspacePanel(page, 'Runtime');
+  await expectSingleWorkspacePanel(page, 'runtime');
 });

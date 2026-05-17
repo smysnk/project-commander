@@ -6,7 +6,12 @@ import {
   defaultEditorThemes,
 } from '../components/editorThemeRegistry';
 import logQueryProtocol from '../lib/logQueryProtocol';
-import { MAX_OVERLAY_LOG_ENTRIES, MAX_PROJECT_LOG_ENTRIES } from '../features/home/constants/ui';
+import {
+  MAX_OVERLAY_LOG_ENTRIES,
+  MAX_PROJECT_LOG_ENTRIES,
+  WORKSPACE_PANEL,
+} from '../features/home/constants/ui';
+import { normalizeWorkspacePanel } from '../features/home/lib/workspacePanels.mjs';
 import { normalizeLogLevelName } from '../features/home/lib/logTransforms';
 import { normalizeRuntimeBackendInfo } from '../features/home/lib/runtimeTransforms';
 import {
@@ -19,19 +24,14 @@ const SET_RUNTIME_CONFIG = 'SET_RUNTIME_CONFIG';
 const SET_HOME_DOMAIN_PATCH = 'SET_HOME_DOMAIN_PATCH';
 const SET_HOME_DOMAIN_FIELD = 'SET_HOME_DOMAIN_FIELD';
 const SET_USER_STYLE = 'SET_USER_STYLE';
-const SET_PANEL_PROJECT_LIST_LAYOUT = 'SET_PANEL_PROJECT_LIST_LAYOUT';
 const SET_PANEL_PROJECT_LIST_SELECTED_PROJECT = 'SET_PANEL_PROJECT_LIST_SELECTED_PROJECT';
-const SET_PANEL_PROJECT_EXPLORER_MODE = 'SET_PANEL_PROJECT_EXPLORER_MODE';
 const SET_PANEL_PROJECT_EXPLORER_FOLLOW_MODE = 'SET_PANEL_PROJECT_EXPLORER_FOLLOW_MODE';
-const SET_UI_LEFT_PANEL_MODE = 'SET_UI_LEFT_PANEL_MODE';
-const SET_UI_HOSTS_SIDEBAR_COLLAPSED = 'SET_UI_HOSTS_SIDEBAR_COLLAPSED';
-const SET_UI_HOSTS_SIDEBAR_WIDTH_PX = 'SET_UI_HOSTS_SIDEBAR_WIDTH_PX';
+const SET_UI_ACTIVE_WORKSPACE_PANEL = 'SET_UI_ACTIVE_WORKSPACE_PANEL';
 const SET_UI_SELECTED_HOST_ID = 'SET_UI_SELECTED_HOST_ID';
 const SET_UI_ACTIVE_LOG_CONTEXT_KEY = 'SET_UI_ACTIVE_LOG_CONTEXT_KEY';
 const SET_UI_SELECTED_LOG_SERVICES = 'SET_UI_SELECTED_LOG_SERVICES';
 const SET_UI_DISABLED_LOG_LEVELS = 'SET_UI_DISABLED_LOG_LEVELS';
 const SET_UI_ERROR = 'SET_UI_ERROR';
-const SET_UI_RESIZING = 'SET_UI_RESIZING';
 const SET_UI_DEBUG_EXPANDED_PATHS = 'SET_UI_DEBUG_EXPANDED_PATHS';
 const APPEND_HOME_OVERLAY_LOG = 'APPEND_HOME_OVERLAY_LOG';
 const APPEND_HOME_OVERLAY_LOGS = 'APPEND_HOME_OVERLAY_LOGS';
@@ -66,19 +66,9 @@ export const setUserStyle = (style) => ({
   style,
 });
 
-export const setPanelProjectListLayout = (payload) => ({
-  type: SET_PANEL_PROJECT_LIST_LAYOUT,
-  payload,
-});
-
 export const setPanelProjectListSelectedProject = (projectPath) => ({
   type: SET_PANEL_PROJECT_LIST_SELECTED_PROJECT,
   projectPath,
-});
-
-export const setPanelProjectExplorerMode = (mode) => ({
-  type: SET_PANEL_PROJECT_EXPLORER_MODE,
-  mode,
 });
 
 export const setPanelProjectExplorerFollowMode = (isFollowMode) => ({
@@ -86,19 +76,9 @@ export const setPanelProjectExplorerFollowMode = (isFollowMode) => ({
   isFollowMode,
 });
 
-export const setUiLeftPanelMode = (leftPanelMode) => ({
-  type: SET_UI_LEFT_PANEL_MODE,
-  leftPanelMode,
-});
-
-export const setUiHostsSidebarCollapsed = (hostsSidebarCollapsed) => ({
-  type: SET_UI_HOSTS_SIDEBAR_COLLAPSED,
-  hostsSidebarCollapsed,
-});
-
-export const setUiHostsSidebarWidthPx = (hostsSidebarWidthPx) => ({
-  type: SET_UI_HOSTS_SIDEBAR_WIDTH_PX,
-  hostsSidebarWidthPx,
+export const setUiActiveWorkspacePanel = (activeWorkspacePanel) => ({
+  type: SET_UI_ACTIVE_WORKSPACE_PANEL,
+  activeWorkspacePanel,
 });
 
 export const setUiSelectedHostId = (selectedHostId) => ({
@@ -124,11 +104,6 @@ export const setUiDisabledLogLevels = (disabledLogLevels) => ({
 export const setUiError = (error) => ({
   type: SET_UI_ERROR,
   error,
-});
-
-export const setUiResizing = (resizing) => ({
-  type: SET_UI_RESIZING,
-  resizing,
 });
 
 export const setUiDebugExpandedPaths = (debugExpandedPaths) => ({
@@ -177,26 +152,7 @@ export const requestHomeRealtimeLogWindow = ({ context, streams } = {}) => ({
   streams,
 });
 
-const clampPanelWidth = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return 50;
-  }
-  return Math.max(20, Math.min(80, Math.round(parsed)));
-};
-
-const UI_LEFT_PANEL_MODES = new Set(['projects', 'runtime', 'terminal']);
 const UI_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
-const HOSTS_SIDEBAR_WIDTH_DEFAULT = 360;
-const HOSTS_SIDEBAR_WIDTH_MIN = 220;
-const HOSTS_SIDEBAR_WIDTH_MAX = 680;
-
-const PANEL_EXPLORER_MODES = new Set(['logs', 'debug', 'environment', 'top', 'runtime', 'terminal']);
-
-const normalizePanelExplorerMode = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
-  return PANEL_EXPLORER_MODES.has(normalized) ? normalized : 'logs';
-};
 
 const normalizePanelExplorerFollowMode = (value) => {
   if (typeof value === 'boolean') {
@@ -205,20 +161,7 @@ const normalizePanelExplorerFollowMode = (value) => {
   return true;
 };
 
-const normalizeUiLeftPanelMode = (value) => {
-  const normalized = String(value || '').trim().toLowerCase();
-  return UI_LEFT_PANEL_MODES.has(normalized) ? normalized : 'projects';
-};
-
-const normalizeUiHostsSidebarCollapsed = (value) => Boolean(value);
-
-const clampUiHostsSidebarWidthPx = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return HOSTS_SIDEBAR_WIDTH_DEFAULT;
-  }
-  return Math.max(HOSTS_SIDEBAR_WIDTH_MIN, Math.min(HOSTS_SIDEBAR_WIDTH_MAX, Math.round(parsed)));
-};
+const normalizeUiActiveWorkspacePanel = (value) => normalizeWorkspacePanel(value);
 
 const normalizeUiSelectedHostId = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -272,8 +215,6 @@ const normalizeUiDisabledLogLevels = (value) => {
 
 const normalizeUiError = (value) => String(value || '');
 
-const normalizeUiResizing = (value) => Boolean(value);
-
 const normalizeUiDebugExpandedPaths = (value) => {
   const source = Array.isArray(value) ? value : [];
   const next = [];
@@ -290,9 +231,7 @@ const normalizeUiDebugExpandedPaths = (value) => {
 };
 
 const toPersistedUiInteractions = (uiInteractions = {}) => ({
-  leftPanelMode: normalizeUiLeftPanelMode(uiInteractions?.leftPanelMode),
-  hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(uiInteractions?.hostsSidebarCollapsed),
-  hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(uiInteractions?.hostsSidebarWidthPx),
+  activeWorkspacePanel: normalizeUiActiveWorkspacePanel(uiInteractions?.activeWorkspacePanel),
   selectedHostId: normalizeUiSelectedHostId(uiInteractions?.selectedHostId),
   activeLogContextKey: normalizeUiActiveLogContextKey(uiInteractions?.activeLogContextKey),
   selectedLogServices: normalizeUiSelectedLogServices(uiInteractions?.selectedLogServices),
@@ -368,29 +307,24 @@ const getInitialTheme = () => defaultEditorTheme;
 
 const getInitialPanelProjectList = () => {
   return {
-    leftWidthPct: 50,
     selectedProjectPath: '',
   };
 };
 
 const getInitialPanelProjectExplorer = () => {
   return {
-    mode: 'logs',
     isFollowMode: true,
   };
 };
 
 const getInitialUiInteractions = () => {
   return {
-    leftPanelMode: 'projects',
-    hostsSidebarCollapsed: false,
-    hostsSidebarWidthPx: HOSTS_SIDEBAR_WIDTH_DEFAULT,
+    activeWorkspacePanel: WORKSPACE_PANEL.PROJECTS,
     selectedHostId: 'master-agent',
     activeLogContextKey: 'runtime',
     selectedLogServices: [],
     disabledLogLevels: [],
     error: '',
-    resizing: false,
     debugExpandedPaths: [],
   };
 };
@@ -697,14 +631,6 @@ function reducer(state = initialState, action) {
           },
         },
       };
-    case SET_PANEL_PROJECT_LIST_LAYOUT:
-      return {
-        ...state,
-        panelProjectList: {
-          ...state.panelProjectList,
-          leftWidthPct: clampPanelWidth(action.payload?.leftWidthPct),
-        },
-      };
     case SET_PANEL_PROJECT_LIST_SELECTED_PROJECT:
       return {
         ...state,
@@ -712,14 +638,6 @@ function reducer(state = initialState, action) {
           ...state.panelProjectList,
           selectedProjectPath:
             typeof action.projectPath === 'string' ? action.projectPath : state.panelProjectList.selectedProjectPath,
-        },
-      };
-    case SET_PANEL_PROJECT_EXPLORER_MODE:
-      return {
-        ...state,
-        panelProjectExplorer: {
-          ...state.panelProjectExplorer,
-          mode: normalizePanelExplorerMode(action.mode),
         },
       };
     case SET_PANEL_PROJECT_EXPLORER_FOLLOW_MODE:
@@ -730,28 +648,12 @@ function reducer(state = initialState, action) {
           isFollowMode: normalizePanelExplorerFollowMode(action.isFollowMode),
         },
       };
-    case SET_UI_LEFT_PANEL_MODE:
+    case SET_UI_ACTIVE_WORKSPACE_PANEL:
       return {
         ...state,
         uiInteractions: {
           ...state.uiInteractions,
-          leftPanelMode: normalizeUiLeftPanelMode(action.leftPanelMode),
-        },
-      };
-    case SET_UI_HOSTS_SIDEBAR_COLLAPSED:
-      return {
-        ...state,
-        uiInteractions: {
-          ...state.uiInteractions,
-          hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(action.hostsSidebarCollapsed),
-        },
-      };
-    case SET_UI_HOSTS_SIDEBAR_WIDTH_PX:
-      return {
-        ...state,
-        uiInteractions: {
-          ...state.uiInteractions,
-          hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(action.hostsSidebarWidthPx),
+          activeWorkspacePanel: normalizeUiActiveWorkspacePanel(action.activeWorkspacePanel),
         },
       };
     case SET_UI_SELECTED_HOST_ID:
@@ -794,14 +696,6 @@ function reducer(state = initialState, action) {
           error: normalizeUiError(action.error),
         },
       };
-    case SET_UI_RESIZING:
-      return {
-        ...state,
-        uiInteractions: {
-          ...state.uiInteractions,
-          resizing: normalizeUiResizing(action.resizing),
-        },
-      };
     case SET_UI_DEBUG_EXPANDED_PATHS:
       return {
         ...state,
@@ -830,9 +724,6 @@ function mergeInitialState(preloadedState) {
     panelProjectList: {
       ...initialState.panelProjectList,
       ...(preloadedState?.panelProjectList || {}),
-      leftWidthPct: clampPanelWidth(
-        preloadedState?.panelProjectList?.leftWidthPct ?? initialState.panelProjectList.leftWidthPct,
-      ),
       selectedProjectPath:
         typeof preloadedState?.panelProjectList?.selectedProjectPath === 'string'
           ? preloadedState.panelProjectList.selectedProjectPath
@@ -841,22 +732,13 @@ function mergeInitialState(preloadedState) {
     panelProjectExplorer: {
       ...initialState.panelProjectExplorer,
       ...(preloadedState?.panelProjectExplorer || {}),
-      mode: normalizePanelExplorerMode(
-        preloadedState?.panelProjectExplorer?.mode ?? initialState.panelProjectExplorer.mode,
-      ),
       isFollowMode: normalizePanelExplorerFollowMode(
         preloadedState?.panelProjectExplorer?.isFollowMode ?? initialState.panelProjectExplorer.isFollowMode,
       ),
     },
     uiInteractions: {
-      leftPanelMode: normalizeUiLeftPanelMode(
-        preloadedState?.uiInteractions?.leftPanelMode ?? initialState.uiInteractions.leftPanelMode,
-      ),
-      hostsSidebarCollapsed: normalizeUiHostsSidebarCollapsed(
-        preloadedState?.uiInteractions?.hostsSidebarCollapsed ?? initialState.uiInteractions.hostsSidebarCollapsed,
-      ),
-      hostsSidebarWidthPx: clampUiHostsSidebarWidthPx(
-        preloadedState?.uiInteractions?.hostsSidebarWidthPx ?? initialState.uiInteractions.hostsSidebarWidthPx,
+      activeWorkspacePanel: normalizeUiActiveWorkspacePanel(
+        preloadedState?.uiInteractions?.activeWorkspacePanel ?? initialState.uiInteractions.activeWorkspacePanel,
       ),
       selectedHostId: normalizeUiSelectedHostId(
         preloadedState?.uiInteractions?.selectedHostId ?? initialState.uiInteractions.selectedHostId,
@@ -872,9 +754,6 @@ function mergeInitialState(preloadedState) {
       ),
       error: normalizeUiError(
         preloadedState?.uiInteractions?.error ?? initialState.uiInteractions.error,
-      ),
-      resizing: normalizeUiResizing(
-        preloadedState?.uiInteractions?.resizing ?? initialState.uiInteractions.resizing,
       ),
       debugExpandedPaths: normalizeUiDebugExpandedPaths(
         preloadedState?.uiInteractions?.debugExpandedPaths ?? initialState.uiInteractions.debugExpandedPaths,
@@ -1823,11 +1702,9 @@ const persistPanelStateMiddleware = (storeApi) => (next) => (action) => {
         PANEL_STATE_STORAGE_KEY,
         JSON.stringify({
           panelProjectList: {
-            leftWidthPct: clampPanelWidth(currentPanelProjectList?.leftWidthPct),
             selectedProjectPath: currentPanelProjectList?.selectedProjectPath || '',
           },
           panelProjectExplorer: {
-            mode: normalizePanelExplorerMode(currentPanelProjectExplorer?.mode),
             isFollowMode: normalizePanelExplorerFollowMode(currentPanelProjectExplorer?.isFollowMode),
           },
           uiInteractions: currentPersistedUiInteractions,

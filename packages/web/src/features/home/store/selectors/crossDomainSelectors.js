@@ -1,24 +1,32 @@
-import { LEFT_PANEL_MODE } from '../../constants/ui';
+import { WORKSPACE_PANEL } from '../../constants/ui';
 import { selectSelectedHost, selectIsMasterSidebarSelected } from './hostSelectors';
-import { selectLeftPanelMode } from './layoutSelectors';
+import { selectActiveWorkspacePanel } from './layoutSelectors';
 import { selectSelectedProject, selectSelectedProjectPath } from './projectSelectors';
 
+const selectIsLogsWorkspacePanelActive = (state) => (
+  selectActiveWorkspacePanel(state) === WORKSPACE_PANEL.LOGS
+);
+
 export const selectIsProjectLogContext = (state) => (
-  selectLeftPanelMode(state) === LEFT_PANEL_MODE.PROJECTS
+  selectIsLogsWorkspacePanelActive(state)
+  && !selectIsMasterSidebarSelected(state)
+  && selectSelectedHost(state) == null
+  && Boolean(selectSelectedProjectPath(state))
 );
 
 export const selectIsMasterLogContext = (state) => (
-  selectLeftPanelMode(state) !== LEFT_PANEL_MODE.PROJECTS && selectIsMasterSidebarSelected(state)
+  selectIsLogsWorkspacePanelActive(state) && selectIsMasterSidebarSelected(state)
 );
 
 export const selectIsHostLogContext = (state) => (
-  selectLeftPanelMode(state) !== LEFT_PANEL_MODE.PROJECTS
+  selectIsLogsWorkspacePanelActive(state)
   && !selectIsMasterLogContext(state)
   && selectSelectedHost(state) != null
 );
 
 export const selectIsRuntimeLogContext = (state) => (
-  selectLeftPanelMode(state) !== LEFT_PANEL_MODE.PROJECTS
+  selectIsLogsWorkspacePanelActive(state)
+  && !selectIsProjectLogContext(state)
   && !selectIsMasterLogContext(state)
   && !selectIsHostLogContext(state)
 );

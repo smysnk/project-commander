@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const RUN_LIVE_MANAGED_PROCESS = String(process.env.PLAYWRIGHT_LIVE_MANAGED_PROCESS || '').trim() === '1';
@@ -27,17 +28,13 @@ async function gotoLiveApp(page, baseURL) {
 }
 
 async function openRuntimeForLiveHost(page) {
-  const expandSidebarButton = page.getByRole('button', { name: /expand hosts sidebar/i });
-  if (await expandSidebarButton.count()) {
-    await expandSidebarButton.first().click();
-  }
-
+  await selectWorkspacePanel(page, 'Hosts');
   const hostPattern = new RegExp(LIVE_HOST_MATCH, 'i');
   const hostCard = page.locator('.hostList .hostCard').filter({ hasText: hostPattern }).first();
   test.skip(await hostCard.count() === 0, `No host card matched /${LIVE_HOST_MATCH}/. Set PLAYWRIGHT_LIVE_MANAGED_HOST_MATCH.`);
 
   await hostCard.click();
-  await page.getByRole('tab', { name: 'Runtime' }).click();
+  await selectWorkspacePanel(page, 'Runtime');
 
   const runtimePanel = page.locator('.runtimePanel');
   await expect(runtimePanel).toContainText('Selected Slave Agent');
@@ -117,12 +114,12 @@ test('live managed process runtime flow: create, tail logs, soft kill, hard kill
   await softProcess.observedRow.getByRole('button', { name: 'Logs' }).click();
   await waitForLogMarker(page, softStartMarker);
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
+  await selectWorkspacePanel(page, 'Runtime');
   await softProcess.observedRow.getByRole('button', { name: 'Soft Kill' }).click();
-  await page.getByRole('tab', { name: 'Logs' }).click();
+  await selectWorkspacePanel(page, 'Logs');
   await waitForLogMarker(page, softStopMarker);
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
+  await selectWorkspacePanel(page, 'Runtime');
   await deleteDesiredProcess(runtimePanel, softProcess.processKey);
 
   const hardStartMarker = `pc-live-hard-start-${suffixBase}`;
@@ -136,7 +133,7 @@ test('live managed process runtime flow: create, tail logs, soft kill, hard kill
   await hardProcess.observedRow.getByRole('button', { name: 'Logs' }).click();
   await waitForLogMarker(page, hardStartMarker);
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
+  await selectWorkspacePanel(page, 'Runtime');
   await hardProcess.observedRow.getByRole('button', { name: 'Hard Kill' }).click();
   await deleteDesiredProcess(runtimePanel, hardProcess.processKey);
   await expect(hardProcess.observedRow).toHaveCount(0, { timeout: 30_000 });

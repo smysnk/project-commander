@@ -6,6 +6,7 @@ const { createProcessRegistry, buildLaunchFingerprint } = require('./processRegi
 const createRuntimeHarness = () => {
   const state = {
     desiredProcesses: [],
+    deploymentInstances: [],
   };
 
   class DesiredProcessRecord {
@@ -22,6 +23,7 @@ const createRuntimeHarness = () => {
       this.host = await harness.models.Host.findByPk(this.hostId);
       this.project = await harness.models.Project.findByPk(this.projectId);
       this.service = this.serviceId ? await harness.models.Service.findByPk(this.serviceId) : null;
+      this.deployment = this.deploymentId ? await harness.models.DeploymentInstance.findByPk(this.deploymentId) : null;
       return this;
     }
 
@@ -35,6 +37,11 @@ const createRuntimeHarness = () => {
     agentUuid: 'slave-7',
     name: 'blackbox',
     ip: '192.168.1.250',
+    metadata: {},
+    async update(payload) {
+      Object.assign(this, payload);
+      return this;
+    },
   };
   const projectRecord = {
     id: 19,
@@ -63,6 +70,8 @@ const createRuntimeHarness = () => {
         return state.desiredProcesses.find((entry) => (
           (!where?.hostId || Number(entry.hostId) === Number(where.hostId))
           && (!where?.projectId || Number(entry.projectId) === Number(where.projectId))
+          && (!Object.prototype.hasOwnProperty.call(where || {}, 'deploymentId') || Number(entry.deploymentId || 0) === Number(where.deploymentId || 0))
+          && (!where?.processKey || String(entry.processKey) === String(where.processKey))
           && (!where?.packageKey || String(entry.packageKey) === String(where.packageKey))
         )) || null;
       },
@@ -70,6 +79,8 @@ const createRuntimeHarness = () => {
         return state.desiredProcesses.filter((entry) => (
           (!where?.hostId || Number(entry.hostId) === Number(where.hostId))
           && (!where?.projectId || Number(entry.projectId) === Number(where.projectId))
+          && (!Object.prototype.hasOwnProperty.call(where || {}, 'deploymentId') || Number(entry.deploymentId || 0) === Number(where.deploymentId || 0))
+          && (!where?.processKey || String(entry.processKey) === String(where.processKey))
         ));
       },
       async create(payload) {
@@ -79,6 +90,9 @@ const createRuntimeHarness = () => {
           host: hostRecord,
           project: projectRecord,
           service: payload.serviceId ? serviceRecord : null,
+          deployment: payload.deploymentId
+            ? state.deploymentInstances.find((entry) => Number(entry.id) === Number(payload.deploymentId)) || null
+            : null,
         });
         state.desiredProcesses.push(record);
         return record;
@@ -161,6 +175,45 @@ const createRuntimeHarness = () => {
         return [serviceRecord];
       },
     },
+    DeploymentInstance: {
+      async findByPk(id) {
+        return state.deploymentInstances.find((entry) => Number(entry.id) === Number(id)) || null;
+      },
+      async findOne({ where } = {}) {
+        return state.deploymentInstances.find((entry) => (
+          (!where?.hostId || Number(entry.hostId) === Number(where.hostId))
+          && (!where?.projectId || Number(entry.projectId) === Number(where.projectId))
+          && (!where?.deploymentKey || String(entry.deploymentKey) === String(where.deploymentKey))
+        )) || null;
+      },
+      async findAll({ where } = {}) {
+        return state.deploymentInstances.filter((entry) => (
+          (!where?.hostId || Number(entry.hostId) === Number(where.hostId))
+          && (!where?.projectId || Number(entry.projectId) === Number(where.projectId))
+          && (!where?.deploymentKey || String(entry.deploymentKey) === String(where.deploymentKey))
+        ));
+      },
+      async create(payload) {
+        const record = {
+          id: state.deploymentInstances.length + 1,
+          ...payload,
+          async update(nextPayload) {
+            Object.assign(this, nextPayload);
+            return this;
+          },
+          async reload() {
+            this.host = hostRecord;
+            this.project = projectRecord;
+            return this;
+          },
+          async destroy() {
+            state.deploymentInstances = state.deploymentInstances.filter((entry) => Number(entry.id) !== Number(this.id));
+          },
+        };
+        state.deploymentInstances.push(record);
+        return record;
+      },
+    },
   };
 
   const harness = {
@@ -231,7 +284,9 @@ test('ensureDesiredProcess persists the definition and mirrors it into the maste
     buildLaunchFingerprint({
       hostId: harness.hostRecord.id,
       projectId: harness.projectRecord.id,
+      deploymentId: null,
       packageKey: 'packages/api',
+      processKey: 'api',
       launchMode: 'exec',
       cwd: '/srv/projects/api-project/packages/api',
       command: 'yarn',
@@ -265,6 +320,75 @@ test('deleteDesiredProcessDefinition removes the definition and mirrors the dele
     slaveId: harness.hostRecord.agentUuid,
     processKey: 'api',
   });
+});
+
+test('deployment instances namespace process keys and layer host/deployment env at launch', async () => {
+  const harness = createRuntimeHarness();
+
+  await harness.registry.setHostRuntimeEnv({
+    hostId: harness.hostRecord.id,
+    envJson: {
+      COMFY_SERVER_URL: 'http://clearbox:8188',
+    },
+  });
+  const localDeployment = await harness.registry.upsertDeploymentInstance({
+    hostId: harness.hostRecord.id,
+    projectId: harness.projectRecord.id,
+    deploymentKey: 'local',
+    envJson: {
+      WEB_PORT: '3015',
+    },
+  });
+  const stagingDeployment = await harness.registry.upsertDeploymentInstance({
+    hostId: harness.hostRecord.id,
+    projectId: harness.projectRecord.id,
+    deploymentKey: 'staging',
+    envJson: {
+      WEB_PORT: '3025',
+    },
+  });
+
+  const localProcess = await harness.registry.ensureDesiredProcess({
+    hostId: harness.hostRecord.id,
+    projectId: harness.projectRecord.id,
+    deploymentId: localDeployment.id,
+    packageKey: 'web',
+    launchMode: 'shell',
+    cwd: '/srv/projects/api-project',
+    command: 'yarn dev:web',
+    envJson: {
+      NODE_ENV: 'development',
+    },
+  });
+  const stagingProcess = await harness.registry.ensureDesiredProcess({
+    hostId: harness.hostRecord.id,
+    projectId: harness.projectRecord.id,
+    deploymentId: stagingDeployment.id,
+    packageKey: 'web',
+    launchMode: 'shell',
+    cwd: '/srv/projects/api-project',
+    command: 'yarn dev:web',
+    envJson: {
+      NODE_ENV: 'development',
+    },
+  });
+
+  assert.equal(localProcess.processKey, 'local.web');
+  assert.equal(stagingProcess.processKey, 'staging.web');
+  assert.equal(harness.state.desiredProcesses.length, 2);
+
+  const localMirror = harness.runtimeCalls.upserts.find((call) => call.desiredProcess.processKey === 'local.web');
+  const stagingMirror = harness.runtimeCalls.upserts.find((call) => call.desiredProcess.processKey === 'staging.web');
+  assert.deepEqual(localMirror.desiredProcess.env, [
+    { key: 'COMFY_SERVER_URL', value: 'http://clearbox:8188' },
+    { key: 'NODE_ENV', value: 'development' },
+    { key: 'WEB_PORT', value: '3015' },
+  ]);
+  assert.deepEqual(stagingMirror.desiredProcess.env, [
+    { key: 'COMFY_SERVER_URL', value: 'http://clearbox:8188' },
+    { key: 'NODE_ENV', value: 'development' },
+    { key: 'WEB_PORT', value: '3025' },
+  ]);
 });
 
 test('getSlaveRuntimeState returns the host bundle for the requested agent uuid', async () => {

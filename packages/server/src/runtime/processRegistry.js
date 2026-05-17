@@ -9,11 +9,15 @@ const {
   Host,
   Project,
   Service,
+  DeploymentInstance,
 } = require('../models');
 
 const normalizeString = (value) => String(value || '').trim();
 
 const normalizeInteger = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : null;
 };
@@ -31,6 +35,21 @@ const normalizeObject = (value) => (
     : {}
 );
 
+const normalizeDeploymentKey = (value) => normalizeString(value)
+  .toLowerCase()
+  .replace(/[^a-z0-9._:-]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
+const mergeEnvJson = (...entries) => entries.reduce((accumulator, entry) => ({
+  ...accumulator,
+  ...normalizeObject(entry),
+}), {});
+
+const getHostRuntimeEnvJson = (host) => {
+  const metadata = normalizeObject(host?.metadata);
+  return normalizeObject(metadata.runtimeEnv || metadata.runtimeEnvJson);
+};
+
 const SERVER_LOG_LEVELS = {
   trace: 10,
   debug: 20,
@@ -38,6 +57,7 @@ const SERVER_LOG_LEVELS = {
   warn: 40,
   error: 50,
 };
+const SLAVE_RUNTIME_PROCESS_RUN_LIMIT = 250;
 
 const normalizeServerConsoleLogLevel = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -78,6 +98,8 @@ const buildLaunchFingerprint = ({
   hostId,
   projectId,
   packageKey,
+  processKey,
+  deploymentId,
   launchMode,
   cwd,
   command,
@@ -88,7 +110,9 @@ const buildLaunchFingerprint = ({
   .update(stableJSONStringify({
     hostId: normalizeInteger(hostId),
     projectId: normalizeInteger(projectId),
+    deploymentId: normalizeInteger(deploymentId),
     packageKey: normalizeString(packageKey),
+    processKey: normalizeString(processKey),
     launchMode: normalizeString(launchMode || 'exec'),
     cwd: normalizeString(cwd),
     command: normalizeString(command),
@@ -133,6 +157,7 @@ const normalizeDesiredProcessPayload = (input = {}) => {
     desiredProcessId: normalizeInteger(input.desiredProcessId),
     hostId: normalizeInteger(input.hostId),
     projectId: normalizeInteger(input.projectId),
+    deploymentId: normalizeInteger(input.deploymentId),
     serviceId: normalizeInteger(input.serviceId),
     processKey: normalizeString(input.processKey),
     packageKey: normalizeString(input.packageKey),
@@ -147,7 +172,9 @@ const normalizeDesiredProcessPayload = (input = {}) => {
     launchFingerprint: normalizeString(input.launchFingerprint) || buildLaunchFingerprint({
       hostId: input.hostId,
       projectId: input.projectId,
+      deploymentId: input.deploymentId,
       packageKey: input.packageKey,
+      processKey: input.processKey,
       launchMode: input.launchMode,
       cwd: input.cwd,
       command: input.command,
@@ -165,6 +192,7 @@ const normalizeProcessRunPayload = (input = {}) => ({
   desiredProcessId: normalizeInteger(input.desiredProcessId),
   hostId: normalizeInteger(input.hostId),
   projectId: normalizeInteger(input.projectId),
+  deploymentId: normalizeInteger(input.deploymentId),
   serviceId: normalizeInteger(input.serviceId),
   runId: normalizeString(input.runId),
   packageKey: normalizeString(input.packageKey),
@@ -234,6 +262,7 @@ const createProcessRegistry = ({
     Host,
     Project,
     Service,
+    DeploymentInstance,
   },
 } = {}) => {
   const runtimeLogger = (
@@ -251,6 +280,7 @@ const createProcessRegistry = ({
     Host: HostModel,
     Project: ProjectModel,
     Service: ServiceModel,
+    DeploymentInstance: DeploymentInstanceModel = DeploymentInstance,
   } = models;
 
   const shouldLogLevel = (level) => (
@@ -355,6 +385,58 @@ const createProcessRegistry = ({
     return projects.find((project) => resolveProjectPathFromModel(project) === absoluteProjectPath) || null;
   };
 
+  const findDeploymentByIdOrKey = async ({
+    deploymentId,
+    deploymentKey,
+    hostId,
+    projectId,
+    transaction,
+  } = {}) => {
+    const normalizedDeploymentId = normalizeInteger(deploymentId);
+    if (normalizedDeploymentId) {
+      return DeploymentInstanceModel.findByPk(normalizedDeploymentId, { transaction });
+    }
+
+    const normalizedDeploymentKey = normalizeDeploymentKey(deploymentKey);
+    const normalizedHostId = normalizeInteger(hostId);
+    const normalizedProjectId = normalizeInteger(projectId);
+    if (!normalizedDeploymentKey || !normalizedHostId || !normalizedProjectId) {
+      return null;
+    }
+
+    return DeploymentInstanceModel.findOne({
+      where: {
+        hostId: normalizedHostId,
+        projectId: normalizedProjectId,
+        deploymentKey: normalizedDeploymentKey,
+      },
+      transaction,
+    });
+  };
+
+  const resolveEffectiveEnvJson = ({ host, deployment, processEnvJson } = {}) => mergeEnvJson(
+    getHostRuntimeEnvJson(host),
+    deployment?.envJson,
+    processEnvJson,
+  );
+
+  const resolveEffectiveLogRoot = ({ deployment, logRoot } = {}) => (
+    normalizeString(logRoot) || normalizeString(deployment?.logRoot) || null
+  );
+
+  const buildRuntimeIdentity = ({ packageKey, processKey, deployment } = {}) => {
+    const normalizedPackageKey = normalizeString(packageKey);
+    const normalizedProcessKey = normalizeString(processKey);
+    const normalizedDeploymentKey = normalizeString(deployment?.deploymentKey);
+    if (normalizedProcessKey) {
+      return normalizedProcessKey;
+    }
+    if (normalizedDeploymentKey && normalizedPackageKey) {
+      return `${normalizedDeploymentKey}.${normalizedPackageKey}`;
+    }
+    return normalizedPackageKey;
+  };
+
   const findServiceByIdOrKey = async ({
     serviceId,
     projectId,
@@ -402,6 +484,7 @@ const createProcessRegistry = ({
           { model: HostModel, as: 'host', required: false },
           { model: ProjectModel, as: 'project', required: false },
           { model: ServiceModel, as: 'service', required: false },
+          { model: DeploymentInstanceModel, as: 'deployment', required: false },
         ],
         transaction,
       });
@@ -409,12 +492,98 @@ const createProcessRegistry = ({
     return desiredProcess;
   };
 
+  const refreshDesiredProcessRuntimeFingerprints = async ({
+    hostId,
+    projectId,
+    deploymentId,
+    desiredProcessId,
+    transaction,
+    mirror = true,
+  } = {}) => {
+    const where = {};
+    if (normalizeInteger(desiredProcessId)) {
+      where.id = normalizeInteger(desiredProcessId);
+    }
+    if (normalizeInteger(hostId)) {
+      where.hostId = normalizeInteger(hostId);
+    }
+    if (normalizeInteger(projectId)) {
+      where.projectId = normalizeInteger(projectId);
+    }
+    if (normalizeInteger(deploymentId)) {
+      where.deploymentId = normalizeInteger(deploymentId);
+    }
+    const desiredProcesses = await DesiredProcessModel.findAll({
+      where,
+      include: [
+        { model: HostModel, as: 'host', required: false },
+        { model: ProjectModel, as: 'project', required: false },
+        { model: ServiceModel, as: 'service', required: false },
+        { model: DeploymentInstanceModel, as: 'deployment', required: false },
+      ],
+      transaction,
+    });
+
+    for (const desiredProcess of desiredProcesses) {
+      const effectiveEnvJson = resolveEffectiveEnvJson({
+        host: desiredProcess.host,
+        deployment: desiredProcess.deployment,
+        processEnvJson: desiredProcess.envJson,
+      });
+      const envHash = buildEnvHash(effectiveEnvJson);
+      const launchFingerprint = buildLaunchFingerprint({
+        hostId: desiredProcess.hostId,
+        projectId: desiredProcess.projectId,
+        deploymentId: desiredProcess.deploymentId,
+        packageKey: desiredProcess.packageKey,
+        processKey: desiredProcess.processKey,
+        launchMode: desiredProcess.launchMode,
+        cwd: desiredProcess.cwd,
+        command: desiredProcess.command,
+        argsJson: desiredProcess.argsJson,
+        envJson: effectiveEnvJson,
+      });
+      if (
+        normalizeString(desiredProcess.envHash) !== envHash
+        || normalizeString(desiredProcess.launchFingerprint) !== launchFingerprint
+      ) {
+        await desiredProcess.update({ envHash, launchFingerprint }, { transaction });
+      }
+      if (mirror && desiredProcess.host?.agentUuid) {
+        await mirrorDesiredProcessToMaster({
+          desiredProcess,
+          slaveId: desiredProcess.host.agentUuid,
+        });
+      }
+    }
+    return desiredProcesses;
+  };
+
   const serializeDesiredProcessForMaster = (desiredProcess) => {
     if (!desiredProcess) {
       return null;
     }
 
-    const projectPath = resolveProjectPathFromModel(desiredProcess.project);
+    const projectPath = normalizeString(desiredProcess.deployment?.deploymentPath)
+      || resolveProjectPathFromModel(desiredProcess.project);
+    const effectiveEnvJson = resolveEffectiveEnvJson({
+      host: desiredProcess.host,
+      deployment: desiredProcess.deployment,
+      processEnvJson: desiredProcess.envJson,
+    });
+    const effectiveEnvHash = buildEnvHash(effectiveEnvJson);
+    const effectiveLaunchFingerprint = buildLaunchFingerprint({
+      hostId: desiredProcess.hostId,
+      projectId: desiredProcess.projectId,
+      deploymentId: desiredProcess.deploymentId,
+      packageKey: desiredProcess.packageKey,
+      processKey: desiredProcess.processKey,
+      launchMode: desiredProcess.launchMode,
+      cwd: desiredProcess.cwd,
+      command: desiredProcess.command,
+      argsJson: desiredProcess.argsJson,
+      envJson: effectiveEnvJson,
+    });
     const payload = {
       desiredProcessId: normalizeInteger(desiredProcess.id) || 0,
       hostId: normalizeInteger(desiredProcess.hostId) || 0,
@@ -429,10 +598,10 @@ const createProcessRegistry = ({
       cwd: normalizeString(desiredProcess.cwd),
       command: normalizeString(desiredProcess.command),
       args: normalizeArray(desiredProcess.argsJson).map((value) => String(value)),
-      env: envJsonToEntries(desiredProcess.envJson),
-      envHash: normalizeString(desiredProcess.envHash),
-      launchFingerprint: normalizeString(desiredProcess.launchFingerprint),
-      logRoot: normalizeString(desiredProcess.logRoot),
+      env: envJsonToEntries(effectiveEnvJson),
+      envHash: effectiveEnvHash,
+      launchFingerprint: effectiveLaunchFingerprint,
+      logRoot: normalizeString(desiredProcess.logRoot || desiredProcess.deployment?.logRoot),
       restartPolicy: normalizeString(desiredProcess.restartPolicy || 'manual') || 'manual',
       updatedAt: desiredProcess.updatedAt instanceof Date
         ? desiredProcess.updatedAt.toISOString()
@@ -480,6 +649,159 @@ const createProcessRegistry = ({
     });
   };
 
+  const listDeploymentInstances = async ({
+    hostId,
+    projectId,
+    deploymentKey,
+  } = {}, { transaction } = {}) => {
+    const where = {};
+    if (normalizeInteger(hostId)) {
+      where.hostId = normalizeInteger(hostId);
+    }
+    if (normalizeInteger(projectId)) {
+      where.projectId = normalizeInteger(projectId);
+    }
+    if (normalizeDeploymentKey(deploymentKey)) {
+      where.deploymentKey = normalizeDeploymentKey(deploymentKey);
+    }
+    return DeploymentInstanceModel.findAll({
+      where,
+      include: [
+        { model: HostModel, as: 'host', required: false },
+        { model: ProjectModel, as: 'project', required: false },
+      ],
+      order: [['hostId', 'ASC'], ['projectId', 'ASC'], ['deploymentKey', 'ASC']],
+      transaction,
+    });
+  };
+
+  const upsertDeploymentInstance = async (input = {}) => withTransaction(async (transaction) => {
+    const host = await findHostByIdOrSlaveId({
+      hostId: input.hostId,
+      slaveId: input.slaveId || input.agentUuid,
+      transaction,
+    });
+    const project = await findProjectByIdOrPath({
+      projectId: input.projectId,
+      projectPath: input.projectPath,
+      hostId: host?.id || input.hostId,
+      transaction,
+    });
+    if (!host || !project) {
+      throw new Error('deployment instance requires a resolvable host and project');
+    }
+    const deploymentKey = normalizeDeploymentKey(input.deploymentKey);
+    if (!deploymentKey) {
+      throw new Error('deploymentKey is required');
+    }
+    const payload = {
+      hostId: host.id,
+      projectId: project.id,
+      deploymentKey,
+      displayName: normalizeString(input.displayName) || deploymentKey,
+      deploymentPath: normalizeString(input.deploymentPath) || null,
+      envJson: normalizeObject(input.envJson),
+      logRoot: normalizeString(input.logRoot) || null,
+      createdBy: normalizeString(input.createdBy) || null,
+      updatedBy: normalizeString(input.updatedBy || input.createdBy) || null,
+    };
+    const existing = await DeploymentInstanceModel.findOne({
+      where: {
+        hostId: host.id,
+        projectId: project.id,
+        deploymentKey,
+      },
+      transaction,
+    });
+    const deployment = existing
+      ? await existing.update(payload, { transaction })
+      : await DeploymentInstanceModel.create(payload, { transaction });
+    await refreshDesiredProcessRuntimeFingerprints({
+      hostId: host.id,
+      projectId: project.id,
+      deploymentId: deployment.id,
+      transaction,
+      mirror: true,
+    });
+    return deployment.reload
+      ? deployment.reload({
+        include: [
+          { model: HostModel, as: 'host', required: false },
+          { model: ProjectModel, as: 'project', required: false },
+        ],
+        transaction,
+      })
+      : deployment;
+  });
+
+  const deleteDeploymentInstance = async ({
+    deploymentId,
+    hostId,
+    projectId,
+    deploymentKey,
+    deleteDesiredProcesses = false,
+  } = {}) => withTransaction(async (transaction) => {
+    const deployment = await findDeploymentByIdOrKey({
+      deploymentId,
+      deploymentKey,
+      hostId,
+      projectId,
+      transaction,
+    });
+    if (!deployment) {
+      return false;
+    }
+    const desiredProcesses = await DesiredProcessModel.findAll({
+      where: { deploymentId: deployment.id },
+      include: [{ model: HostModel, as: 'host', required: false }],
+      transaction,
+    });
+    if (desiredProcesses.length > 0 && !deleteDesiredProcesses) {
+      throw new Error('deployment has desired processes; delete them or pass deleteDesiredProcesses');
+    }
+    for (const desiredProcess of desiredProcesses) {
+      if (desiredProcess.host?.agentUuid && desiredProcess.processKey) {
+        await mirrorDesiredProcessDeletionToMaster({
+          slaveId: desiredProcess.host.agentUuid,
+          processKey: desiredProcess.processKey,
+        });
+      }
+      await desiredProcess.destroy({ transaction });
+    }
+    await deployment.destroy({ transaction });
+    return true;
+  });
+
+  const getHostRuntimeEnv = async ({ hostId, slaveId } = {}, { transaction } = {}) => {
+    const host = await findHostByIdOrSlaveId({ hostId, slaveId, transaction });
+    if (!host) {
+      return null;
+    }
+    return {
+      host,
+      envJson: getHostRuntimeEnvJson(host),
+    };
+  };
+
+  const setHostRuntimeEnv = async ({ hostId, slaveId, envJson } = {}) => withTransaction(async (transaction) => {
+    const host = await findHostByIdOrSlaveId({ hostId, slaveId, transaction });
+    if (!host) {
+      throw new Error('unable to resolve host for runtime env update');
+    }
+    const metadata = normalizeObject(host.metadata);
+    metadata.runtimeEnv = normalizeObject(envJson);
+    await host.update({ metadata }, { transaction });
+    await refreshDesiredProcessRuntimeFingerprints({
+      hostId: host.id,
+      transaction,
+      mirror: true,
+    });
+    return {
+      host,
+      envJson: metadata.runtimeEnv,
+    };
+  });
+
   const upsertDesiredProcess = async (input, { transaction } = {}) => {
     const payload = normalizeDesiredProcessPayload(input);
     if (!payload.hostId || !payload.projectId || !payload.packageKey || !payload.processKey || !payload.cwd || !payload.command) {
@@ -496,10 +818,24 @@ const createProcessRegistry = ({
         where: {
           hostId: persistedPayload.hostId,
           projectId: persistedPayload.projectId,
-          packageKey: persistedPayload.packageKey,
+          deploymentId: persistedPayload.deploymentId || null,
+          processKey: persistedPayload.processKey,
         },
         transaction,
       });
+    }
+    const conflictingRuntimeIdentity = await DesiredProcessModel.findOne({
+      where: {
+        hostId: persistedPayload.hostId,
+        processKey: persistedPayload.processKey,
+      },
+      transaction,
+    });
+    if (
+      conflictingRuntimeIdentity
+      && (!existing || Number(conflictingRuntimeIdentity.id) !== Number(existing.id))
+    ) {
+      throw new Error(`processKey already exists on host: ${persistedPayload.processKey}`);
     }
 
     if (existing) {
@@ -514,7 +850,9 @@ const createProcessRegistry = ({
     desiredProcessId,
     hostId,
     projectId,
+    deploymentId,
     packageKey,
+    processKey,
   } = {}, { transaction } = {}) => {
     if (normalizeInteger(desiredProcessId)) {
       return DesiredProcessModel.destroy({
@@ -529,7 +867,10 @@ const createProcessRegistry = ({
       where: {
         hostId: normalizeInteger(hostId),
         projectId: normalizeInteger(projectId),
-        packageKey: normalizeString(packageKey),
+        deploymentId: normalizeInteger(deploymentId) || null,
+        ...(normalizeString(processKey)
+          ? { processKey: normalizeString(processKey) }
+          : { packageKey: normalizeString(packageKey) }),
       },
       transaction,
     });
@@ -538,6 +879,8 @@ const createProcessRegistry = ({
   const listDesiredProcesses = async ({
     hostId,
     projectId,
+    deploymentId,
+    deploymentKey,
     slaveId,
   } = {}, { transaction } = {}) => {
     const where = {};
@@ -546,6 +889,9 @@ const createProcessRegistry = ({
     }
     if (normalizeInteger(projectId)) {
       where.projectId = normalizeInteger(projectId);
+    }
+    if (normalizeInteger(deploymentId)) {
+      where.deploymentId = normalizeInteger(deploymentId);
     }
 
     const include = [
@@ -564,11 +910,20 @@ const createProcessRegistry = ({
         as: 'service',
         required: false,
       },
+      {
+        model: DeploymentInstanceModel,
+        as: 'deployment',
+        required: false,
+      },
     ];
 
     if (normalizeString(slaveId)) {
       include[0].where = { agentUuid: normalizeString(slaveId).toLowerCase() };
       include[0].required = true;
+    }
+    if (normalizeDeploymentKey(deploymentKey)) {
+      include[3].where = { deploymentKey: normalizeDeploymentKey(deploymentKey) };
+      include[3].required = true;
     }
 
     return DesiredProcessModel.findAll({
@@ -577,6 +932,7 @@ const createProcessRegistry = ({
       order: [
         ['hostId', 'ASC'],
         ['projectId', 'ASC'],
+        ['deploymentId', 'ASC'],
         ['packageKey', 'ASC'],
       ],
       transaction,
@@ -621,8 +977,22 @@ const createProcessRegistry = ({
       transaction,
     });
 
+    const deployment = await findDeploymentByIdOrKey({
+      deploymentId: normalizedInput.deploymentId,
+      deploymentKey: normalizedInput.deploymentKey,
+      hostId: host.id,
+      projectId: project.id,
+      transaction,
+    });
+    if ((normalizeInteger(normalizedInput.deploymentId) || normalizeDeploymentKey(normalizedInput.deploymentKey)) && !deployment) {
+      throw new Error('unable to resolve deployment instance for desired process');
+    }
+    if (deployment && (deployment.hostId !== host.id || deployment.projectId !== project.id)) {
+      throw new Error('deployment instance does not belong to the selected host/project');
+    }
+
     const projectPath = resolveProjectPathFromModel(project);
-    const cwd = normalizeString(normalizedInput.cwd) || projectPath;
+    const cwd = normalizeString(normalizedInput.cwd) || normalizeString(deployment?.deploymentPath) || projectPath;
     const packageRelativePath = (
       normalizeString(normalizedInput.packageRelativePath)
       || normalizeString(service?.relativePath)
@@ -643,19 +1013,35 @@ const createProcessRegistry = ({
           : path.basename(cwd)
       )
     );
-    const processKey = normalizeString(normalizedInput.processKey) || packageKey;
+    const processKey = buildRuntimeIdentity({
+      packageKey,
+      processKey: normalizedInput.processKey,
+      deployment,
+    });
     const command = normalizeString(normalizedInput.command);
     if (!command) {
       throw new Error('desired process command is required');
     }
+    const processEnvJson = normalizeObject(normalizedInput.envJson);
+    const effectiveEnvJson = resolveEffectiveEnvJson({
+      host,
+      deployment,
+      processEnvJson,
+    });
+    const effectiveLogRoot = resolveEffectiveLogRoot({
+      deployment,
+      logRoot: normalizedInput.logRoot,
+    });
 
     return {
       host,
       project,
       service,
+      deployment,
       payload: {
         hostId: host.id,
         projectId: project.id,
+        deploymentId: deployment?.id || null,
         serviceId: service?.id || null,
         processKey,
         packageKey,
@@ -665,8 +1051,21 @@ const createProcessRegistry = ({
         cwd,
         command,
         argsJson: normalizeArray(normalizedInput.argsJson).map((value) => String(value)),
-        envJson: normalizeObject(normalizedInput.envJson),
-        logRoot: normalizeString(normalizedInput.logRoot) || null,
+        envJson: processEnvJson,
+        envHash: buildEnvHash(effectiveEnvJson),
+        launchFingerprint: buildLaunchFingerprint({
+          hostId: host.id,
+          projectId: project.id,
+          deploymentId: deployment?.id || null,
+          packageKey,
+          processKey,
+          launchMode: normalizedInput.launchMode,
+          cwd,
+          command,
+          argsJson: normalizeArray(normalizedInput.argsJson).map((value) => String(value)),
+          envJson: effectiveEnvJson,
+        }),
+        logRoot: effectiveLogRoot,
         restartPolicy: normalizeString(normalizedInput.restartPolicy || 'manual') || 'manual',
         createdBy: normalizeString(normalizedInput.createdBy) || null,
         updatedBy: normalizeString(normalizedInput.updatedBy || normalizedInput.createdBy) || null,
@@ -717,15 +1116,24 @@ const createProcessRegistry = ({
           hostId: host?.id || null,
           transaction,
         });
+        const deployment = await findDeploymentByIdOrKey({
+          deploymentId: normalizedInput.deploymentId,
+          deploymentKey: normalizedInput.deploymentKey,
+          hostId: host?.id,
+          projectId: project?.id,
+          transaction,
+        });
+        const processKey = normalizeString(normalizedInput.processKey);
         const packageKey = normalizeString(normalizedInput.packageKey || normalizedInput.processKey);
-        if (!host || !project || !packageKey) {
+        if (!host || !project || (!processKey && !packageKey)) {
           throw new Error('unable to resolve desired process identity for deletion');
         }
         desiredProcess = await DesiredProcessModel.findOne({
           where: {
             hostId: host.id,
             projectId: project.id,
-            packageKey,
+            deploymentId: deployment?.id || null,
+            ...(processKey ? { processKey } : { packageKey }),
           },
           include: [
             { model: HostModel, as: 'host', required: false },
@@ -818,6 +1226,7 @@ const createProcessRegistry = ({
     desiredProcessId,
     hostId,
     projectId,
+    deploymentId,
     processKey,
     packageKey,
     transaction,
@@ -834,10 +1243,13 @@ const createProcessRegistry = ({
     if (normalizeInteger(projectId)) {
       where.projectId = normalizeInteger(projectId);
     }
-    if (normalizeString(packageKey)) {
-      where.packageKey = normalizeString(packageKey);
-    } else if (normalizeString(processKey)) {
+    if (normalizeInteger(deploymentId)) {
+      where.deploymentId = normalizeInteger(deploymentId);
+    }
+    if (normalizeString(processKey)) {
       where.processKey = normalizeString(processKey);
+    } else if (normalizeString(packageKey)) {
+      where.packageKey = normalizeString(packageKey);
     } else {
       return null;
     }
@@ -872,6 +1284,7 @@ const createProcessRegistry = ({
       desiredProcessId: normalizedObservedRun.desiredProcessId,
       hostId: host.id,
       projectId: project?.id || null,
+      deploymentId: normalizedObservedRun.deploymentId,
       processKey: normalizedObservedRun.processKey,
       packageKey: normalizedObservedRun.packageKey,
       transaction,
@@ -894,6 +1307,7 @@ const createProcessRegistry = ({
       desiredProcessId: desiredProcess?.id || null,
       hostId: host.id,
       projectId: resolvedProjectId,
+      deploymentId: desiredProcess?.deploymentId || null,
       serviceId: desiredProcess?.serviceId || null,
       runId: normalizedRunId,
       packageKey: resolvedPackageKey,
@@ -1125,8 +1539,9 @@ const createProcessRegistry = ({
           { model: HostModel, as: 'host', required: false },
           { model: ProjectModel, as: 'project', required: false },
           { model: ServiceModel, as: 'service', required: false },
+          { model: DeploymentInstanceModel, as: 'deployment', required: false },
         ],
-        order: [['projectId', 'ASC'], ['packageKey', 'ASC']],
+        order: [['projectId', 'ASC'], ['deploymentId', 'ASC'], ['packageKey', 'ASC']],
         transaction,
       }),
       HostRuntimeStateModel.findOne({
@@ -1142,14 +1557,23 @@ const createProcessRegistry = ({
           model: DesiredProcessModel,
           as: 'desiredProcess',
           required: false,
+          include: [
+            { model: DeploymentInstanceModel, as: 'deployment', required: false },
+          ],
         },
         {
           model: ProcessRuntimeStateModel,
           as: 'runtimeState',
           required: false,
         },
+        {
+          model: DeploymentInstanceModel,
+          as: 'deployment',
+          required: false,
+        },
       ],
       order: [['lastSeenAt', 'DESC']],
+      limit: SLAVE_RUNTIME_PROCESS_RUN_LIMIT,
       transaction,
     });
 
@@ -1170,8 +1594,14 @@ const createProcessRegistry = ({
     normalizeHostRuntimeStatePayload,
     envJsonToEntries,
     envEntriesToJson,
+    normalizeDeploymentKey,
     resolveDesiredProcessTarget,
     serializeDesiredProcessForMaster,
+    listDeploymentInstances,
+    upsertDeploymentInstance,
+    deleteDeploymentInstance,
+    getHostRuntimeEnv,
+    setHostRuntimeEnv,
     upsertDesiredProcess,
     removeDesiredProcess,
     listDesiredProcesses,
@@ -1198,4 +1628,5 @@ module.exports = {
   normalizeProcessRunPayload,
   normalizeProcessRuntimeStatePayload,
   normalizeHostRuntimeStatePayload,
+  normalizeDeploymentKey,
 };

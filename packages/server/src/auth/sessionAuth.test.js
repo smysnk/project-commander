@@ -3,6 +3,7 @@ const test = require('node:test');
 
 const {
   getAutomationTokenRecords,
+  isAuthExplicitlyDisabled,
   isApiAuthConfigured,
   readAuthenticatedAccessFromHeaders,
   resolveAutomationAccessFromHeaders,
@@ -66,5 +67,17 @@ test('invalid automation bearer token is rejected', async () => {
 
     assert.equal(result.user, null);
     assert.equal(result.failure, 'missing');
+  });
+});
+
+test('explicit auth disable flag bypasses configured API auth', async () => {
+  await withEnv({
+    NEXTAUTH_SECRET: 'configured-secret',
+    PROJECT_COMMANDER_AUTOMATION_TOKEN: 'codex:secret-token',
+    PROJECT_COMMANDER_AUTH_REQUIRED: 'true',
+    PROJECT_COMMANDER_AUTH_DISABLED: '1',
+  }, async () => {
+    assert.equal(isAuthExplicitlyDisabled(), true);
+    assert.equal(isApiAuthConfigured(), false);
   });
 });

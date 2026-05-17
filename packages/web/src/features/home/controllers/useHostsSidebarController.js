@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { setHomeDomainField, setUiSelectedHostId } from '../../../store';
-import { LEFT_PANEL_MODE, MASTER_AGENT_SIDEBAR_ID } from '../constants/ui';
+import { MASTER_AGENT_SIDEBAR_ID } from '../constants/ui';
 import { useHostActions } from '../hooks/useHostActions';
 import { useHostQueries } from '../hooks/useHomeQueries';
 
@@ -8,16 +8,13 @@ export default function useHostsSidebarController({
   dispatch,
   graphqlEndpoint,
   setError,
-  setLeftPanelMode,
-  setHostsSidebarCollapsed,
+  activateHostsPanel,
   setSelectedHostId,
   setShowAddHostRow,
   setManualHostIp,
   setHostsLoading,
   setHosts,
   setTerminalSessionByHostId,
-  hostsSidebarCollapsed,
-  hostsSidebarWidthPx,
   hostsLoading,
   addingHost,
   deletingHostId,
@@ -127,10 +124,6 @@ export default function useHostsSidebarController({
     }
   }, [dispatch, hosts, selectedHostId]);
 
-  const onToggleSidebarCollapsed = useCallback(() => {
-    setHostsSidebarCollapsed((current) => !current);
-  }, [setHostsSidebarCollapsed]);
-
   const onToggleAddHostRow = useCallback(() => {
     setError('');
     const next = !Boolean(showAddHostRow);
@@ -142,13 +135,13 @@ export default function useHostsSidebarController({
 
   const onSelectHost = useCallback((hostId) => {
     setSelectedHostId(hostId);
-    setLeftPanelMode(LEFT_PANEL_MODE.RUNTIME);
-  }, [setLeftPanelMode, setSelectedHostId]);
+    activateHostsPanel();
+  }, [activateHostsPanel, setSelectedHostId]);
 
   const onSelectMasterHost = useCallback(() => {
     setSelectedHostId(MASTER_AGENT_SIDEBAR_ID);
-    setLeftPanelMode(LEFT_PANEL_MODE.RUNTIME);
-  }, [setLeftPanelMode, setSelectedHostId]);
+    activateHostsPanel();
+  }, [activateHostsPanel, setSelectedHostId]);
 
   const onToggleHostCheckoutRow = useCallback((hostId, hostDirectories = []) => {
     setError('');
@@ -203,9 +196,6 @@ export default function useHostsSidebarController({
   }, [checkoutDestinationByHostId, dispatch]);
 
   return useMemo(() => ({
-    hostsSidebarCollapsed,
-    hostsSidebarWidthPx,
-    onToggleSidebarCollapsed,
     hostsLoading,
     addingHost,
     deletingHostId,
@@ -270,8 +260,6 @@ export default function useHostsSidebarController({
     formatVersionWithProtocol,
     hosts,
     hostsLoading,
-    hostsSidebarCollapsed,
-    hostsSidebarWidthPx,
     isHostVersionOutOfDate,
     isMasterSidebarSelected,
     manualHostIp,
@@ -294,7 +282,6 @@ export default function useHostsSidebarController({
     onToggleAddHostRow,
     onToggleHostCheckoutRow,
     onToggleHostDirectoryRow,
-    onToggleSidebarCollapsed,
     onUpgradeHostAgent,
     onViewManagedProcessLogs,
     onSoftKillObservedProcess,

@@ -1,5 +1,9 @@
 const { test, expect } = require('@playwright/test');
 const { installWebSocketMock } = require('./helpers/wsMock');
+const {
+  expectSingleWorkspacePanel,
+  selectWorkspacePanel,
+} = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const PROJECT_PATH = '/tmp/mock-app';
@@ -162,9 +166,24 @@ async function installGraphqlMocks(page) {
   });
 }
 
-test('right pane tabs are left-aligned, mutually exclusive, and mapped to expected panels', async ({ page, baseURL }) => {
-  const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
+async function openMockedApp(page, appUrl) {
+  try {
+    await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
+  } catch {
+    test.skip(true, `App server is unavailable at ${appUrl}. Set PLAYWRIGHT_BASE_URL or run web app before test.`);
+    return false;
+  }
 
+  try {
+    await expect(page.locator('.appShell')).toBeVisible({ timeout: 3_000 });
+  } catch {
+    test.skip(true, `Project Commander UI shell is unavailable at ${appUrl}.`);
+    return false;
+  }
+  return true;
+}
+
+async function installMocks(page) {
   await installWebSocketMock(page, [], {
     logQueryFixtures: [
       {
@@ -189,63 +208,95 @@ test('right pane tabs are left-aligned, mutually exclusive, and mapped to expect
     ],
   });
   await installGraphqlMocks(page);
+}
 
-  try {
-    await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
-  } catch {
-    test.skip(true, `App server is unavailable at ${appUrl}. Set PLAYWRIGHT_BASE_URL or run web app before test.`);
+test('desktop workspace menu renders one active panel at a time', async ({ page, baseURL }) => {
+  const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
+  await installMocks(page);
+  if (!await openMockedApp(page, appUrl)) {
     return;
   }
 
-  try {
-    await expect(page.locator('.appShell')).toBeVisible({ timeout: 3_000 });
-  } catch {
-    test.skip(true, `Project Commander UI shell is unavailable at ${appUrl}.`);
-    return;
-  }
+  await expect(page.locator('.panelTabsGroup')).toHaveCount(0);
+  await expect(page.locator('.mainPanels')).toHaveCount(0);
 
-  const tabsGroup = page.locator('.panelTabsGroup');
-  const rightPane = page.locator('.rightPanel');
-  await expect(tabsGroup).toBeVisible();
-  await expect(page.locator('.panelTabsRight')).toHaveCount(0);
-
-  const tabOrder = await page.locator('.panelTabsGroup .panelTab').evaluateAll((nodes) =>
+  const panelOrder = await page.locator('.workspacePanelNav .workspacePanelButton').evaluateAll((nodes) =>
     nodes.map((node) => String(node.textContent || '').trim()).filter(Boolean));
-  expect(tabOrder).toEqual(['Logs', 'Debug', 'Environment', 'Top', 'Runtime', 'Terminal']);
+  expect(panelOrder).toEqual(['Projects', 'Hosts', 'Logs', 'Runtime', 'Terminal', 'Environment', 'Top', 'Debug']);
 
-  const expectSingleActiveTab = async (name) => {
-    await expect(page.locator('.panelTabsGroup .panelTab.active')).toHaveCount(1);
-    await expect(page.getByRole('tab', { name })).toHaveClass(/active/);
+  const expectOnlyPanelButtonActive = async (name) => {
+    await expect(page.locator('.workspacePanelNav .workspacePanelButton[aria-current="page"]')).toHaveCount(1);
+    await expect(page.locator('.workspacePanelNav').getByRole('button', { name, exact: true })).toHaveAttribute('aria-current', 'page');
   };
 
-  await expectSingleActiveTab('Logs');
+  await expectOnlyPanelButtonActive('Projects');
+  await expectSingleWorkspacePanel(page, 'projects');
+  await expect(page.locator('.projectsPanel')).toBeVisible();
+  await expect(page.locator('.projectsPanel')).toContainText('mock-app');
+
+  await selectWorkspacePanel(page, 'Hosts');
+  await expectOnlyPanelButtonActive('Hosts');
+  await expectSingleWorkspacePanel(page, 'hosts');
+  await expect(page.locator('.hostsSidebarPanelMode')).toBeVisible();
+  await expect(page.locator('.hostsSidebarPanelMode')).toContainText('No slave agents registered with master agent.');
+
+  await selectWorkspacePanel(page, 'Runtime');
+  await expectOnlyPanelButtonActive('Runtime');
+  await expectSingleWorkspacePanel(page, 'runtime');
+  await expect(page.locator('.runtimePanel')).toContainText('Server Runtime');
+  await expect(page.locator('.runtimePanel')).toContainText('Master Agent');
+
+  await selectWorkspacePanel(page, 'Logs');
+  await expectOnlyPanelButtonActive('Logs');
+  await expectSingleWorkspacePanel(page, 'logs');
   await expect(page.getByTestId('log-panel')).toBeVisible();
-  await expect(page.getByTestId('log-stream')).toContainText('mock-project-log');
 
-  await page.getByRole('tab', { name: 'Debug' }).click();
-  await expectSingleActiveTab('Debug');
-  await expect(rightPane.locator('.debugPanel')).toBeVisible();
-  await expect(rightPane.locator('.debugTree')).toBeVisible();
+  await selectWorkspacePanel(page, 'Terminal');
+  await expectOnlyPanelButtonActive('Terminal');
+  await expectSingleWorkspacePanel(page, 'terminal');
+  await expect(page.locator('.terminalPanel')).toContainText('Select a slave agent to start a terminal session.');
 
-  await page.getByRole('tab', { name: 'Environment' }).click();
-  await expectSingleActiveTab('Environment');
-  await expect(rightPane.locator('.environmentPanel')).toBeVisible();
-  await expect(rightPane.locator('.environmentPanel')).toContainText('Port Range');
-  await expect(rightPane.locator('.environmentPanel')).toContainText('NODE_ENV');
+  await selectWorkspacePanel(page, 'Environment');
+  await expectOnlyPanelButtonActive('Environment');
+  await expectSingleWorkspacePanel(page, 'environment');
+  await expect(page.locator('.environmentPanel')).toContainText('Port Range');
+  await expect(page.locator('.environmentPanel')).toContainText('NODE_ENV');
 
-  await page.getByRole('tab', { name: 'Top' }).click();
-  await expectSingleActiveTab('Top');
-  await expect(rightPane.locator('.topPanel')).toBeVisible();
-  await expect(rightPane.locator('.topTable')).toContainText('mock-web');
+  await selectWorkspacePanel(page, 'Top');
+  await expectOnlyPanelButtonActive('Top');
+  await expectSingleWorkspacePanel(page, 'top');
+  await expect(page.locator('.topTable')).toContainText('mock-web');
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
-  await expectSingleActiveTab('Runtime');
-  await expect(rightPane.locator('.runtimePanel')).toBeVisible();
-  await expect(rightPane.locator('.runtimePanel')).toContainText('Server Runtime');
-  await expect(rightPane.locator('.runtimePanel')).toContainText('Master Agent');
+  await selectWorkspacePanel(page, 'Debug');
+  await expectOnlyPanelButtonActive('Debug');
+  await expectSingleWorkspacePanel(page, 'debug');
+  await expect(page.locator('.debugTree')).toBeVisible();
+});
 
-  await page.getByRole('tab', { name: 'Terminal' }).click();
-  await expectSingleActiveTab('Terminal');
-  await expect(rightPane.locator('.terminalPanel')).toBeVisible();
-  await expect(rightPane.locator('.terminalPanel')).toContainText('Select a slave agent to start a terminal session.');
+test('mobile workspace menu stays usable and keeps a single visible panel', async ({ page, baseURL }) => {
+  const appUrl = process.env.PLAYWRIGHT_BASE_URL || baseURL || DEFAULT_APP_URL;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installMocks(page);
+  if (!await openMockedApp(page, appUrl)) {
+    return;
+  }
+
+  await expect(page.locator('.workspacePanelNav')).toBeVisible();
+  await expect(page.locator('.workspacePanelNav .workspacePanelButton')).toHaveCount(8);
+  await expect(page.getByTestId('sidebar-divider')).toHaveCount(0);
+  await expect(page.getByTestId('content-divider')).toHaveCount(0);
+
+  for (const [label, panelId] of [
+    ['Projects', 'projects'],
+    ['Hosts', 'hosts'],
+    ['Runtime', 'runtime'],
+    ['Logs', 'logs'],
+    ['Terminal', 'terminal'],
+  ]) {
+    await selectWorkspacePanel(page, label);
+    await expectSingleWorkspacePanel(page, panelId);
+    await expect(page.locator('.workspacePanelNav .workspacePanelButton[aria-current="page"]')).toHaveCount(1);
+    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(hasHorizontalOverflow).toBe(false);
+  }
 });

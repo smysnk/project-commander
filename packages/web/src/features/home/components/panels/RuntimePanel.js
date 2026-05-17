@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import TagChip from '../../../../components/TagChip';
 import { useRuntimePanelContext } from '../../context/RuntimePanelContext';
 import {
@@ -10,6 +10,12 @@ import {
   parseRuntimeArgsInput,
   parseRuntimeEnvInput,
 } from '../../lib/runtimeRegistryUi';
+import {
+  RUNTIME_RESOURCE_HISTORY_LIMIT,
+  RUNTIME_RESOURCE_SAMPLE_INTERVAL_MS,
+  appendDeploymentResourceHistory,
+  buildDeploymentResourceSamples,
+} from '../../lib/runtimeResourceMetrics';
 
 const toDisplayValue = (value, fallback = '-') => {
   const normalized = String(value || '').trim();
@@ -36,6 +42,8 @@ const buildDefaultDraft = (selectedHost, selectedProject) => {
   return {
     projectId: Number.isInteger(Number(selectedProjectOption?.id)) ? Number(selectedProjectOption.id) : null,
     projectPath,
+    deploymentId: null,
+    deploymentKey: '',
     packageKey: '',
     processKey: '',
     cwd: projectPath,
@@ -52,6 +60,8 @@ const buildDraftFromDesiredProcess = (desiredProcess) => ({
   desiredProcessId: Number.isInteger(Number(desiredProcess?.id)) ? Number(desiredProcess.id) : null,
   projectId: Number.isInteger(Number(desiredProcess?.projectId)) ? Number(desiredProcess.projectId) : null,
   projectPath: String(desiredProcess?.projectPath || '').trim(),
+  deploymentId: Number.isInteger(Number(desiredProcess?.deploymentId)) ? Number(desiredProcess.deploymentId) : null,
+  deploymentKey: String(desiredProcess?.deploymentKey || '').trim(),
   packageKey: String(desiredProcess?.packageKey || '').trim(),
   processKey: String(desiredProcess?.processKey || '').trim(),
   cwd: String(desiredProcess?.cwd || '').trim(),
@@ -71,8 +81,14 @@ const buildDraftFromDesiredProcess = (desiredProcess) => ({
 const emptyRuntimeFilters = () => ({
   search: '',
   projectPath: '',
+  deploymentKey: '',
   status: '',
 });
+
+const runtimeEnvToText = (entries) => (Array.isArray(entries) ? entries : [])
+  .map((entry) => `${String(entry?.key || '').trim()}=${entry?.value == null ? '' : String(entry.value)}`)
+  .filter((entry) => entry.trim())
+  .join('\n');
 
 const normalizeFilterValue = (value) => String(value || '').trim().toLowerCase();
 
@@ -118,15 +134,37 @@ const buildRuntimeStatusOptions = (runtimeRows, field) => Array.from(new Set(
 ))
   .sort((left, right) => left.localeCompare(right));
 
+const buildDeploymentFilterOptions = (deployments, runtimeRows) => {
+  const options = new Map();
+  for (const deployment of Array.isArray(deployments) ? deployments : []) {
+    const key = String(deployment?.deploymentKey || '').trim();
+    if (key) {
+      options.set(key, String(deployment?.displayName || key).trim() || key);
+    }
+  }
+  for (const row of Array.isArray(runtimeRows) ? runtimeRows : []) {
+    const key = String(row?.deploymentKey || '').trim();
+    if (key && !options.has(key)) {
+      options.set(key, String(row?.deploymentName || key).trim() || key);
+    }
+  }
+  return Array.from(options.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+};
+
 const filterDesiredProcesses = (processes, filters) => (Array.isArray(processes) ? processes : [])
   .filter((processDefinition) => (
     rowMatchesExact(processDefinition.projectPath, filters.projectPath)
+    && rowMatchesExact(processDefinition.deploymentKey, filters.deploymentKey)
     && rowMatchesExact(processDefinition.desiredState, filters.status)
     && rowMatchesSearch([
       processDefinition.processKey,
       processDefinition.packageKey,
       processDefinition.projectName,
       processDefinition.projectPath,
+      processDefinition.deploymentKey,
+      processDefinition.deploymentName,
       processDefinition.serviceName,
       processDefinition.cwd,
       processDefinition.command,
@@ -139,12 +177,15 @@ const filterDesiredProcesses = (processes, filters) => (Array.isArray(processes)
 const filterObservedRuns = (runs, filters) => (Array.isArray(runs) ? runs : [])
   .filter((observedRun) => (
     rowMatchesExact(observedRun.projectPath, filters.projectPath)
+    && rowMatchesExact(observedRun.deploymentKey, filters.deploymentKey)
     && rowMatchesExact(observedRun.status, filters.status)
     && rowMatchesSearch([
       observedRun.runId,
       observedRun.processKey,
       observedRun.packageKey,
       observedRun.projectPath,
+      observedRun.deploymentKey,
+      observedRun.deploymentName,
       observedRun.cwd,
       observedRun.command,
       ...(Array.isArray(observedRun.args) ? observedRun.args : []),
@@ -155,6 +196,78 @@ const filterObservedRuns = (runs, filters) => (Array.isArray(runs) ? runs : [])
       observedRun.bootId,
     ], filters.search)
   ));
+
+const SPARKLINE_WIDTH = 160;
+const SPARKLINE_HEIGHT = 44;
+
+const getHistoryMax = (history, field, floor = 1) => Math.max(
+  floor,
+  ...((Array.isArray(history) ? history : [])
+    .map((entry) => Number(entry?.[field]))
+    .filter((value) => Number.isFinite(value) && value >= 0)),
+);
+
+const buildSparklinePoints = (history, field, maxValue) => {
+  const entries = Array.isArray(history) ? history : [];
+  if (entries.length === 0) {
+    return '';
+  }
+  if (entries.length === 1) {
+    const y = SPARKLINE_HEIGHT - ((Number(entries[0]?.[field] || 0) / maxValue) * SPARKLINE_HEIGHT);
+    return `0,${y.toFixed(1)} ${SPARKLINE_WIDTH},${y.toFixed(1)}`;
+  }
+  return entries
+    .map((entry, index) => {
+      const x = (index / (entries.length - 1)) * SPARKLINE_WIDTH;
+      const value = Math.max(0, Number(entry?.[field] || 0));
+      const y = SPARKLINE_HEIGHT - ((value / maxValue) * SPARKLINE_HEIGHT);
+      return `${x.toFixed(1)},${Math.max(0, Math.min(SPARKLINE_HEIGHT, y)).toFixed(1)}`;
+    })
+    .join(' ');
+};
+
+const RuntimeSparkline = ({
+  label,
+  value,
+  history,
+  field,
+  maxValue,
+  className = '',
+}) => {
+  const normalizedMax = Number.isFinite(Number(maxValue)) && Number(maxValue) > 0
+    ? Number(maxValue)
+    : getHistoryMax(history, field, 1);
+  const points = buildSparklinePoints(history, field, normalizedMax);
+  return (
+    <div className={`runtimeSparkline ${className}`.trim()}>
+      <div className="runtimeSparklineHeader">
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <svg
+        className="runtimeSparklineSvg"
+        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+        role="img"
+        aria-label={`${label} sparkline`}
+        preserveAspectRatio="none"
+      >
+        <line
+          x1="0"
+          y1={SPARKLINE_HEIGHT - 0.5}
+          x2={SPARKLINE_WIDTH}
+          y2={SPARKLINE_HEIGHT - 0.5}
+          className="runtimeSparklineBaseline"
+        />
+        {points ? (
+          <polyline
+            points={points}
+            className="runtimeSparklineLine"
+          />
+        ) : null}
+      </svg>
+    </div>
+  );
+};
 
 export default function RuntimePanel() {
   const {
@@ -168,6 +281,8 @@ export default function RuntimePanel() {
     slaveRuntimeState,
     desiredProcesses,
     observedProcessRuns,
+    deploymentInstances,
+    hostRuntimeEnv,
     hostPathMappings,
     hostRuntimeState,
     runtimeLoading,
@@ -175,6 +290,9 @@ export default function RuntimePanel() {
     onRefreshSelectedHostRuntime,
     onEnsureDesiredProcess,
     onDeleteDesiredProcess,
+    onEnsureDeploymentInstance,
+    onDeleteDeploymentInstance,
+    onSetHostRuntimeEnv,
     onSoftKillObservedProcess,
     onHardKillObservedProcess,
     onViewManagedProcessLogs,
@@ -183,17 +301,75 @@ export default function RuntimePanel() {
   } = useRuntimePanelContext();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [draft, setDraft] = useState(() => buildDefaultDraft(selectedHost, selectedProject));
+  const [deploymentDraft, setDeploymentDraft] = useState({
+    projectId: null,
+    deploymentKey: '',
+    displayName: '',
+    deploymentPath: '',
+    envText: '',
+    logRoot: '',
+  });
+  const [hostEnvText, setHostEnvText] = useState(() => runtimeEnvToText(hostRuntimeEnv));
   const [editingDesiredProcessId, setEditingDesiredProcessId] = useState(null);
   const [desiredProcessFilters, setDesiredProcessFilters] = useState(() => emptyRuntimeFilters());
   const [observedRunFilters, setObservedRunFilters] = useState(() => emptyRuntimeFilters());
+  const [resourceHistoryByKey, setResourceHistoryByKey] = useState({});
+  const observedProcessRunsRef = useRef([]);
 
   useEffect(() => {
     setDraft(buildDefaultDraft(selectedHost, selectedProject));
     setShowCreateForm(false);
     setEditingDesiredProcessId(null);
+    setDeploymentDraft({
+      projectId: Number.isInteger(Number(resolveSelectedProjectOption(selectedHost, selectedProject)?.id))
+        ? Number(resolveSelectedProjectOption(selectedHost, selectedProject).id)
+        : null,
+      deploymentKey: '',
+      displayName: '',
+      deploymentPath: String(resolveSelectedProjectOption(selectedHost, selectedProject)?.path || selectedProject?.path || '').trim(),
+      envText: '',
+      logRoot: '',
+    });
     setDesiredProcessFilters(emptyRuntimeFilters());
     setObservedRunFilters(emptyRuntimeFilters());
   }, [selectedHost, selectedProject]);
+
+  useEffect(() => {
+    setHostEnvText(runtimeEnvToText(hostRuntimeEnv));
+  }, [selectedHost?.id]);
+
+  useEffect(() => {
+    setResourceHistoryByKey({});
+  }, [selectedHost?.id]);
+
+  useEffect(() => {
+    observedProcessRunsRef.current = Array.isArray(observedProcessRuns) ? observedProcessRuns : [];
+  }, [observedProcessRuns]);
+
+  useEffect(() => {
+    if (!selectedHost) {
+      setResourceHistoryByKey({});
+      return undefined;
+    }
+
+    const appendCurrentSample = () => {
+      const samples = buildDeploymentResourceSamples(observedProcessRunsRef.current);
+      setResourceHistoryByKey((current) => appendDeploymentResourceHistory(current, samples, {
+        limit: RUNTIME_RESOURCE_HISTORY_LIMIT,
+        nowMs: Date.now(),
+      }));
+    };
+
+    appendCurrentSample();
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(appendCurrentSample, RUNTIME_RESOURCE_SAMPLE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [selectedHost?.id]);
 
   const backendName = toDisplayValue(
     runtimeBackendInfo?.displayName || runtimeBackendInfo?.name || runtimeConfig?.runtimeBackend,
@@ -230,6 +406,14 @@ export default function RuntimePanel() {
     () => buildProjectFilterOptions(hostProjects, observedProcessRuns),
     [hostProjects, observedProcessRuns],
   );
+  const desiredDeploymentFilterOptions = useMemo(
+    () => buildDeploymentFilterOptions(deploymentInstances, desiredProcesses),
+    [deploymentInstances, desiredProcesses],
+  );
+  const observedDeploymentFilterOptions = useMemo(
+    () => buildDeploymentFilterOptions(deploymentInstances, observedProcessRuns),
+    [deploymentInstances, observedProcessRuns],
+  );
   const desiredStateFilterOptions = useMemo(
     () => buildRuntimeStatusOptions(desiredProcesses, 'desiredState'),
     [desiredProcesses],
@@ -246,11 +430,22 @@ export default function RuntimePanel() {
     () => filterObservedRuns(observedProcessRuns, observedRunFilters),
     [observedProcessRuns, observedRunFilters],
   );
+  const visibleResourceSamples = useMemo(
+    () => buildDeploymentResourceSamples(filteredObservedProcessRuns),
+    [filteredObservedProcessRuns],
+  );
+  const visibleResourceCards = useMemo(
+    () => visibleResourceSamples.map((sample) => ({
+      ...sample,
+      history: Array.isArray(resourceHistoryByKey?.[sample.key]) ? resourceHistoryByKey[sample.key] : [],
+    })),
+    [resourceHistoryByKey, visibleResourceSamples],
+  );
   const desiredFiltersActive = Boolean(
-    desiredProcessFilters.search || desiredProcessFilters.projectPath || desiredProcessFilters.status,
+    desiredProcessFilters.search || desiredProcessFilters.projectPath || desiredProcessFilters.deploymentKey || desiredProcessFilters.status,
   );
   const observedFiltersActive = Boolean(
-    observedRunFilters.search || observedRunFilters.projectPath || observedRunFilters.status,
+    observedRunFilters.search || observedRunFilters.projectPath || observedRunFilters.deploymentKey || observedRunFilters.status,
   );
 
   const updateDesiredFilter = (field, value) => {
@@ -281,7 +476,22 @@ export default function RuntimePanel() {
       ...current,
       projectId: Number.isInteger(parsedProjectId) ? parsedProjectId : null,
       projectPath: String(nextProject?.path || '').trim(),
+      deploymentId: null,
+      deploymentKey: '',
       cwd: String(nextProject?.path || current.cwd || '').trim(),
+    }));
+  };
+
+  const onDeploymentSelectionChange = (deploymentIdValue) => {
+    const parsedDeploymentId = Number.parseInt(String(deploymentIdValue || '').trim(), 10);
+    const deployment = (Array.isArray(deploymentInstances) ? deploymentInstances : [])
+      .find((candidate) => Number(candidate?.id) === parsedDeploymentId) || null;
+    setDraft((current) => ({
+      ...current,
+      deploymentId: deployment ? Number(deployment.id) : null,
+      deploymentKey: String(deployment?.deploymentKey || '').trim(),
+      cwd: String(deployment?.deploymentPath || current.cwd || '').trim(),
+      logRoot: String(deployment?.logRoot || current.logRoot || '').trim(),
     }));
   };
 
@@ -297,6 +507,8 @@ export default function RuntimePanel() {
       desiredProcessId: editingDesiredProcessId,
       projectId: draft.projectId,
       projectPath: draft.projectPath,
+      deploymentId: draft.deploymentId,
+      deploymentKey: draft.deploymentKey,
       packageKey,
       processKey,
       cwd: draft.cwd,
@@ -334,6 +546,55 @@ export default function RuntimePanel() {
     if (Number(editingDesiredProcessId) === Number(desiredProcess?.id)) {
       cancelDesiredProcessEdit();
     }
+  };
+
+  const submitHostRuntimeEnv = async () => {
+    if (!selectedHost) {
+      return;
+    }
+    await onSetHostRuntimeEnv?.({
+      hostId: selectedHost.id,
+      agentUuid: selectedHost.agentUuid,
+      env: parseRuntimeEnvInput(hostEnvText),
+    });
+  };
+
+  const submitDeploymentInstance = async () => {
+    if (!selectedHost) {
+      return;
+    }
+    const project = hostProjects.find((candidate) => Number(candidate?.id) === Number(deploymentDraft.projectId)) || null;
+    await onEnsureDeploymentInstance?.({
+      hostId: selectedHost.id,
+      agentUuid: selectedHost.agentUuid,
+      projectId: deploymentDraft.projectId,
+      projectPath: String(project?.path || '').trim() || null,
+      deploymentKey: deploymentDraft.deploymentKey,
+      displayName: deploymentDraft.displayName,
+      deploymentPath: deploymentDraft.deploymentPath,
+      env: parseRuntimeEnvInput(deploymentDraft.envText),
+      logRoot: deploymentDraft.logRoot,
+    });
+  };
+
+  const deleteDeploymentInstance = async (deployment) => {
+    if (!selectedHost || !deployment) {
+      return;
+    }
+    if (
+      typeof window !== 'undefined'
+      && !window.confirm(`Delete deployment ${deployment.deploymentKey}?`)
+    ) {
+      return;
+    }
+    const deleteDesiredProcesses = typeof window !== 'undefined'
+      && window.confirm(`Also delete desired processes for ${deployment.deploymentKey}?`);
+    await onDeleteDeploymentInstance?.({
+      hostId: selectedHost.id,
+      agentUuid: selectedHost.agentUuid,
+      deploymentId: deployment.id,
+      deleteDesiredProcesses,
+    });
   };
 
   return (
@@ -506,6 +767,244 @@ export default function RuntimePanel() {
             ) : null}
           </div>
 
+          <div className="runtimeProcessSection">
+            <div className="runtimeSubsectionHeader">
+              <h4 className="runtimeSubsectionTitle">Deployment Resource Graphs</h4>
+              <span className="runtimeFilterCount">
+                {visibleResourceCards.length}
+                {' apps · '}
+                {RUNTIME_RESOURCE_HISTORY_LIMIT}s window
+              </span>
+            </div>
+            {visibleResourceCards.length === 0 ? (
+              <p className="emptyState">No active process telemetry samples are available for the current host/filter.</p>
+            ) : (
+              <div className="runtimeResourceGrid">
+                {visibleResourceCards.map((sample) => {
+                  const history = Array.isArray(sample.history) ? sample.history : [];
+                  const latest = history.length > 0 ? history[history.length - 1] : sample;
+                  const cpuMax = getHistoryMax(history, 'cpuPercent', 100);
+                  const memoryMax = getHistoryMax(history, 'rssBytes', Math.max(1, Number(latest?.rssBytes || sample.rssBytes || 1)));
+                  const ioMax = getHistoryMax(history, 'ioBytesPerSecond', Math.max(1, Number(latest?.ioBytesPerSecond || 1)));
+                  return (
+                    <div className="runtimeResourceCard" key={`resource-${sample.key}`}>
+                      <div className="runtimeResourceCardHeader">
+                        <div className="runtimeResourceTitleBlock">
+                          <strong>{sample.label}</strong>
+                          <span>
+                            {sample.runCount}
+                            {' runs · pid '}
+                            {sample.pids.length > 0 ? sample.pids.join(', ') : '-'}
+                          </span>
+                        </div>
+                        <span className="runtimeInlineMeta">
+                          sampled {toDisplayValue(formatRuntimeDateTime(sample.sampledAt))}
+                        </span>
+                      </div>
+                      <div className="runtimeResourcePackages">
+                        {(sample.packageKeys || []).length > 0 ? sample.packageKeys.join(', ') : 'managed-process'}
+                      </div>
+                      <div className="runtimeSparklineGrid">
+                        <RuntimeSparkline
+                          label="CPU"
+                          value={formatRuntimePercent(latest?.cpuPercent ?? sample.cpuPercent)}
+                          history={history}
+                          field="cpuPercent"
+                          maxValue={cpuMax}
+                          className="cpu"
+                        />
+                        <RuntimeSparkline
+                          label="RSS"
+                          value={formatRuntimeBytes(latest?.rssBytes ?? sample.rssBytes)}
+                          history={history}
+                          field="rssBytes"
+                          maxValue={memoryMax}
+                          className="memory"
+                        />
+                        <RuntimeSparkline
+                          label="IO/s"
+                          value={`${formatRuntimeBytes(latest?.ioBytesPerSecond || 0)}/s`}
+                          history={history}
+                          field="ioBytesPerSecond"
+                          maxValue={ioMax}
+                          className="io"
+                        />
+                      </div>
+                      <div className="runtimeResourceTotals">
+                        <span>Read {formatRuntimeBytes(sample.readBytes)}</span>
+                        <span>Write {formatRuntimeBytes(sample.writeBytes)}</span>
+                        <span>Mem {formatRuntimePercent(sample.memoryPercent)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="hostRuntimeProcessSection">
+            <h4 className="runtimeSubsectionTitle">Host Runtime Env</h4>
+            <div className="runtimeFieldGrid">
+              <label className="runtimeFieldLabel runtimeFieldSpanFull">
+                Shared env for every deployment on this host
+                <textarea
+                  className="hostsAddInput runtimeTextarea"
+                  value={hostEnvText}
+                  onChange={(event) => setHostEnvText(event.target.value)}
+                  disabled={runtimeActionBusy}
+                  placeholder="KEY=VALUE"
+                />
+              </label>
+            </div>
+            <div className="hostCheckoutActions">
+              <button
+                type="button"
+                className="hostsAddAction hostCheckoutSubmit"
+                onClick={submitHostRuntimeEnv}
+                disabled={runtimeActionBusy}
+              >
+                Save Host Env
+              </button>
+            </div>
+          </div>
+
+          <div className="hostRuntimeProcessSection">
+            <div className="runtimeSubsectionHeader">
+              <h4 className="runtimeSubsectionTitle">Deployment Instances</h4>
+              <span className="runtimeFilterCount">{(deploymentInstances || []).length}</span>
+            </div>
+            <div className="runtimeFieldGrid">
+              <label className="runtimeFieldLabel">
+                Project
+                <select
+                  className="hostsAddInput"
+                  value={deploymentDraft.projectId ?? ''}
+                  onChange={(event) => {
+                    const projectId = Number.parseInt(event.target.value, 10);
+                    const project = hostProjects.find((candidate) => Number(candidate?.id) === projectId) || null;
+                    setDeploymentDraft((current) => ({
+                      ...current,
+                      projectId: Number.isInteger(projectId) ? projectId : null,
+                      deploymentPath: String(project?.path || current.deploymentPath || '').trim(),
+                    }));
+                  }}
+                  disabled={runtimeActionBusy}
+                >
+                  <option value="">Select project</option>
+                  {hostProjects.map((project) => (
+                    <option key={`deployment-project-${project.id}`} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="runtimeFieldLabel">
+                Deployment Key
+                <input
+                  type="text"
+                  className="hostsAddInput"
+                  value={deploymentDraft.deploymentKey}
+                  onChange={(event) => setDeploymentDraft((current) => ({ ...current, deploymentKey: event.target.value }))}
+                  disabled={runtimeActionBusy}
+                  placeholder="local, staging, prod-a"
+                />
+              </label>
+              <label className="runtimeFieldLabel">
+                Display Name
+                <input
+                  type="text"
+                  className="hostsAddInput"
+                  value={deploymentDraft.displayName}
+                  onChange={(event) => setDeploymentDraft((current) => ({ ...current, displayName: event.target.value }))}
+                  disabled={runtimeActionBusy}
+                />
+              </label>
+              <label className="runtimeFieldLabel">
+                Deployment Path
+                <input
+                  type="text"
+                  className="hostsAddInput"
+                  value={deploymentDraft.deploymentPath}
+                  onChange={(event) => setDeploymentDraft((current) => ({ ...current, deploymentPath: event.target.value }))}
+                  disabled={runtimeActionBusy}
+                />
+              </label>
+              <label className="runtimeFieldLabel">
+                Log Root
+                <input
+                  type="text"
+                  className="hostsAddInput"
+                  value={deploymentDraft.logRoot}
+                  onChange={(event) => setDeploymentDraft((current) => ({ ...current, logRoot: event.target.value }))}
+                  disabled={runtimeActionBusy}
+                />
+              </label>
+              <label className="runtimeFieldLabel runtimeFieldSpanFull">
+                Deployment Env
+                <textarea
+                  className="hostsAddInput runtimeTextarea"
+                  value={deploymentDraft.envText}
+                  onChange={(event) => setDeploymentDraft((current) => ({ ...current, envText: event.target.value }))}
+                  disabled={runtimeActionBusy}
+                  placeholder="WEB_PORT=3015"
+                />
+              </label>
+            </div>
+            <div className="hostCheckoutActions">
+              <button
+                type="button"
+                className="hostsAddAction hostCheckoutSubmit"
+                onClick={submitDeploymentInstance}
+                disabled={runtimeActionBusy}
+              >
+                Save Deployment
+              </button>
+            </div>
+            {(deploymentInstances || []).length > 0 ? (
+              <div className="hostRuntimeProcessList">
+                {deploymentInstances.map((deployment) => (
+                  <div key={`deployment-${deployment.id}`} className="hostRuntimeProcessRow">
+                    <div className="hostRuntimeProcessIdentity">
+                      <strong>{toDisplayValue(deployment.displayName || deployment.deploymentKey)}</strong>
+                      <span className="hostRuntimeProcessMeta">{toDisplayValue(deployment.deploymentPath)}</span>
+                    </div>
+                    <div className="hostRuntimeProcessMeta">
+                      <span>{toDisplayValue(deployment.deploymentKey)}</span>
+                      <span>{(deployment.env || []).length} env vars</span>
+                    </div>
+                    <div className="runtimeProcessActions">
+                      <button
+                        type="button"
+                        className="hostTextActionButton"
+                        onClick={() => setDeploymentDraft({
+                          projectId: deployment.projectId,
+                          deploymentKey: deployment.deploymentKey || '',
+                          displayName: deployment.displayName || '',
+                          deploymentPath: deployment.deploymentPath || '',
+                          envText: runtimeEnvToText(deployment.env),
+                          logRoot: deployment.logRoot || '',
+                        })}
+                        disabled={runtimeActionBusy}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="hostTextActionButton danger"
+                        onClick={() => deleteDeploymentInstance(deployment)}
+                        disabled={runtimeActionBusy}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="emptyState hostRuntimeEmptyState">No deployment instances configured.</p>
+            )}
+          </div>
+
           <div className="hostRuntimeProcessSection">
             <h4 className="runtimeSubsectionTitle">Shared Path Mappings</h4>
             {visibleHostPathMappings.length > 0 ? (
@@ -557,6 +1056,24 @@ export default function RuntimePanel() {
                   </select>
                 </label>
                 <label className="runtimeFieldLabel">
+                  Deployment
+                  <select
+                    className="hostsAddInput"
+                    value={draft.deploymentId ?? ''}
+                    onChange={(event) => onDeploymentSelectionChange(event.target.value)}
+                    disabled={runtimeActionBusy}
+                  >
+                    <option value="">No deployment namespace</option>
+                    {(deploymentInstances || [])
+                      .filter((deployment) => !draft.projectId || Number(deployment.projectId) === Number(draft.projectId))
+                      .map((deployment) => (
+                        <option key={`process-deployment-${deployment.id}`} value={deployment.id}>
+                          {deployment.displayName || deployment.deploymentKey}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label className="runtimeFieldLabel">
                   Package Key
                   <input
                     type="text"
@@ -574,7 +1091,7 @@ export default function RuntimePanel() {
                     value={draft.processKey}
                     onChange={(event) => onDraftFieldChange('processKey', event.target.value)}
                     disabled={runtimeActionBusy}
-                    placeholder="Defaults to package key"
+                    placeholder="Defaults to deployment.package when a deployment is selected"
                   />
                 </label>
                 <label className="runtimeFieldLabel">
@@ -708,6 +1225,19 @@ export default function RuntimePanel() {
               </select>
               <select
                 className="hostsAddInput runtimeFilterSelect"
+                value={desiredProcessFilters.deploymentKey}
+                onChange={(event) => updateDesiredFilter('deploymentKey', event.target.value)}
+                aria-label="Filter desired processes by deployment"
+              >
+                <option value="">All deployments</option>
+                {desiredDeploymentFilterOptions.map((option) => (
+                  <option key={`desired-deployment-filter-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="hostsAddInput runtimeFilterSelect"
                 value={desiredProcessFilters.status}
                 onChange={(event) => updateDesiredFilter('status', event.target.value)}
                 aria-label="Filter desired processes by state"
@@ -747,6 +1277,7 @@ export default function RuntimePanel() {
                     </div>
                     <div className="runtimeProcessMetrics">
                       <span>{toDisplayValue(processDefinition.projectName || processDefinition.projectPath)}</span>
+                      <span>Deployment {toDisplayValue(processDefinition.deploymentName || processDefinition.deploymentKey, 'none')}</span>
                       <span>{toDisplayValue(processDefinition.cwd)}</span>
                       <span>{toDisplayValue(processDefinition.restartPolicy)}</span>
                     </div>
@@ -807,6 +1338,19 @@ export default function RuntimePanel() {
               </select>
               <select
                 className="hostsAddInput runtimeFilterSelect"
+                value={observedRunFilters.deploymentKey}
+                onChange={(event) => updateObservedFilter('deploymentKey', event.target.value)}
+                aria-label="Filter observed runs by deployment"
+              >
+                <option value="">All deployments</option>
+                {observedDeploymentFilterOptions.map((option) => (
+                  <option key={`observed-deployment-filter-${option.value}`} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="hostsAddInput runtimeFilterSelect"
                 value={observedRunFilters.status}
                 onChange={(event) => updateObservedFilter('status', event.target.value)}
                 aria-label="Filter observed runs by status"
@@ -847,6 +1391,7 @@ export default function RuntimePanel() {
                       </span>
                     </div>
                     <div className="runtimeProcessMetrics">
+                      <span>Deployment {toDisplayValue(observedRun.deploymentName || observedRun.deploymentKey, 'none')}</span>
                       <span>CPU {formatRuntimePercent(observedRun.runtimeState?.cpuPercent)}</span>
                       <span>Mem {formatRuntimeBytes(observedRun.runtimeState?.rssBytes)}</span>
                       <span>

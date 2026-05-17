@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { installWebSocketMock } = require('./helpers/wsMock');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const HOST_ID = 1;
@@ -237,7 +238,7 @@ async function installGraphqlMocks(page) {
       return ok({ hosts: [state.host] });
     }
 
-    if (query.includes('query SlaveRuntimeState')) {
+    if (query.includes('query SlaveRuntimeState') || query.includes('query SlaveRuntimeTelemetry')) {
       return ok({ slaveRuntimeState: buildSlaveRuntimeState() });
     }
 
@@ -440,12 +441,13 @@ test('creates, edits, tails, soft-kills, hard-kills, and deletes a managed proce
     return;
   }
 
+  await selectWorkspacePanel(page, 'Hosts');
   const hostCard = page.locator('.hostList .hostCard').filter({ hasText: /blackbox/i }).first();
   await expect(hostCard).toBeVisible();
   await hostCard.click();
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
-  const runtimePanel = page.locator('.rightPanel .runtimePanel');
+  await selectWorkspacePanel(page, 'Runtime');
+  const runtimePanel = page.locator('.runtimePanel');
   await expect(runtimePanel).toBeVisible();
   await expect(runtimePanel).toContainText('Selected Slave Agent');
 
@@ -458,6 +460,9 @@ test('creates, edits, tails, soft-kills, hard-kills, and deletes a managed proce
   await expect(runtimePanel).toContainText('Observed Runs');
   await expect(runtimePanel).toContainText('worker');
   await expect(runtimePanel).toContainText('pid 7345');
+  await expect(runtimePanel).toContainText('Deployment Resource Graphs');
+  await expect(runtimePanel).toContainText('worker · managed-app');
+  await expect(runtimePanel.locator('.runtimeResourceCard').filter({ hasText: /worker · managed-app/ })).toContainText('pid 7345');
   expect(graphqlState.ensureCalls).toHaveLength(1);
 
   const desiredWorkerRow = runtimePanel.locator('.runtimeProcessRow').filter({ hasText: /worker/ }).first();
@@ -487,16 +492,19 @@ test('creates, edits, tails, soft-kills, hard-kills, and deletes a managed proce
     && entry?.context?.contextKey === `process:${HOST_ID}:${RUN_ID}`
   ))).toBe(true);
 
-  await page.getByRole('tab', { name: 'Runtime' }).click();
-  await observedWorkerRow.getByRole('button', { name: 'Soft Kill' }).click();
+  await selectWorkspacePanel(page, 'Runtime');
+  const observedWorkerRowAfterLogs = runtimePanel.locator('.runtimeProcessRow').filter({ hasText: /pid 7345/ }).first();
+  await observedWorkerRowAfterLogs.getByRole('button', { name: 'Soft Kill' }).click();
   await expect(runtimePanel).toContainText('stopping');
   expect(graphqlState.softKillCalls).toHaveLength(1);
 
-  await observedWorkerRow.getByRole('button', { name: 'Hard Kill' }).click();
+  const observedWorkerRowAfterSoftKill = runtimePanel.locator('.runtimeProcessRow').filter({ hasText: /pid 7345/ }).first();
+  await observedWorkerRowAfterSoftKill.getByRole('button', { name: 'Hard Kill' }).click();
   await expect(runtimePanel).toContainText('exited');
   expect(graphqlState.hardKillCalls).toHaveLength(1);
 
-  await desiredWorkerRow.getByRole('button', { name: 'Delete' }).click();
+  const desiredWorkerRowAfterKills = runtimePanel.locator('.runtimeProcessRow').filter({ hasText: /worker/ }).first();
+  await desiredWorkerRowAfterKills.getByRole('button', { name: 'Delete' }).click();
   await expect(runtimePanel).toContainText('No managed processes have been declared for this host.');
   expect(graphqlState.deleteCalls).toHaveLength(1);
 });

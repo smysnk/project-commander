@@ -1,12 +1,12 @@
 {
   "name": "web",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "private": true,
   "scripts": {
     "dev": "node ./scripts/next-with-env.js dev",
     "build": "node ../../scripts/version/sync-package-versions.mjs --quiet >/dev/null && next build",
     "start": "node ./scripts/next-with-env.js start",
-    "test:unit": "node --test src/components/infinite-log/windowing.test.js src/lib/logQueryProtocol.test.js src/features/home/lib/logViewer.test.js src/features/home/hooks/hostActionUtils.test.js src/features/home/hooks/terminalActionUtils.test.js src/store/realtimeStateHelpers.test.mjs",
+    "test:unit": "node --test src/components/infinite-log/windowing.test.js src/lib/logQueryProtocol.test.js src/features/home/lib/logViewer.test.js src/features/home/lib/runtimeResourceMetrics.test.js src/features/home/lib/workspacePanels.test.js src/features/home/hooks/hostActionUtils.test.js src/features/home/hooks/terminalActionUtils.test.js src/store/realtimeStateHelpers.test.mjs",
     "test:ui": "playwright test -c playwright.config.js",
     "test:ui:report": "playwright test -c playwright.reporter.config.js",
     "test:ui:live:managed-process": "playwright test -c playwright.config.js ui-tests/live-managed-process-runtime.spec.js"

@@ -304,16 +304,3 @@ export const deriveDestinationFolderFromRepositoryUrl = (value) => {
     .replace(/^-+/, '')
     .replace(/-+$/, '');
 };
-
-export const clampSidebarWidth = (value, { min, max, fallback } = {}) => {
-  const normalizedMin = Number.isFinite(Number(min)) ? Number(min) : 220;
-  const normalizedMax = Number.isFinite(Number(max)) ? Number(max) : 680;
-  const parsed = Number(value);
-  const normalizedFallback = Number.isFinite(Number(fallback)) ? Number(fallback) : normalizedMin;
-
-  if (!Number.isFinite(parsed)) {
-    return Math.max(normalizedMin, Math.min(normalizedMax, Math.round(normalizedFallback)));
-  }
-
-  return Math.max(normalizedMin, Math.min(normalizedMax, Math.round(parsed)));
-};

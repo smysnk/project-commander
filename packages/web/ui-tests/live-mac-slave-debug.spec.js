@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const RUN_LIVE_DEBUG = String(process.env.PLAYWRIGHT_LIVE_MAC_DEBUG || '').trim() === '1';
@@ -26,10 +27,7 @@ test('live mac slave debug: local host shows socket target, no port row, and pro
     return;
   }
 
-  const expandSidebarButton = page.getByRole('button', { name: /expand hosts sidebar/i });
-  if (await expandSidebarButton.count()) {
-    await expandSidebarButton.first().click();
-  }
+  await selectWorkspacePanel(page, 'Hosts');
 
   const anyHostCard = page.locator('.hostList .hostCard');
   try {

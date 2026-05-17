@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { selectWorkspacePanel } = require('./helpers/workspacePanels');
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const PROJECT_PATH = '/tmp/mock-project';
@@ -143,6 +144,7 @@ test('host rows are edge-to-edge with padded inner content', async ({ page, base
     return;
   }
 
+  await selectWorkspacePanel(page, 'Hosts');
   const sidebarBody = page.locator('.hostsSidebarBody');
   const hostRow = page.locator('.hostList .hostCard').first();
   const hostTitle = hostRow.locator('.hostCardTitle').first();

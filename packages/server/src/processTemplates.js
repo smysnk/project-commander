@@ -3,6 +3,7 @@ const {
   Host,
   Project,
   ProcessTemplate,
+  DeploymentInstance,
 } = require('./models');
 const {
   normalizePathPrefix,
@@ -82,6 +83,17 @@ const normalizeEnvObject = (env) => {
     }, {});
   }
   return parseStructuredValue(env, {});
+};
+
+const normalizeDeploymentKey = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9._:-]+/g, '-')
+  .replace(/^-+|-+$/g, '');
+
+const getHostRuntimeEnvJson = (hostRecord) => {
+  const metadata = parseStructuredValue(hostRecord?.metadata, {});
+  return normalizeEnvObject(metadata.runtimeEnv || metadata.runtimeEnvJson);
 };
 
 const normalizeStringArray = (value) => parseStructuredValue(value, [])
@@ -332,7 +344,7 @@ const readContextValue = (context, variableName) => {
   if (parts.length === 0) {
     return '';
   }
-  if (!['host', 'project', 'package', 'env'].includes(parts[0])) {
+  if (!['host', 'project', 'deployment', 'package', 'env'].includes(parts[0])) {
     throw new Error(`Unsupported template variable: ${variableName}`);
   }
   let current = context;
@@ -364,6 +376,7 @@ const createProcessTemplateCatalog = ({
   const HostModel = models.Host || Host;
   const ProjectModel = models.Project || Project;
   const ProcessTemplateModel = models.ProcessTemplate || ProcessTemplate;
+  const DeploymentInstanceModel = models.DeploymentInstance || DeploymentInstance;
 
   const findHost = async ({ hostId, agentUuid } = {}) => {
     const parsedHostId = normalizeOptionalInteger(hostId);
@@ -431,6 +444,24 @@ const createProcessTemplateCatalog = ({
       throw new Error('Project not found for process template operation');
     }
     return { host, project };
+  };
+
+  const findDeployment = async ({ deploymentId, deploymentKey, hostId, projectId } = {}) => {
+    const parsedDeploymentId = normalizeOptionalInteger(deploymentId);
+    if (parsedDeploymentId) {
+      return DeploymentInstanceModel.findByPk(parsedDeploymentId);
+    }
+    const normalizedDeploymentKey = normalizeDeploymentKey(deploymentKey);
+    if (!normalizedDeploymentKey || !hostId || !projectId) {
+      return null;
+    }
+    return DeploymentInstanceModel.findOne({
+      where: {
+        hostId,
+        projectId,
+        deploymentKey: normalizedDeploymentKey,
+      },
+    });
   };
 
   const loadPersistedTemplates = async ({ host, project } = {}) => {
@@ -517,6 +548,16 @@ const createProcessTemplateCatalog = ({
     const projectRecord = toPlainRecord(project);
     const hostId = normalizeOptionalInteger(hostRecord?.id);
     const projectId = normalizeOptionalInteger(projectRecord?.id);
+    const deployment = await findDeployment({
+      deploymentId: input.deploymentId,
+      deploymentKey: input.deploymentKey,
+      hostId,
+      projectId,
+    });
+    if ((normalizeOptionalInteger(input.deploymentId) || normalizeDeploymentKey(input.deploymentKey)) && !deployment) {
+      throw new Error('Deployment instance could not be resolved for process template');
+    }
+    const deploymentRecord = toPlainRecord(deployment);
     const projectHostPath = input.codexPath && hostPathMappings && typeof hostPathMappings.resolveHostPath === 'function'
       ? String((await hostPathMappings.resolveHostPath({
         hostId,
@@ -525,10 +566,16 @@ const createProcessTemplateCatalog = ({
         allowUnapproved: input.allowUnapproved,
       }))?.hostPath || '').trim()
       : (String(input.projectPath || '').trim() || getProjectPath(projectRecord));
-    const projectCodexPath = String(input.codexPath || projectHostPath || '').trim();
+    const deploymentHostPath = String(deploymentRecord?.deploymentPath || projectHostPath || '').trim();
+    const projectCodexPath = String(input.codexPath || deploymentHostPath || projectHostPath || '').trim();
     const inputEnv = normalizeEnvObject(input.env);
     const templateEnv = normalizeEnvObject(template.envJson);
-    const env = { ...templateEnv, ...inputEnv };
+    const processEnv = { ...templateEnv, ...inputEnv };
+    const env = {
+      ...getHostRuntimeEnvJson(hostRecord),
+      ...normalizeEnvObject(deploymentRecord?.envJson),
+      ...processEnv,
+    };
     const packageKeyTemplate = input.packageKey || template.packageKey || template.templateKey;
     const packageKey = compileTemplateString(packageKeyTemplate, {
       host: {}, project: {}, package: {}, env,
@@ -545,8 +592,13 @@ const createProcessTemplateCatalog = ({
       },
       project: {
         name: String(projectRecord?.name || '').trim(),
-        hostPath: projectHostPath,
+        hostPath: deploymentHostPath || projectHostPath,
         codexPath: projectCodexPath,
+      },
+      deployment: {
+        key: String(deploymentRecord?.deploymentKey || '').trim(),
+        name: String(deploymentRecord?.displayName || deploymentRecord?.deploymentKey || '').trim(),
+        path: deploymentHostPath,
       },
       package: {
         key: packageKey,
@@ -554,7 +606,10 @@ const createProcessTemplateCatalog = ({
       },
       env,
     };
-    const processKey = compileTemplateString(input.processKey || template.processKeyTemplate, context).trim() || packageKey;
+    const compiledProcessKey = compileTemplateString(input.processKey || template.processKeyTemplate, context).trim() || packageKey;
+    const processKey = deploymentRecord?.deploymentKey && !input.processKey && compiledProcessKey === packageKey
+      ? `${deploymentRecord.deploymentKey}.${compiledProcessKey}`
+      : compiledProcessKey;
     const cwd = normalizeCompiledPath(compileTemplateString(input.cwd || template.cwdTemplate, context));
     const command = compileTemplateString(input.command || template.command, context).trim();
     if (!hostId || !projectId || !cwd || !command || !packageKey || !processKey) {
@@ -570,6 +625,8 @@ const createProcessTemplateCatalog = ({
       hostId,
       slaveId: String(hostRecord?.agentUuid || input.agentUuid || '').trim() || null,
       projectId,
+      deploymentId: normalizeOptionalInteger(deploymentRecord?.id),
+      deploymentKey: String(deploymentRecord?.deploymentKey || input.deploymentKey || '').trim() || null,
       projectPath: projectHostPath,
       serviceId: normalizeOptionalInteger(input.serviceId),
       processKey,
@@ -580,8 +637,8 @@ const createProcessTemplateCatalog = ({
       cwd,
       command,
       argsJson: args,
-      envJson: env,
-      logRoot,
+      envJson: processEnv,
+      logRoot: logRoot || String(deploymentRecord?.logRoot || '').trim() || null,
       restartPolicy: String(input.restartPolicy || template.restartPolicy || 'manual').trim() || 'manual',
       createdBy: String(input.createdBy || 'process-template').trim() || 'process-template',
       updatedBy: String(input.updatedBy || input.createdBy || 'process-template').trim() || 'process-template',

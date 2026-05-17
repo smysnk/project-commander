@@ -21,13 +21,14 @@ export default function useTagColumnWidth({
   maxFraction = 1,
 }) {
   const [resolvedWidth, setResolvedWidth] = useState(fallbackWidth);
+  const valuesKey = toUniqueLabels(values).join('\n');
 
   useEffect(() => {
     if (typeof document === 'undefined') {
       return undefined;
     }
 
-    const labels = toUniqueLabels(values);
+    const labels = valuesKey ? valuesKey.split('\n') : [];
     const measureTarget = document.createElement('span');
     measureTarget.className = 'tagChip tagChip--left tagChipMeasure';
     document.body.appendChild(measureTarget);
@@ -72,7 +73,7 @@ export default function useTagColumnWidth({
       }
       measureTarget.remove();
     };
-  }, [containerRef, fallbackWidth, maxFraction, maxWidth, minWidth, values]);
+  }, [containerRef, fallbackWidth, maxFraction, maxWidth, minWidth, valuesKey]);
 
   return resolvedWidth;
 }

@@ -7,18 +7,13 @@ import {
   disconnectHomeRealtime,
   setHomeDomainField,
   setPanelProjectExplorerFollowMode,
-  setPanelProjectExplorerMode,
-  setPanelProjectListLayout,
   setPanelProjectListSelectedProject,
   setUiActiveLogContextKey,
+  setUiActiveWorkspacePanel,
   setUiDisabledLogLevels,
   setUiError,
-  setUiResizing,
   setUiSelectedLogServices,
   setUiDebugExpandedPaths,
-  setUiHostsSidebarCollapsed,
-  setUiHostsSidebarWidthPx,
-  setUiLeftPanelMode,
   setUiSelectedHostId,
   setUserStyle,
   resolveClientThemePreference,
@@ -30,10 +25,10 @@ import {
   MUTATION_SET_PROJECT_PORT_RANGE_SETTINGS,
 } from './graphql/documents';
 import {
-  LEFT_PANEL_MODE,
   PORT_RANGE_MODE,
   PORT_RANGE_BEGIN_MIN,
   PORT_RANGE_BEGIN_MAX,
+  WORKSPACE_PANEL,
 } from './constants/ui';
 import {
   deriveDestinationFolderFromRepositoryUrl,
@@ -46,6 +41,9 @@ import {
   LOG_LEVEL_LETTER_MAP,
   normalizeLogLevelName,
 } from './lib/logTransforms';
+import {
+  getWorkspacePanelFromLegacyState,
+} from './lib/workspacePanels.mjs';
 import {
   formatRuntimeDateTime,
   getDefaultWsEndpoint,
@@ -61,17 +59,14 @@ import {
 } from './hooks/useHomeQueries';
 import useRuntimeRegistryActions from './hooks/useRuntimeRegistryActions';
 import { useTerminalActions } from './hooks/useTerminalActions';
-import useHomeLayoutController from './controllers/useHomeLayoutController';
 import useHostsSidebarController from './controllers/useHostsSidebarController';
 import useLogsPanelController from './controllers/useLogsPanelController';
 import useProjectsPaneController from './controllers/useProjectsPaneController';
-import useRightPaneController from './controllers/useRightPaneController';
 import useStatusBarController from './controllers/useStatusBarController';
 import HomePageShellContainer from './containers/HomePageShellContainer';
 import { HomeLayoutProvider } from './context/HomeLayoutContext';
 import { HostsSidebarProvider } from './context/HostsSidebarContext';
 import { ProjectsPaneProvider } from './context/ProjectsPaneContext';
-import { RightPaneProvider } from './context/RightPaneContext';
 import { LogsPanelProvider } from './context/LogsPanelContext';
 import { DebugPanelProvider } from './context/DebugPanelContext';
 import { EnvironmentPanelProvider } from './context/EnvironmentPanelContext';
@@ -81,6 +76,7 @@ import { TerminalPanelProvider } from './context/TerminalPanelContext';
 import { StatusBarProvider } from './context/StatusBarContext';
 import {
   selectAddingHost,
+  selectActiveWorkspacePanel,
   selectCheckoutAutoDestinationByHostId,
   selectCheckoutBaseDirectoryByHostId,
   selectCheckoutDestinationByHostId,
@@ -98,10 +94,6 @@ import {
   selectHomeLoading,
   selectHosts,
   selectHostsLoading,
-  selectHostsSidebarCollapsed,
-  selectHostsSidebarWidthPx,
-  selectLeftPanelMode,
-  selectLeftWidthPct,
   selectLogsLoading,
   selectLogsQueryEntriesByContext,
   selectManualHostIp,
@@ -115,8 +107,6 @@ import {
   selectProjectPortRangeSettingsSaving,
   selectProjectProcessStats,
   selectProjects,
-  selectRightTab,
-  selectResizing,
   selectRuntimeConfig,
   selectRuntimeBackendInfo,
   selectRuntimeBackendInfoLoading,
@@ -218,14 +208,6 @@ const ORDERED_TYPE_ICON_KEYS = ['node', 'go', 'monorepo'];
 const ORDERED_SERVICE_KEYS = ['main', 'graphql', 'api', 'admin'];
 const CONTROL_ADJACENT_SERVICE_KEYS = ['admin', 'api', 'main'];
 const PANEL_STATE_STORAGE_KEY = 'project-discovery:panel-state';
-const RIGHT_PANE_TAB = {
-  LOGS: 'logs',
-  DEBUG: 'debug',
-  ENVIRONMENT: 'environment',
-  TOP: 'top',
-  RUNTIME: 'runtime',
-  TERMINAL: 'terminal',
-};
 
 const SERVICE_ICON_DEFS = {
   main: { label: 'Main', icon: FiGlobe, className: 'main' },
@@ -339,17 +321,12 @@ const getDefaultDebugExpandedPaths = (selectedProject = null) => {
 export default function HomePageContainer({ authEnabled = false }) {
   const dispatch = useDispatch();
   const runtimeConfig = useSelector(selectRuntimeConfig);
-  const leftWidthPct = useSelector(selectLeftWidthPct);
   const selectedProjectPath = useSelector(selectSelectedProjectPath);
-  const rightTab = useSelector(selectRightTab);
+  const activeWorkspacePanel = useSelector(selectActiveWorkspacePanel);
   const followLogs = useSelector(selectFollowLogs);
   const editorTheme = useSelector(selectEditorTheme);
-  const leftPanelMode = useSelector(selectLeftPanelMode);
   const runtimeBackendInfo = useSelector(selectRuntimeBackendInfo);
   const runtimeBackendInfoLoading = useSelector(selectRuntimeBackendInfoLoading);
-  const hostsSidebarCollapsed = useSelector(selectHostsSidebarCollapsed);
-  const hostsSidebarWidthPx = useSelector(selectHostsSidebarWidthPx);
-  const resizing = useSelector(selectResizing);
   const selectedHostId = useSelector(selectSelectedHostId);
   const error = useSelector(selectError);
   const showAddHostRow = useSelector(selectShowAddHostRow);
@@ -414,15 +391,23 @@ export default function HomePageContainer({ authEnabled = false }) {
   const wsEndpoint = runtimeConfig?.wsEndpoint || getDefaultWsEndpoint();
 
   const workspaceRef = useRef(null);
-  const mainPanelsRef = useRef(null);
   const logStreamRef = useRef(null);
   const terminalOutputRef = useRef(null);
-  const resizingRef = useRef(false);
-  const resizingHandleRef = useRef(null);
   const projectLogsRef = useRef([]);
   const overlayLogSeedRef = useRef(1);
   const isProgrammaticLogScrollRef = useRef(false);
   const debugExpandedPathsRef = useRef(debugExpandedPaths);
+  const isHostsWorkspacePanelActive = activeWorkspacePanel === WORKSPACE_PANEL.HOSTS;
+  const isRuntimeWorkspacePanelActive = activeWorkspacePanel === WORKSPACE_PANEL.RUNTIME;
+  const isTerminalWorkspacePanelActive = activeWorkspacePanel === WORKSPACE_PANEL.TERMINAL;
+  const isEnvironmentWorkspacePanelActive = activeWorkspacePanel === WORKSPACE_PANEL.ENVIRONMENT;
+  const isTopWorkspacePanelActive = activeWorkspacePanel === WORKSPACE_PANEL.TOP;
+  const shouldPollSelectedHostRuntime = (
+    isGoMasterBackend
+    && Boolean(selectedHost)
+    && (isHostsWorkspacePanelActive || isRuntimeWorkspacePanelActive)
+  );
+  const hasActiveTerminalSession = selectedTerminalSession?.status === 'active';
 
   useEffect(() => {
     debugExpandedPathsRef.current = debugExpandedPaths;
@@ -465,25 +450,23 @@ export default function HomePageContainer({ authEnabled = false }) {
       const uiInteractions = parsed?.uiInteractions || {};
 
       if (panelProjectList && typeof panelProjectList === 'object') {
-        dispatch(setPanelProjectListLayout({
-          leftWidthPct: panelProjectList.leftWidthPct,
-        }));
         if (typeof panelProjectList.selectedProjectPath === 'string') {
           dispatch(setPanelProjectListSelectedProject(panelProjectList.selectedProjectPath));
         }
       }
 
       if (panelProjectExplorer && typeof panelProjectExplorer === 'object') {
-        dispatch(setPanelProjectExplorerMode(panelProjectExplorer.mode));
         if (typeof panelProjectExplorer.isFollowMode === 'boolean') {
           dispatch(setPanelProjectExplorerFollowMode(panelProjectExplorer.isFollowMode));
         }
       }
 
       if (uiInteractions && typeof uiInteractions === 'object') {
-        dispatch(setUiLeftPanelMode(uiInteractions.leftPanelMode));
-        dispatch(setUiHostsSidebarCollapsed(Boolean(uiInteractions.hostsSidebarCollapsed)));
-        dispatch(setUiHostsSidebarWidthPx(uiInteractions.hostsSidebarWidthPx));
+        dispatch(setUiActiveWorkspacePanel(getWorkspacePanelFromLegacyState({
+          activeWorkspacePanel: uiInteractions.activeWorkspacePanel,
+          explorerMode: panelProjectExplorer?.mode,
+          panelMode: uiInteractions.leftPanelMode,
+        })));
         dispatch(setUiSelectedHostId(uiInteractions.selectedHostId));
         dispatch(setUiActiveLogContextKey(uiInteractions.activeLogContextKey));
         dispatch(setUiSelectedLogServices(
@@ -517,21 +500,9 @@ export default function HomePageContainer({ authEnabled = false }) {
     dispatch(setUiError(String(nextValue || '')));
   }, [dispatch, error]);
 
-  const setLeftPanelMode = useCallback((valueOrUpdater) => {
-    const currentValue = String(leftPanelMode || LEFT_PANEL_MODE.PROJECTS);
-    const nextValue = typeof valueOrUpdater === 'function'
-      ? valueOrUpdater(currentValue)
-      : valueOrUpdater;
-    dispatch(setUiLeftPanelMode(String(nextValue || LEFT_PANEL_MODE.PROJECTS)));
-  }, [dispatch, leftPanelMode]);
-
-  const setHostsSidebarCollapsed = useCallback((valueOrUpdater) => {
-    const currentValue = Boolean(hostsSidebarCollapsed);
-    const nextValue = typeof valueOrUpdater === 'function'
-      ? valueOrUpdater(currentValue)
-      : valueOrUpdater;
-    dispatch(setUiHostsSidebarCollapsed(Boolean(nextValue)));
-  }, [dispatch, hostsSidebarCollapsed]);
+  const onSelectWorkspacePanel = useCallback((workspacePanel) => {
+    dispatch(setUiActiveWorkspacePanel(workspacePanel));
+  }, [dispatch]);
 
   const setSelectedHostId = useCallback((valueOrUpdater) => {
     const currentValue = selectedHostId ?? null;
@@ -548,14 +519,6 @@ export default function HomePageContainer({ authEnabled = false }) {
   const setManualHostIp = useCallback((value) => {
     dispatch(setHomeDomainField('manualHostIp', String(value || '')));
   }, [dispatch]);
-
-  const setResizing = useCallback((valueOrUpdater) => {
-    const currentValue = Boolean(resizing);
-    const nextValue = typeof valueOrUpdater === 'function'
-      ? valueOrUpdater(currentValue)
-      : valueOrUpdater;
-    dispatch(setUiResizing(Boolean(nextValue)));
-  }, [dispatch, resizing]);
 
   const setDebugExpandedPaths = useCallback((valueOrUpdater) => {
     const currentValue = new Set(
@@ -669,7 +632,7 @@ export default function HomePageContainer({ authEnabled = false }) {
     setRuntimeBackendInfo,
     setRuntimeBackendInfoLoading,
   });
-  const { loadSlaveRuntimeBundle } = useRuntimeRegistryQueries({
+  const { loadSlaveRuntimeBundle, loadSlaveRuntimeTelemetry } = useRuntimeRegistryQueries({
     graphqlEndpoint,
     setError,
     setRuntimeRegistryByHostId,
@@ -723,6 +686,9 @@ export default function HomePageContainer({ authEnabled = false }) {
   const {
     ensureDesiredProcess,
     deleteDesiredProcess,
+    ensureDeploymentInstance,
+    deleteDeploymentInstance,
+    setHostRuntimeEnv,
     softKillProcess,
     hardKillProcess,
   } = useRuntimeRegistryActions({
@@ -758,11 +724,11 @@ export default function HomePageContainer({ authEnabled = false }) {
   }, [bootstrapRuntimeVariables, loadDashboard, setError]);
 
   useEffect(() => {
-    if (rightTab !== RIGHT_PANE_TAB.RUNTIME) {
+    if (!isRuntimeWorkspacePanelActive) {
       return;
     }
     loadRuntimeBackendInfo(graphqlEndpoint);
-  }, [graphqlEndpoint, loadRuntimeBackendInfo, rightTab]);
+  }, [graphqlEndpoint, isRuntimeWorkspacePanelActive, loadRuntimeBackendInfo]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !runtimeConfig) {
@@ -805,17 +771,17 @@ export default function HomePageContainer({ authEnabled = false }) {
     }
     const targetHostId = Number(selectedProcessLogTarget?.hostId || 0);
     const selectedId = Number(selectedHost?.id || 0);
-    if (leftPanelMode === LEFT_PANEL_MODE.PROJECTS || !Number.isInteger(selectedId) || selectedId <= 0) {
+    if (!Number.isInteger(selectedId) || selectedId <= 0) {
       setSelectedProcessLogTarget(null);
       return;
     }
     if (Number.isInteger(targetHostId) && targetHostId > 0 && targetHostId !== selectedId) {
       setSelectedProcessLogTarget(null);
     }
-  }, [leftPanelMode, selectedHost, selectedProcessLogTarget]);
+  }, [selectedHost, selectedProcessLogTarget]);
 
   useEffect(() => {
-    if (!isGoMasterBackend || !selectedHost) {
+    if (!shouldPollSelectedHostRuntime) {
       return undefined;
     }
     const hostId = Number(selectedHost?.id || 0);
@@ -824,26 +790,34 @@ export default function HomePageContainer({ authEnabled = false }) {
     }
     const agentUuid = String(selectedHost?.agentUuid || '').trim() || null;
     let active = true;
+    let inFlight = false;
     let intervalId = null;
 
-    const refresh = async () => {
+    const refresh = async (full = false) => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
       try {
-        await loadSlaveRuntimeBundle({
+        const loader = full ? loadSlaveRuntimeBundle : loadSlaveRuntimeTelemetry;
+        await loader({
           hostId,
           agentUuid,
         });
       } catch {
         // errors are surfaced through setError inside the hook
+      } finally {
+        inFlight = false;
       }
     };
 
-    refresh();
+    refresh(true);
     if (typeof window !== 'undefined') {
       intervalId = window.setInterval(() => {
         if (!active) {
           return;
         }
-        refresh();
+        refresh(false);
       }, 1000);
     }
 
@@ -853,24 +827,28 @@ export default function HomePageContainer({ authEnabled = false }) {
         window.clearInterval(intervalId);
       }
     };
-  }, [isGoMasterBackend, loadSlaveRuntimeBundle, selectedHost]);
+  }, [
+    loadSlaveRuntimeBundle,
+    loadSlaveRuntimeTelemetry,
+    selectedHost?.agentUuid,
+    selectedHost?.id,
+    shouldPollSelectedHostRuntime,
+  ]);
 
-  const layoutState = useHomeLayoutController({
-    dispatch,
-    hostsSidebarCollapsed,
-    resizing,
-    setResizing,
+  const layoutState = useMemo(() => ({
     workspaceRef,
-    mainPanelsRef,
-    resizingRef,
-    resizingHandleRef,
-  });
+    activeWorkspacePanel,
+    onSelectWorkspacePanel,
+  }), [
+    activeWorkspacePanel,
+    onSelectWorkspacePanel,
+    workspaceRef,
+  ]);
 
   const selectedProjectServiceKeys = useMemo(
     () => getDiscoveredServiceKeys(selectedProject?.services || []),
     [selectedProject],
   );
-  const hasActiveTerminalSession = selectedTerminalSession?.status === 'active';
   const selectedHostRuntimeBundle = useMemo(() => {
     if (!Number.isInteger(selectedHostNumericId) || selectedHostNumericId <= 0) {
       return null;
@@ -888,6 +866,12 @@ export default function HomePageContainer({ authEnabled = false }) {
   const selectedHostPathMappings = Array.isArray(selectedHostRuntimeBundle?.hostPathMappings)
     ? selectedHostRuntimeBundle.hostPathMappings
     : [];
+  const selectedHostDeploymentInstances = Array.isArray(selectedHostRuntimeBundle?.deploymentInstances)
+    ? selectedHostRuntimeBundle.deploymentInstances
+    : [];
+  const selectedHostRuntimeEnv = Array.isArray(selectedHostRuntimeBundle?.hostRuntimeEnv)
+    ? selectedHostRuntimeBundle.hostRuntimeEnv
+    : [];
   const selectedHostHostRuntimeState = selectedHostSlaveRuntimeState?.hostRuntimeState
     || selectedHostRuntimeBundle?.hostRuntimeState
     || null;
@@ -901,9 +885,8 @@ export default function HomePageContainer({ authEnabled = false }) {
       ? runtimeActionBusyByHostId?.[selectedHostNumericId]
       : false,
   );
-
   useEffect(() => {
-    if (rightTab !== RIGHT_PANE_TAB.TERMINAL) {
+    if (!isTerminalWorkspacePanelActive) {
       return;
     }
     if (!Number.isInteger(selectedHostNumericId) || selectedHostNumericId <= 0) {
@@ -928,8 +911,8 @@ export default function HomePageContainer({ authEnabled = false }) {
       });
     }
   }, [
+    isTerminalWorkspacePanelActive,
     loadTerminalSession,
-    rightTab,
     selectedHost,
     selectedHostNumericId,
     setError,
@@ -939,7 +922,7 @@ export default function HomePageContainer({ authEnabled = false }) {
   ]);
 
   useEffect(() => {
-    if (rightTab !== RIGHT_PANE_TAB.TERMINAL || !hasActiveTerminalSession) {
+    if (!isTerminalWorkspacePanelActive || !hasActiveTerminalSession) {
       return;
     }
     const container = terminalOutputRef.current;
@@ -949,21 +932,26 @@ export default function HomePageContainer({ authEnabled = false }) {
     container.scrollTop = container.scrollHeight;
   }, [
     hasActiveTerminalSession,
-    rightTab,
+    isTerminalWorkspacePanelActive,
     selectedTerminalOutput.length,
     selectedTerminalSession?.sessionId,
   ]);
 
   useEffect(() => {
-    if (!selectedProjectPath || rightTab !== RIGHT_PANE_TAB.ENVIRONMENT) {
+    if (!selectedProjectPath || !isEnvironmentWorkspacePanelActive) {
       return;
     }
     loadProjectEnvironment({ projectPath: selectedProjectPath });
     loadProjectPortRangeSettings({ projectPath: selectedProjectPath });
-  }, [loadProjectEnvironment, loadProjectPortRangeSettings, rightTab, selectedProjectPath]);
+  }, [
+    isEnvironmentWorkspacePanelActive,
+    loadProjectEnvironment,
+    loadProjectPortRangeSettings,
+    selectedProjectPath,
+  ]);
 
   useEffect(() => {
-    if (!selectedProjectPath || rightTab !== RIGHT_PANE_TAB.TOP) {
+    if (!selectedProjectPath || !isTopWorkspacePanelActive) {
       return undefined;
     }
 
@@ -980,7 +968,7 @@ export default function HomePageContainer({ authEnabled = false }) {
     }, 1500);
 
     return () => window.clearInterval(interval);
-  }, [loadProjectProcessStats, rightTab, selectedProjectPath]);
+  }, [isTopWorkspacePanelActive, loadProjectProcessStats, selectedProjectPath]);
 
   const saveProjectPortRangeSettings = useCallback(async ({ mode, begin }) => {
     if (!selectedProjectPath) {
@@ -1072,11 +1060,12 @@ export default function HomePageContainer({ authEnabled = false }) {
     dispatch,
     graphqlEndpoint,
     setError,
-    setLeftPanelMode,
+    activateProjectsPanel: () => {
+      dispatch(setUiActiveWorkspacePanel(WORKSPACE_PANEL.PROJECTS));
+    },
     loadDashboard,
     loadProjectEnvironment,
     loadProjectLogs,
-    leftWidthPct,
     projects,
     loading,
     selectedProjectPath,
@@ -1091,8 +1080,7 @@ export default function HomePageContainer({ authEnabled = false }) {
 
   const logsPanelState = useLogsPanelController({
     dispatch,
-    leftPanelMode,
-    rightTab,
+    activeWorkspacePanel,
     followLogs,
     selectedProjectPath,
     projectLogs,
@@ -1238,6 +1226,7 @@ export default function HomePageContainer({ authEnabled = false }) {
       return;
     }
     setError('');
+    dispatch(setUiSelectedHostId(hostId));
     setSelectedProcessLogTarget({
       hostId,
       hostName: String(host?.name || '').trim() || null,
@@ -1248,7 +1237,7 @@ export default function HomePageContainer({ authEnabled = false }) {
       packageKey: String(observedRun?.packageKey || observedRun?.processKey || '').trim() || null,
       logPath: String(observedRun?.logPath || '').trim() || null,
     });
-    dispatch(setPanelProjectExplorerMode(RIGHT_PANE_TAB.LOGS));
+    dispatch(setUiActiveWorkspacePanel(WORKSPACE_PANEL.LOGS));
   }, [dispatch, setError]);
 
   const onSoftKillObservedProcess = useCallback((host, observedRun) => {
@@ -1288,6 +1277,8 @@ export default function HomePageContainer({ authEnabled = false }) {
       hostId: host.id,
       agentUuid: host.agentUuid,
       projectId: desiredProcess.projectId,
+      deploymentId: desiredProcess.deploymentId,
+      deploymentKey: desiredProcess.deploymentKey,
       projectPath: desiredProcess.projectPath,
       packageKey: desiredProcess.packageKey,
       processKey: desiredProcess.processKey,
@@ -1305,6 +1296,8 @@ export default function HomePageContainer({ authEnabled = false }) {
     slaveRuntimeState: selectedHostSlaveRuntimeState,
     desiredProcesses: selectedHostDesiredProcesses,
     observedProcessRuns: selectedHostObservedProcessRuns,
+    deploymentInstances: selectedHostDeploymentInstances,
+    hostRuntimeEnv: selectedHostRuntimeEnv,
     hostPathMappings: selectedHostPathMappings,
     hostRuntimeState: selectedHostHostRuntimeState,
     runtimeLoading: selectedHostRuntimeLoading,
@@ -1312,6 +1305,9 @@ export default function HomePageContainer({ authEnabled = false }) {
     onRefreshSelectedHostRuntime,
     onEnsureDesiredProcess: ensureDesiredProcess,
     onDeleteDesiredProcess,
+    onEnsureDeploymentInstance: ensureDeploymentInstance,
+    onDeleteDeploymentInstance: deleteDeploymentInstance,
+    onSetHostRuntimeEnv: setHostRuntimeEnv,
     onSoftKillObservedProcess,
     onHardKillObservedProcess,
     onViewManagedProcessLogs,
@@ -1319,7 +1315,9 @@ export default function HomePageContainer({ authEnabled = false }) {
     formatVersionWithProtocol,
   }), [
     ensureDesiredProcess,
+    ensureDeploymentInstance,
     isGoMasterBackend,
+    deleteDeploymentInstance,
     onDeleteDesiredProcess,
     onHardKillObservedProcess,
     onRefreshSelectedHostRuntime,
@@ -1328,6 +1326,8 @@ export default function HomePageContainer({ authEnabled = false }) {
     masterAgentInfo,
     selectedHost,
     selectedHostDesiredProcesses,
+    selectedHostDeploymentInstances,
+    selectedHostRuntimeEnv,
     selectedHostHostRuntimeState,
     selectedHostObservedProcessRuns,
     selectedHostPathMappings,
@@ -1338,22 +1338,22 @@ export default function HomePageContainer({ authEnabled = false }) {
     runtimeBackendInfo,
     runtimeBackendInfoLoading,
     runtimeConfig,
+    setHostRuntimeEnv,
   ]);
 
   const hostsSidebarState = useHostsSidebarController({
     dispatch,
     graphqlEndpoint,
     setError,
-    setLeftPanelMode,
-    setHostsSidebarCollapsed,
+    activateHostsPanel: () => {
+      dispatch(setUiActiveWorkspacePanel(WORKSPACE_PANEL.HOSTS));
+    },
     setSelectedHostId,
     setShowAddHostRow,
     setManualHostIp,
     setHostsLoading,
     setHosts,
     setTerminalSessionByHostId,
-    hostsSidebarCollapsed,
-    hostsSidebarWidthPx,
     hostsLoading,
     addingHost,
     deletingHostId,
@@ -1421,16 +1421,6 @@ export default function HomePageContainer({ authEnabled = false }) {
     selectedTerminalSession,
   ]);
 
-  const onSelectRightTab = useCallback((tab) => {
-    const normalizedTab = String(tab || '').trim().toLowerCase();
-    dispatch(setPanelProjectExplorerMode(normalizedTab));
-  }, [dispatch]);
-
-  const rightPaneState = useRightPaneController({
-    rightTab,
-    onSelectRightTab,
-  });
-
   const statusBarState = useStatusBarController({
     loading,
     projectsCount: projects.length,
@@ -1446,23 +1436,21 @@ export default function HomePageContainer({ authEnabled = false }) {
     <HomeLayoutProvider value={layoutState}>
       <HostsSidebarProvider value={hostsSidebarState}>
         <ProjectsPaneProvider value={projectsPaneState}>
-          <RightPaneProvider value={rightPaneState}>
-            <LogsPanelProvider value={logsPanelState}>
-              <DebugPanelProvider value={debugPanelState}>
-                <EnvironmentPanelProvider value={environmentPanelState}>
-                  <TopPanelProvider value={topPanelState}>
-                    <RuntimePanelProvider value={runtimePanelState}>
-                      <TerminalPanelProvider value={terminalPanelState}>
-                        <StatusBarProvider value={statusBarState}>
-                          <HomePageShellContainer authEnabled={authEnabled} />
-                        </StatusBarProvider>
-                      </TerminalPanelProvider>
-                    </RuntimePanelProvider>
-                  </TopPanelProvider>
-                </EnvironmentPanelProvider>
-              </DebugPanelProvider>
-            </LogsPanelProvider>
-          </RightPaneProvider>
+          <LogsPanelProvider value={logsPanelState}>
+            <DebugPanelProvider value={debugPanelState}>
+              <EnvironmentPanelProvider value={environmentPanelState}>
+                <TopPanelProvider value={topPanelState}>
+                  <RuntimePanelProvider value={runtimePanelState}>
+                    <TerminalPanelProvider value={terminalPanelState}>
+                      <StatusBarProvider value={statusBarState}>
+                        <HomePageShellContainer authEnabled={authEnabled} />
+                      </StatusBarProvider>
+                    </TerminalPanelProvider>
+                  </RuntimePanelProvider>
+                </TopPanelProvider>
+              </EnvironmentPanelProvider>
+            </DebugPanelProvider>
+          </LogsPanelProvider>
         </ProjectsPaneProvider>
       </HostsSidebarProvider>
     </HomeLayoutProvider>

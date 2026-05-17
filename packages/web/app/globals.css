@@ -40,15 +40,16 @@ input {
 .appShell {
   height: 100vh;
   display: grid;
-  grid-template-rows: 52px minmax(0, 1fr) 30px;
+  grid-template-rows: auto minmax(0, 1fr) 30px;
 }
 
 .topMenuBar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(max-content, auto) minmax(260px, 1fr) minmax(180px, auto) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 0 12px;
+  min-height: 52px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--card) 88%, transparent);
 }
@@ -58,6 +59,11 @@ input {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.menuRight {
+  justify-content: flex-end;
 }
 
 .menuTitle {
@@ -112,13 +118,76 @@ input {
   white-space: nowrap;
 }
 
+.workspacePanelNav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding: 2px;
+}
+
+.workspacePanelButton {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--card) 82%, var(--chip));
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.workspacePanelButton:hover {
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  color: var(--accent);
+}
+
+.workspacePanelButton.active,
+.workspacePanelButton[aria-current="page"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.workspaceContextChips {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspaceContextChip {
+  min-width: 0;
+  max-width: 180px;
+  border: 1px solid var(--line);
+  background: var(--chip);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace {
   min-height: 0;
   display: flex;
   overflow: hidden;
 }
 
-.mainPanels {
+.workspaceSinglePanel {
+  display: flex;
+  flex-direction: column;
+}
+
+.workspacePanelViewport {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -126,34 +195,24 @@ input {
   overflow: hidden;
 }
 
+.workspacePanelBody {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspacePanelViewport > .workspacePanelBody {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
 .hostsSidebar {
-  width: 360px;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--line);
   background: color-mix(in srgb, var(--card) 94%, transparent);
-  transition: width 0.15s ease;
-}
-
-.hostsSidebar.collapsed {
-  width: 40px;
-}
-
-.hostsSidebar.collapsed .hostsSidebarHeader {
-  padding: 8px 0;
-  justify-content: center;
-}
-
-.hostsSidebar.collapsed .hostsSidebarHeaderActions {
-  width: 100%;
-  justify-content: center;
-}
-
-.hostsSidebar.collapsed .hostsSidebarToggle {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
 }
 
 .hostsSidebarHeader {
@@ -180,109 +239,31 @@ input {
   gap: 8px;
 }
 
-.hostsSidebarToggle {
-  width: 26px;
-  height: 26px;
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-  border-radius: 6px;
-  background: var(--chip);
-  color: var(--text);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
 .hostsSidebarBody {
   flex: 1;
   min-height: 0;
   display: flex;
 }
 
-.hostsSidebarCollapsedBody {
-  width: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  overflow-y: auto;
-}
-
-.collapsedHostList {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.collapsedHostButton {
-  position: relative;
-  width: 28px;
-  height: 28px;
-  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
-  border-radius: 8px;
-  background: var(--chip);
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.collapsedHostButton:hover {
-  color: var(--text);
-}
-
-.collapsedHostButton.selected {
-  border-color: color-mix(in srgb, var(--accent) 68%, transparent);
-  background: color-mix(in srgb, var(--accent) 16%, var(--chip));
-  color: var(--accent);
-}
-
-.collapsedHostButton:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
-  outline-offset: 1px;
-}
-
-.collapsedHostHealthDot {
-  position: absolute;
-  left: -2px;
-  top: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #7f8da6;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface) 78%, transparent);
-}
-
-.collapsedHostHealthDot.healthy {
-  background: #19c37d;
-}
-
-.collapsedHostHealthDot.warning {
-  background: #f5b84b;
-}
-
-.collapsedHostHealthDot.critical {
-  background: #f35f5f;
-}
-
-.collapsedHostHealthDot.unknown {
-  background: #7f8da6;
-}
-
-.collapsedHostsEmpty {
-  color: var(--muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-}
-
 .hostsSidebarPanel {
   width: 100%;
   padding: 8px 0 0;
+}
+
+.hostsSidebar.hostsSidebarPanelMode {
+  width: 100%;
+  border-right: 0;
+  transition: none;
+}
+
+.hostsSidebar.hostsSidebarPanelMode .hostsSidebarBody {
+  overflow: hidden;
+}
+
+.hostsSidebar.hostsSidebarPanelMode .hostsSidebarPanel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .hostsToolbar {
@@ -315,8 +296,8 @@ input {
   padding-right: 12px;
 }
 
-.leftPanel,
-.rightPanel {
+.projectsPanel,
+.workspacePanelContent {
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -324,11 +305,16 @@ input {
   background: color-mix(in srgb, var(--card) 92%, transparent);
 }
 
-.leftPanel {
-  border-right: 1px solid var(--line);
+.projectsPanel .projectTableWrap {
+  flex: 1;
 }
 
-.rightPanel {
+.workspacePanelContent > .debugPanel,
+.workspacePanelContent > .environmentPanel,
+.workspacePanelContent > .logPanel,
+.workspacePanelContent > .runtimePanel,
+.workspacePanelContent > .terminalPanel,
+.workspacePanelContent > .topPanel {
   flex: 1;
 }
 
@@ -346,44 +332,6 @@ input {
   margin: 5px 0 0;
   color: var(--muted);
   font-size: 0.85rem;
-}
-
-.panelTabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line);
-}
-
-.panelTabsGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.panelTabsRight {
-  margin-left: auto;
-}
-
-.leftPanelTabs {
-  flex: 0 0 auto;
-}
-
-.panelTab {
-  border: 1px solid var(--line);
-  background: var(--chip);
-  color: var(--muted);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-
-.panelTab.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
 }
 
 .tagChip {
@@ -684,35 +632,6 @@ col.servicesCol {
   50% {
     opacity: 1;
   }
-}
-
-.divider {
-  width: 8px;
-  flex: 0 0 8px;
-  cursor: col-resize;
-  position: relative;
-  background: transparent;
-}
-
-.sidebarDivider,
-.contentDivider {
-  align-self: stretch;
-}
-
-.divider::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 3px;
-  width: 2px;
-  background: var(--line);
-  transition: background-color 0.15s ease;
-}
-
-.divider:hover::after,
-.divider.active::after {
-  background: var(--accent);
 }
 
 .logStream {
@@ -1924,6 +1843,116 @@ col.servicesCol {
   gap: 8px;
 }
 
+.runtimeResourceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.runtimeResourceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 10px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--card) 94%, transparent), color-mix(in srgb, var(--chip) 82%, transparent));
+}
+
+.runtimeResourceCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.runtimeResourceTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.runtimeResourceTitleBlock strong {
+  color: var(--text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.runtimeResourceTitleBlock span,
+.runtimeResourcePackages,
+.runtimeResourceTotals {
+  color: var(--muted);
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.runtimeSparklineGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtimeSparkline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.runtimeSparklineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.runtimeSparklineHeader strong {
+  color: var(--text);
+  font-family: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.runtimeSparklineSvg {
+  width: 100%;
+  height: 44px;
+  overflow: visible;
+}
+
+.runtimeSparklineBaseline {
+  stroke: color-mix(in srgb, var(--line) 72%, transparent);
+  stroke-width: 1;
+}
+
+.runtimeSparklineLine {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.runtimeSparkline.memory .runtimeSparklineLine {
+  stroke: color-mix(in srgb, var(--success) 84%, var(--accent));
+}
+
+.runtimeSparkline.io .runtimeSparklineLine {
+  stroke: color-mix(in srgb, var(--warning) 82%, var(--accent));
+}
+
+.runtimeResourceTotals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .runtimeProcessRow,
 .hostRuntimeProcessRow {
   display: flex;
@@ -2307,7 +2336,8 @@ col.servicesCol {
 
   .runtimeFieldGrid,
   .runtimeProcessMetrics,
-  .runtimeFilterBar {
+  .runtimeFilterBar,
+  .runtimeSparklineGrid {
     grid-template-columns: 1fr;
   }
 }
@@ -2317,12 +2347,455 @@ col.servicesCol {
     width: 280px;
   }
 
-  .menuItem {
+  .menuItem:not(.menuAuthLabel) {
     display: none;
+  }
+
+  .topMenuBar {
+    grid-template-columns: minmax(0, auto) minmax(220px, 1fr) auto;
+    grid-template-areas:
+      "summary panels controls"
+      "context panels controls";
+  }
+
+  .menuLeft {
+    grid-area: summary;
+  }
+
+  .workspacePanelNav {
+    grid-area: panels;
+  }
+
+  .workspaceContextChips {
+    grid-area: context;
+    justify-content: flex-start;
+  }
+
+  .menuRight {
+    grid-area: controls;
   }
 
   .hostCheckoutRow {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .appShell {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .topMenuBar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "summary controls"
+      "panels panels"
+      "context context";
+    gap: 8px 10px;
+  }
+
+  .menuLeft {
+    grid-area: summary;
+    min-width: 0;
+  }
+
+  .menuTitle {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .workspacePanelNav {
+    grid-area: panels;
+    width: 100%;
+  }
+
+  .workspaceContextChips {
+    grid-area: context;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  .workspaceContextChip {
+    flex: 1 1 0;
+    max-width: none;
+  }
+
+  .menuRight {
+    grid-area: controls;
+    min-width: 0;
+  }
+
+  .workspace,
+  .workspacePanelViewport,
+  .workspacePanelBody {
+    min-width: 0;
+  }
+
+  .projectTableWrap {
+    padding: 8px;
+  }
+
+  .projectTableWrap table,
+  .projectTableWrap tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .projectTableWrap colgroup,
+  .projectTableWrap thead {
+    display: none;
+  }
+
+  .projectTableWrap .projectRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+    border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+    border-radius: 10px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--card) 94%, transparent);
+  }
+
+  .projectTableWrap .projectRow.selected {
+    border-color: color-mix(in srgb, var(--accent) 58%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+
+  .projectTableWrap td,
+  .projectTableWrap td.appNameCell,
+  .projectTableWrap td.iconsCell {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  .projectTableWrap td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .projectHostCell .projectHostChip {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .projectTableWrap .serviceIcons,
+  .projectTableWrap .typeIcons {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .logViewer .infiniteLogStream {
+    --infinite-log-tag-column-width: calc(
+      var(--log-col-level-width, 1.8rem) +
+      var(--log-col-time-width, 5.5rem) +
+      var(--log-col-gap)
+    );
+  }
+
+  .logColumnHeaderRow {
+    grid-template-columns:
+      var(--log-col-level-width, 1.8rem)
+      var(--log-col-time-width, 5.5rem)
+      minmax(0, 1fr);
+  }
+
+  .logColumnHeaderCell.host,
+  .logColumnHeaderCell.package,
+  .logColumnHeaderCell.icon,
+  .infiniteLogTagRowContent .logHostTag,
+  .infiniteLogTagRowContent .logHostPlaceholder,
+  .infiniteLogTagRowContent .logServiceTag,
+  .infiniteLogTagRowContent .logServiceIconCol {
+    display: none;
+  }
+
+  .infiniteLogTagRowContent {
+    grid-template-columns:
+      var(--log-col-level-width, 1.8rem)
+      var(--log-col-time-width, 5.5rem);
+  }
+
+  .runtimeSubsectionHeader,
+  .runtimeResourceCardHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .runtimeHostToolbarActions,
+  .runtimeProcessActions,
+  .hostRuntimeProcessActions,
+  .hostCheckoutActions,
+  .hostDeleteModalActions {
+    width: 100%;
+  }
+
+  .runtimeProcessActions .hostTextActionButton,
+  .hostRuntimeProcessActions .hostTextActionButton {
+    flex: 1 1 auto;
+  }
+
+  .hostRuntimeProcessMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .hostDirectoryAddRow,
+  .hostCard .hostDirectoryAddRow,
+  .hostCheckoutRow,
+  .environmentRow {
+    grid-template-columns: 1fr;
+  }
+
+  .hostDirectoryList,
+  .hostCheckoutForm {
+    margin-left: 0;
+  }
+
+  .hostContextMenu {
+    min-width: min(190px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  .hostDeleteModal {
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+  }
+
+  .terminalLine {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .terminalLineTimestamp {
+    display: none;
+  }
+
+  .statusBar {
+    min-height: 30px;
+  }
+}
+
+@media (max-width: 640px) {
+  .topMenuBar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "summary controls"
+      "panels panels"
+      "context context";
+    gap: 7px 10px;
+  }
+
+  .workspacePanelNav {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    margin-inline: -2px;
+  }
+
+  .workspaceContextChips {
+    overflow: hidden;
+  }
+
+  .workspaceContextChip {
+    flex: 1 1 0;
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .topMenuBar {
+    padding: 7px 9px;
+  }
+
+  .workspacePanelNav {
+    flex-wrap: wrap;
+    gap: 5px;
+    overflow-x: visible;
+  }
+
+  .workspacePanelButton {
+    flex: 1 1 calc(25% - 5px);
+    min-width: 72px;
+    padding: 4px 7px;
+    font-size: 0.72rem;
+  }
+
+  .workspaceContextChips {
+    gap: 5px;
+  }
+
+  .workspaceContextChip {
+    padding: 3px 7px;
+    font-size: 0.68rem;
+  }
+
+  .menuRight {
+    gap: 6px;
+  }
+
+  .menuButton {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+  }
+
+  .projectTableWrap {
+    padding: 6px;
+  }
+
+  .projectTableWrap .projectRow {
+    padding: 9px;
+  }
+
+  .projectTableWrap td,
+  .projectTableWrap td.appNameCell,
+  .projectTableWrap td.iconsCell {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .logFilters {
+    gap: 5px;
+    padding: 6px 8px;
+  }
+
+  .logFilterBtn {
+    flex: 1 1 calc(33.333% - 5px);
+    padding: 3px 6px;
+    font-size: 0.68rem;
+  }
+
+  .logColumnHeaderRow {
+    display: none;
+  }
+
+  .infiniteLogStream {
+    --infinite-log-tag-column-width: 0px;
+  }
+
+  .infiniteLogColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .infiniteLogTagColumn {
+    display: none;
+  }
+
+  .infiniteLogTextBlock {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .logStream {
+    padding: 8px;
+  }
+
+  .runtimePanel,
+  .terminalPanel,
+  .environmentPanel,
+  .debugPanel,
+  .topPanel {
+    padding: 8px;
+  }
+
+  .runtimeResourceGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .runtimeProcessMetrics,
+  .hostRuntimeProcessMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .runtimeProcessActions,
+  .hostRuntimeProcessActions,
+  .hostCheckoutActions,
+  .hostDeleteModalActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hostTextActionButton,
+  .hostCheckoutSubmit,
+  .hostCheckoutCancel,
+  .hostDeleteCancelButton,
+  .hostDeleteConfirmButton {
+    width: 100%;
+    min-height: 30px;
+  }
+
+  .hostContextMenu {
+    left: 8px !important;
+    right: 8px;
+  }
+
+  .hostDeleteModalBackdrop {
+    align-items: end;
+    padding: 8px;
+  }
+
+  .hostDeleteModal {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    border-radius: 12px 12px 0 0;
+    padding: 14px;
+  }
+
+  .hostDeleteDirectoryPreview {
+    max-height: 120px;
+  }
+
+  .terminalInputRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+    padding: 7px 8px;
+  }
+
+  .terminalPrompt {
+    display: none;
+  }
+
+  .terminalInput {
+    min-width: 0;
+  }
+
+  .terminalRunButton {
+    min-height: 32px;
+    padding: 5px 8px;
+  }
+
+  .statusBar {
+    gap: 8px;
+    padding: 3px 8px;
+  }
+
+  .statusItem.selectedProjectStatus,
+  .statusItem.portRangeStatus {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .topMenuBar {
+    padding: 7px 9px;
+  }
+
+  .menuTitle {
+    font-size: 0.82rem;
+  }
+
+  .workspacePanelButton {
+    padding: 4px 9px;
+    font-size: 0.74rem;
   }
 }
 

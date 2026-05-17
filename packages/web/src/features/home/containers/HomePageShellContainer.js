@@ -1,89 +1,59 @@
-import { signOut, useSession } from 'next-auth/react';
-import ThemeDropdown from '../../../components/ThemeDropdown';
 import HostsSidebar from '../components/HostsSidebar';
 import ProjectListPane from '../components/ProjectListPane';
-import RightPane from '../components/RightPane';
 import StatusBar from '../components/StatusBar';
+import WorkspaceMenuBar from '../components/WorkspaceMenuBar';
+import DebugPanel from '../components/panels/DebugPanel';
+import EnvironmentPanel from '../components/panels/EnvironmentPanel';
+import LogsPanel from '../components/panels/LogsPanel';
+import RuntimePanel from '../components/panels/RuntimePanel';
+import TerminalPanel from '../components/panels/TerminalPanel';
+import TopPanel from '../components/panels/TopPanel';
+import { WORKSPACE_PANEL } from '../constants/ui';
 import {
   useHomeLayoutContext,
 } from '../context/HomeLayoutContext';
-import { useStatusBarContext } from '../context/StatusBarContext';
 
-function AuthenticatedMenuControls() {
-  const { data: session, status } = useSession();
-  const email = typeof session?.user?.email === 'string' ? session.user.email : '';
-  const isLoading = status === 'loading';
+const RIGHT_PANEL_COMPONENTS = {
+  [WORKSPACE_PANEL.LOGS]: LogsPanel,
+  [WORKSPACE_PANEL.RUNTIME]: RuntimePanel,
+  [WORKSPACE_PANEL.TERMINAL]: TerminalPanel,
+  [WORKSPACE_PANEL.ENVIRONMENT]: EnvironmentPanel,
+  [WORKSPACE_PANEL.TOP]: TopPanel,
+  [WORKSPACE_PANEL.DEBUG]: DebugPanel,
+};
 
+function WorkspacePanelViewport({ activeWorkspacePanel }) {
+  if (activeWorkspacePanel === WORKSPACE_PANEL.HOSTS) {
+    return <HostsSidebar />;
+  }
+
+  if (activeWorkspacePanel === WORKSPACE_PANEL.PROJECTS) {
+    return <ProjectListPane />;
+  }
+
+  const ActivePanel = RIGHT_PANEL_COMPONENTS[activeWorkspacePanel] || LogsPanel;
   return (
-    <>
-      {email ? <span className="menuItem menuAuthLabel">{email}</span> : null}
-      <button
-        type="button"
-        className="menuButton menuButtonSecondary"
-        onClick={() => signOut({ callbackUrl: '/login' })}
-        disabled={isLoading}
-      >
-        {isLoading ? 'Loading…' : 'Logout'}
-      </button>
-    </>
+    <section className="workspacePanelContent workspacePanelBody">
+      <ActivePanel />
+    </section>
   );
 }
 
 export default function HomePageShellContainer({ authEnabled = false }) {
   const layoutState = useHomeLayoutContext();
   const {
-    projectsCount = 0,
-    runningCount = 0,
-  } = useStatusBarContext();
-  const {
     workspaceRef,
-    mainPanelsRef,
-    hostsSidebarCollapsed,
-    resizing,
-    resizingHandleRef,
-    onStartResize,
+    activeWorkspacePanel,
   } = layoutState;
 
   return (
     <div className="appShell">
-      <header className="topMenuBar">
-        <div className="menuLeft">
-          <span className="menuTitle">Project Commander</span>
-          <span className="menuItem">Projects: {projectsCount}</span>
-          <span className="menuItem">Running: {runningCount}</span>
-        </div>
-        <div className="menuRight">
-          {authEnabled ? <AuthenticatedMenuControls /> : null}
-          <ThemeDropdown />
-        </div>
-      </header>
+      <WorkspaceMenuBar authEnabled={authEnabled} />
 
-      <div className="workspace" ref={workspaceRef}>
-        <HostsSidebar />
-        {!hostsSidebarCollapsed ? (
-          <div
-            className={`divider sidebarDivider ${resizing && resizingHandleRef.current === 'sidebar' ? 'active' : ''}`}
-            onMouseDown={(event) => onStartResize(event, 'sidebar')}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize hosts sidebar"
-            data-testid="sidebar-divider"
-          />
-        ) : null}
-        <div className="mainPanels" ref={mainPanelsRef}>
-          <ProjectListPane />
-
-          <div
-            className={`divider contentDivider ${resizing && resizingHandleRef.current === 'content' ? 'active' : ''}`}
-            onMouseDown={(event) => onStartResize(event, 'content')}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize panels"
-            data-testid="content-divider"
-          />
-
-          <RightPane />
-        </div>
+      <div className="workspace workspaceSinglePanel" ref={workspaceRef}>
+        <main className="workspacePanelViewport" data-active-panel={activeWorkspacePanel}>
+          <WorkspacePanelViewport activeWorkspacePanel={activeWorkspacePanel} />
+        </main>
       </div>
 
       <StatusBar />

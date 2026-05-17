@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { graphqlRequest } from '../../../lib/graphqlClient';
 import { setPanelProjectListSelectedProject } from '../../../store';
-import { LEFT_PANEL_MODE } from '../constants/ui';
 import {
   MUTATION_RESTART_SERVICE_RUNTIME,
   MUTATION_TOGGLE_PROJECT_RUNTIME,
@@ -12,11 +11,10 @@ export default function useProjectsPaneController({
   dispatch,
   graphqlEndpoint,
   setError,
-  setLeftPanelMode,
+  activateProjectsPanel,
   loadDashboard,
   loadProjectEnvironment,
   loadProjectLogs,
-  leftWidthPct,
   projects,
   loading,
   selectedProjectPath,
@@ -41,14 +39,14 @@ export default function useProjectsPaneController({
 
   const onSelectProject = useCallback((projectPath) => {
     dispatch(setPanelProjectListSelectedProject(projectPath));
-    setLeftPanelMode(LEFT_PANEL_MODE.PROJECTS);
-  }, [dispatch, setLeftPanelMode]);
+    activateProjectsPanel();
+  }, [activateProjectsPanel, dispatch]);
 
   const onToggleRuntime = useCallback(async (project, event) => {
     event.stopPropagation();
     setError('');
     dispatch(setPanelProjectListSelectedProject(project.path));
-    setLeftPanelMode(LEFT_PANEL_MODE.PROJECTS);
+    activateProjectsPanel();
 
     await loadProjectLogs({
       projectPath: project.path,
@@ -76,11 +74,11 @@ export default function useProjectsPaneController({
     }
   }, [
     dispatch,
+    activateProjectsPanel,
     graphqlEndpoint,
     loadDashboard,
     loadProjectEnvironment,
     loadProjectLogs,
-    setLeftPanelMode,
     setError,
   ]);
 
@@ -93,7 +91,7 @@ export default function useProjectsPaneController({
     event.stopPropagation();
     setError('');
     dispatch(setPanelProjectListSelectedProject(projectPath));
-    setLeftPanelMode(LEFT_PANEL_MODE.PROJECTS);
+    activateProjectsPanel();
 
     try {
       await graphqlRequest({
@@ -117,11 +115,11 @@ export default function useProjectsPaneController({
     }
   }, [
     dispatch,
+    activateProjectsPanel,
     graphqlEndpoint,
     loadDashboard,
     loadProjectEnvironment,
     loadProjectLogs,
-    setLeftPanelMode,
     setError,
   ]);
 
@@ -190,7 +188,6 @@ export default function useProjectsPaneController({
   }, [getDiscoveredServiceKeys, normalizeServiceKey]);
 
   return useMemo(() => ({
-    leftWidthPct,
     projects,
     loading,
     selectedProjectPath,
@@ -211,7 +208,6 @@ export default function useProjectsPaneController({
     getAllServicesState,
     getDiscoveredServiceKeys,
     getServiceState,
-    leftWidthPct,
     loading,
     formatServiceLabel,
     normalizeServiceKey,
