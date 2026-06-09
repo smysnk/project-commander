@@ -1081,6 +1081,7 @@ export default function HomePageContainer({ authEnabled = false }) {
   const logsPanelState = useLogsPanelController({
     dispatch,
     activeWorkspacePanel,
+    alwaysActive: true,
     followLogs,
     selectedProjectPath,
     projectLogs,

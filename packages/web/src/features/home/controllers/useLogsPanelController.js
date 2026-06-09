@@ -54,6 +54,7 @@ const shouldIgnoreClientConsoleMessage = (message) => {
 export default function useLogsPanelController({
   dispatch,
   activeWorkspacePanel,
+  alwaysActive = false,
   followLogs,
   selectedProjectPath,
   projectLogs,
@@ -86,7 +87,7 @@ export default function useLogsPanelController({
   toCanonicalServiceIconKey,
   renderLogTagRow,
 }) {
-  const isLogsPanelActive = activeWorkspacePanel === WORKSPACE_PANEL.LOGS;
+  const isLogsPanelActive = alwaysActive || activeWorkspacePanel === WORKSPACE_PANEL.LOGS;
   const normalizedSelectedProcessLogTarget = (
     selectedProcessLogTarget && typeof selectedProcessLogTarget === 'object'
       ? selectedProcessLogTarget
