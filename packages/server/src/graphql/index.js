@@ -4,6 +4,11 @@ const {
   revokeAutomationToken,
 } = require('../auth/automationTokens');
 const { authorizeLifecycleAction } = require('../auth/lifecycleAccess');
+const {
+  getHostSshKeyConfig,
+  upsertHostSshKeyConfig,
+  deleteHostSshKeyConfig,
+} = require('../hostSshKeyConfigs');
 
 const typeDefs = `#graphql
   type ServiceEnvEntry {
@@ -253,6 +258,23 @@ const typeDefs = `#graphql
     commandId: String!
     status: String!
     message: String
+  }
+
+  type HostSshKeyConfig {
+    id: Int!
+    hostId: Int!
+    agentUuid: String
+    keyName: String!
+    publicKey: String
+    hasPrivateKey: Boolean!
+    hasPassphrase: Boolean!
+    knownHosts: String
+    strictHostKeyChecking: Boolean!
+    fingerprint: String
+    createdBy: String
+    updatedBy: String
+    createdAt: String
+    updatedAt: String
   }
 
   input RuntimeEnvEntryInput {
@@ -522,6 +544,7 @@ const typeDefs = `#graphql
     slaveRuntimeState(hostId: Int, agentUuid: String): SlaveRuntimeStateSnapshot
     deploymentInstances(hostId: Int, projectId: Int, deploymentKey: String): [DeploymentInstance!]!
     hostRuntimeEnv(hostId: Int, agentUuid: String): HostRuntimeEnv
+    hostSshKeyConfig(hostId: Int, agentUuid: String, keyName: String): HostSshKeyConfig
     desiredProcesses(hostId: Int, projectId: Int, deploymentId: Int, deploymentKey: String, agentUuid: String, projectPath: String, processKey: String, packageKey: String, desiredState: String, search: String): [DesiredProcessDefinition!]!
     observedProcessRuns(hostId: Int, projectId: Int, deploymentId: Int, deploymentKey: String, agentUuid: String, projectPath: String, processKey: String, packageKey: String, status: String, runId: String, pid: Int, search: String): [ObservedProcessRun!]!
     terminalSession(hostId: Int!): TerminalSession
@@ -676,6 +699,20 @@ const typeDefs = `#graphql
       hostId: Int!
       env: [RuntimeEnvEntryInput!]!
     ): HostRuntimeEnv!
+    upsertHostSshKeyConfig(
+      hostId: Int!
+      keyName: String
+      privateKey: String!
+      publicKey: String
+      passphrase: String
+      knownHosts: String
+      strictHostKeyChecking: Boolean
+      updatedBy: String
+    ): HostSshKeyConfig!
+    deleteHostSshKeyConfig(
+      hostId: Int!
+      keyName: String
+    ): Boolean!
     softKillProcess(
       hostId: Int
       agentUuid: String
@@ -1831,6 +1868,14 @@ const createResolvers = ({
         slaveId: agentUuid,
       }));
     },
+    hostSshKeyConfig: async (_, { hostId, agentUuid, keyName }, context) => {
+      authorizeGraphqlAction(context, {
+        action: 'hosts:read',
+        requiredScopes: ['hosts:read'],
+        target: { hostId },
+      });
+      return getHostSshKeyConfig({ hostId, agentUuid, keyName });
+    },
     observedProcessRuns: async (_, {
       hostId,
       projectId,
@@ -2470,6 +2515,33 @@ const createResolvers = ({
       });
       return mapHostRuntimeEnvForGraphql(result);
     },
+    upsertHostSshKeyConfig: async (_, args, context) => {
+      const result = await executeAuditedMutation(context, {
+        action: 'hosts:ssh-key:write',
+        scope: 'hosts:write',
+        requiredScopes: ['hosts:write'],
+        target: {
+          hostId: args.hostId,
+        },
+        input: {
+          ...args,
+          privateKey: args.privateKey ? '[redacted]' : '',
+          passphrase: args.passphrase ? '[redacted]' : null,
+        },
+        execute: () => upsertHostSshKeyConfig(args),
+      });
+      return result;
+    },
+    deleteHostSshKeyConfig: async (_, args, context) => executeAuditedMutation(context, {
+      action: 'hosts:ssh-key:delete',
+      scope: 'hosts:write',
+      requiredScopes: ['hosts:write'],
+      target: {
+        hostId: args.hostId,
+      },
+      input: args,
+      execute: () => deleteHostSshKeyConfig(args),
+    }),
     softKillProcess: async (_, args, context) => {
       requireProcessRegistry('queueProcessKill');
       const result = await executeAuditedMutation(context, {

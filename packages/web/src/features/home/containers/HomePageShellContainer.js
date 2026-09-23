@@ -3,6 +3,7 @@ import HostsSidebar from '../components/HostsSidebar';
 import ProjectListPane from '../components/ProjectListPane';
 import StatusBar from '../components/StatusBar';
 import WorkspaceMenuBar from '../components/WorkspaceMenuBar';
+import ConfigPanel from '../components/panels/ConfigPanel';
 import DebugPanel from '../components/panels/DebugPanel';
 import EnvironmentPanel from '../components/panels/EnvironmentPanel';
 import LogsPanel from '../components/panels/LogsPanel';
@@ -18,6 +19,7 @@ const RIGHT_PANEL_COMPONENTS = {
   [WORKSPACE_PANEL.RUNTIME]: RuntimePanel,
   [WORKSPACE_PANEL.TERMINAL]: TerminalPanel,
   [WORKSPACE_PANEL.ENVIRONMENT]: EnvironmentPanel,
+  [WORKSPACE_PANEL.CONFIG]: ConfigPanel,
   [WORKSPACE_PANEL.TOP]: TopPanel,
   [WORKSPACE_PANEL.DEBUG]: DebugPanel,
 };
@@ -26,6 +28,7 @@ const DETAIL_PANEL_ORDER = [
   WORKSPACE_PANEL.RUNTIME,
   WORKSPACE_PANEL.TERMINAL,
   WORKSPACE_PANEL.ENVIRONMENT,
+  WORKSPACE_PANEL.CONFIG,
   WORKSPACE_PANEL.TOP,
   WORKSPACE_PANEL.DEBUG,
 ];

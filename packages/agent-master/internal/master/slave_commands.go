@@ -81,23 +81,33 @@ func cloneSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveCommand {
 		return nil
 	}
 	cloned := &slavev1.SlaveCommand{
-		CommandId:         strings.TrimSpace(command.GetCommandId()),
-		CommandType:       strings.TrimSpace(command.GetCommandType()),
-		RepositoryUrl:     strings.TrimSpace(command.GetRepositoryUrl()),
-		BaseDirectory:     strings.TrimSpace(command.GetBaseDirectory()),
-		DestinationFolder: strings.TrimSpace(command.GetDestinationFolder()),
-		TargetPath:        strings.TrimSpace(command.GetTargetPath()),
-		RequestedAt:       strings.TrimSpace(command.GetRequestedAt()),
+		CommandId:                strings.TrimSpace(command.GetCommandId()),
+		CommandType:              strings.TrimSpace(command.GetCommandType()),
+		RepositoryUrl:            strings.TrimSpace(command.GetRepositoryUrl()),
+		BaseDirectory:            strings.TrimSpace(command.GetBaseDirectory()),
+		DestinationFolder:        strings.TrimSpace(command.GetDestinationFolder()),
+		TargetPath:               strings.TrimSpace(command.GetTargetPath()),
+		RequestedAt:              strings.TrimSpace(command.GetRequestedAt()),
+		SshPrivateKey:            strings.TrimSpace(command.GetSshPrivateKey()),
+		SshPublicKey:             strings.TrimSpace(command.GetSshPublicKey()),
+		SshPassphrase:            strings.TrimSpace(command.GetSshPassphrase()),
+		SshKnownHosts:            strings.TrimSpace(command.GetSshKnownHosts()),
+		SshStrictHostKeyChecking: command.GetSshStrictHostKeyChecking(),
 	}
 	switch payload := command.GetPayload().(type) {
 	case *slavev1.SlaveCommand_GitCheckout:
 		if payload != nil && payload.GitCheckout != nil {
 			cloned.Payload = &slavev1.SlaveCommand_GitCheckout{
 				GitCheckout: &slavev1.GitCheckoutCommand{
-					RepositoryUrl:     strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
-					BaseDirectory:     strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
-					DestinationFolder: strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
-					TargetPath:        strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+					RepositoryUrl:            strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
+					BaseDirectory:            strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
+					DestinationFolder:        strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
+					TargetPath:               strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+					SshPrivateKey:            strings.TrimSpace(payload.GitCheckout.GetSshPrivateKey()),
+					SshPublicKey:             strings.TrimSpace(payload.GitCheckout.GetSshPublicKey()),
+					SshPassphrase:            strings.TrimSpace(payload.GitCheckout.GetSshPassphrase()),
+					SshKnownHosts:            strings.TrimSpace(payload.GitCheckout.GetSshKnownHosts()),
+					SshStrictHostKeyChecking: payload.GitCheckout.GetSshStrictHostKeyChecking(),
 				},
 			}
 		}
@@ -323,13 +333,31 @@ func (s *Server) CheckoutProjectOnSlave(
 
 	commandID := s.nextSlaveCommandID("checkout")
 	command := &slavev1.SlaveCommand{
-		CommandId:         commandID,
-		CommandType:       slaveCommandTypeGitCheckout,
-		RepositoryUrl:     repositoryURL,
-		BaseDirectory:     baseDirectory,
-		DestinationFolder: destinationFolder,
-		TargetPath:        filepath.Join(baseDirectory, destinationFolder),
-		RequestedAt:       now.Format(time.RFC3339Nano),
+		CommandId:                commandID,
+		CommandType:              slaveCommandTypeGitCheckout,
+		RepositoryUrl:            repositoryURL,
+		BaseDirectory:            baseDirectory,
+		DestinationFolder:        destinationFolder,
+		TargetPath:               filepath.Join(baseDirectory, destinationFolder),
+		RequestedAt:              now.Format(time.RFC3339Nano),
+		SshPrivateKey:            strings.TrimSpace(req.GetSshPrivateKey()),
+		SshPublicKey:             strings.TrimSpace(req.GetSshPublicKey()),
+		SshPassphrase:            strings.TrimSpace(req.GetSshPassphrase()),
+		SshKnownHosts:            strings.TrimSpace(req.GetSshKnownHosts()),
+		SshStrictHostKeyChecking: req.GetSshStrictHostKeyChecking(),
+	}
+	command.Payload = &slavev1.SlaveCommand_GitCheckout{
+		GitCheckout: &slavev1.GitCheckoutCommand{
+			RepositoryUrl:            repositoryURL,
+			BaseDirectory:            baseDirectory,
+			DestinationFolder:        destinationFolder,
+			TargetPath:               command.GetTargetPath(),
+			SshPrivateKey:            command.GetSshPrivateKey(),
+			SshPublicKey:             command.GetSshPublicKey(),
+			SshPassphrase:            command.GetSshPassphrase(),
+			SshKnownHosts:            command.GetSshKnownHosts(),
+			SshStrictHostKeyChecking: command.GetSshStrictHostKeyChecking(),
+		},
 	}
 
 	s.slavePendingCommands[slaveID] = append(s.slavePendingCommands[slaveID], command)

@@ -161,6 +161,11 @@ message GitCheckoutCommand {
   string base_directory = 2;
   string destination_folder = 3;
   string target_path = 4;
+  string ssh_private_key = 5;
+  string ssh_public_key = 6;
+  string ssh_passphrase = 7;
+  string ssh_known_hosts = 8;
+  bool ssh_strict_host_key_checking = 9;
 }
 
 message LaunchProcessCommand {
@@ -195,6 +200,11 @@ message SlaveCommand {
   string destination_folder = 5;
   string target_path = 6;
   string requested_at = 7;
+  string ssh_private_key = 12;
+  string ssh_public_key = 13;
+  string ssh_passphrase = 14;
+  string ssh_known_hosts = 15;
+  bool ssh_strict_host_key_checking = 16;
   oneof payload {
     GitCheckoutCommand git_checkout = 8;
     LaunchProcessCommand launch_process = 9;

@@ -1370,13 +1370,18 @@ func (x *HeartbeatResponse) GetCommands() []*SlaveCommand {
 }
 
 type GitCheckoutCommand struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	RepositoryUrl     string                 `protobuf:"bytes,1,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
-	BaseDirectory     string                 `protobuf:"bytes,2,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
-	DestinationFolder string                 `protobuf:"bytes,3,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
-	TargetPath        string                 `protobuf:"bytes,4,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	RepositoryUrl            string                 `protobuf:"bytes,1,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
+	BaseDirectory            string                 `protobuf:"bytes,2,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
+	DestinationFolder        string                 `protobuf:"bytes,3,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
+	TargetPath               string                 `protobuf:"bytes,4,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
+	SshPrivateKey            string                 `protobuf:"bytes,5,opt,name=ssh_private_key,json=sshPrivateKey,proto3" json:"ssh_private_key,omitempty"`
+	SshPublicKey             string                 `protobuf:"bytes,6,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
+	SshPassphrase            string                 `protobuf:"bytes,7,opt,name=ssh_passphrase,json=sshPassphrase,proto3" json:"ssh_passphrase,omitempty"`
+	SshKnownHosts            string                 `protobuf:"bytes,8,opt,name=ssh_known_hosts,json=sshKnownHosts,proto3" json:"ssh_known_hosts,omitempty"`
+	SshStrictHostKeyChecking bool                   `protobuf:"varint,9,opt,name=ssh_strict_host_key_checking,json=sshStrictHostKeyChecking,proto3" json:"ssh_strict_host_key_checking,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GitCheckoutCommand) Reset() {
@@ -1435,6 +1440,41 @@ func (x *GitCheckoutCommand) GetTargetPath() string {
 		return x.TargetPath
 	}
 	return ""
+}
+
+func (x *GitCheckoutCommand) GetSshPrivateKey() string {
+	if x != nil {
+		return x.SshPrivateKey
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetSshPublicKey() string {
+	if x != nil {
+		return x.SshPublicKey
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetSshPassphrase() string {
+	if x != nil {
+		return x.SshPassphrase
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetSshKnownHosts() string {
+	if x != nil {
+		return x.SshKnownHosts
+	}
+	return ""
+}
+
+func (x *GitCheckoutCommand) GetSshStrictHostKeyChecking() bool {
+	if x != nil {
+		return x.SshStrictHostKeyChecking
+	}
+	return false
 }
 
 type LaunchProcessCommand struct {
@@ -1654,14 +1694,19 @@ func (x *KillProcessCommand) GetReason() string {
 }
 
 type SlaveCommand struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	CommandId         string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
-	CommandType       string                 `protobuf:"bytes,2,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
-	RepositoryUrl     string                 `protobuf:"bytes,3,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
-	BaseDirectory     string                 `protobuf:"bytes,4,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
-	DestinationFolder string                 `protobuf:"bytes,5,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
-	TargetPath        string                 `protobuf:"bytes,6,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
-	RequestedAt       string                 `protobuf:"bytes,7,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	CommandId                string                 `protobuf:"bytes,1,opt,name=command_id,json=commandId,proto3" json:"command_id,omitempty"`
+	CommandType              string                 `protobuf:"bytes,2,opt,name=command_type,json=commandType,proto3" json:"command_type,omitempty"`
+	RepositoryUrl            string                 `protobuf:"bytes,3,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
+	BaseDirectory            string                 `protobuf:"bytes,4,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
+	DestinationFolder        string                 `protobuf:"bytes,5,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
+	TargetPath               string                 `protobuf:"bytes,6,opt,name=target_path,json=targetPath,proto3" json:"target_path,omitempty"`
+	RequestedAt              string                 `protobuf:"bytes,7,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
+	SshPrivateKey            string                 `protobuf:"bytes,12,opt,name=ssh_private_key,json=sshPrivateKey,proto3" json:"ssh_private_key,omitempty"`
+	SshPublicKey             string                 `protobuf:"bytes,13,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
+	SshPassphrase            string                 `protobuf:"bytes,14,opt,name=ssh_passphrase,json=sshPassphrase,proto3" json:"ssh_passphrase,omitempty"`
+	SshKnownHosts            string                 `protobuf:"bytes,15,opt,name=ssh_known_hosts,json=sshKnownHosts,proto3" json:"ssh_known_hosts,omitempty"`
+	SshStrictHostKeyChecking bool                   `protobuf:"varint,16,opt,name=ssh_strict_host_key_checking,json=sshStrictHostKeyChecking,proto3" json:"ssh_strict_host_key_checking,omitempty"`
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*SlaveCommand_GitCheckout
@@ -1750,6 +1795,41 @@ func (x *SlaveCommand) GetRequestedAt() string {
 		return x.RequestedAt
 	}
 	return ""
+}
+
+func (x *SlaveCommand) GetSshPrivateKey() string {
+	if x != nil {
+		return x.SshPrivateKey
+	}
+	return ""
+}
+
+func (x *SlaveCommand) GetSshPublicKey() string {
+	if x != nil {
+		return x.SshPublicKey
+	}
+	return ""
+}
+
+func (x *SlaveCommand) GetSshPassphrase() string {
+	if x != nil {
+		return x.SshPassphrase
+	}
+	return ""
+}
+
+func (x *SlaveCommand) GetSshKnownHosts() string {
+	if x != nil {
+		return x.SshKnownHosts
+	}
+	return ""
+}
+
+func (x *SlaveCommand) GetSshStrictHostKeyChecking() bool {
+	if x != nil {
+		return x.SshStrictHostKeyChecking
+	}
+	return false
 }
 
 func (x *SlaveCommand) GetPayload() isSlaveCommand_Payload {
@@ -2699,13 +2779,18 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12C\n" +
-	"\bcommands\x18\x03 \x03(\v2'.projectcommander.slave.v1.SlaveCommandR\bcommands\"\xb2\x01\n" +
+	"\bcommands\x18\x03 \x03(\v2'.projectcommander.slave.v1.SlaveCommandR\bcommands\"\x8f\x03\n" +
 	"\x12GitCheckoutCommand\x12%\n" +
 	"\x0erepository_url\x18\x01 \x01(\tR\rrepositoryUrl\x12%\n" +
 	"\x0ebase_directory\x18\x02 \x01(\tR\rbaseDirectory\x12-\n" +
 	"\x12destination_folder\x18\x03 \x01(\tR\x11destinationFolder\x12\x1f\n" +
 	"\vtarget_path\x18\x04 \x01(\tR\n" +
-	"targetPath\"\xa9\x03\n" +
+	"targetPath\x12&\n" +
+	"\x0fssh_private_key\x18\x05 \x01(\tR\rsshPrivateKey\x12$\n" +
+	"\x0essh_public_key\x18\x06 \x01(\tR\fsshPublicKey\x12%\n" +
+	"\x0essh_passphrase\x18\a \x01(\tR\rsshPassphrase\x12&\n" +
+	"\x0fssh_known_hosts\x18\b \x01(\tR\rsshKnownHosts\x12>\n" +
+	"\x1cssh_strict_host_key_checking\x18\t \x01(\bR\x18sshStrictHostKeyChecking\"\xa9\x03\n" +
 	"\x14LaunchProcessCommand\x12\x15\n" +
 	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1f\n" +
 	"\vprocess_key\x18\x02 \x01(\tR\n" +
@@ -2729,7 +2814,7 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\x03pid\x18\x03 \x01(\x03R\x03pid\x12\x12\n" +
 	"\x04pgid\x18\x04 \x01(\x03R\x04pgid\x12\x16\n" +
 	"\x06signal\x18\x05 \x01(\tR\x06signal\x12\x16\n" +
-	"\x06reason\x18\x06 \x01(\tR\x06reason\"\x84\x05\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\"\xe1\x06\n" +
 	"\fSlaveCommand\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12!\n" +
@@ -2739,7 +2824,12 @@ const file_projectcommander_slave_v1_slave_control_proto_rawDesc = "" +
 	"\x12destination_folder\x18\x05 \x01(\tR\x11destinationFolder\x12\x1f\n" +
 	"\vtarget_path\x18\x06 \x01(\tR\n" +
 	"targetPath\x12!\n" +
-	"\frequested_at\x18\a \x01(\tR\vrequestedAt\x12R\n" +
+	"\frequested_at\x18\a \x01(\tR\vrequestedAt\x12&\n" +
+	"\x0fssh_private_key\x18\f \x01(\tR\rsshPrivateKey\x12$\n" +
+	"\x0essh_public_key\x18\r \x01(\tR\fsshPublicKey\x12%\n" +
+	"\x0essh_passphrase\x18\x0e \x01(\tR\rsshPassphrase\x12&\n" +
+	"\x0fssh_known_hosts\x18\x0f \x01(\tR\rsshKnownHosts\x12>\n" +
+	"\x1cssh_strict_host_key_checking\x18\x10 \x01(\bR\x18sshStrictHostKeyChecking\x12R\n" +
 	"\fgit_checkout\x18\b \x01(\v2-.projectcommander.slave.v1.GitCheckoutCommandH\x00R\vgitCheckout\x12X\n" +
 	"\x0elaunch_process\x18\t \x01(\v2/.projectcommander.slave.v1.LaunchProcessCommandH\x00R\rlaunchProcess\x12[\n" +
 	"\x11soft_kill_process\x18\n" +

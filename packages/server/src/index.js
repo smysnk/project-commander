@@ -32,6 +32,7 @@ const { createTerminalSessionManager } = require('./terminalSessionManager');
 const { createProcessRegistry } = require('./runtime/processRegistry');
 const { createHostPathMappingCatalog } = require('./hostPathMappings');
 const { createProcessTemplateCatalog } = require('./processTemplates');
+const { getHostSshKeyMaterial } = require('./hostSshKeyConfigs');
 const { createRuntimeWaiter } = require('./runtimeWait');
 const {
   isHostVersionOutOfDate,
@@ -1596,11 +1597,17 @@ const startServer = async () => {
       throw new Error('Runtime backend does not support host checkout operations.');
     }
 
+    const sshKeyConfig = await getHostSshKeyMaterial({ hostId: parsedHostId }).catch(() => null);
     const checkoutResult = await runtimeBackend.checkoutHostProject({
       slaveId: hostAgentUuid,
       repositoryUrl: normalizedRepositoryUrl,
       baseDirectory: normalizedBaseDirectory,
       destinationFolder: normalizedDestinationFolder,
+      sshPrivateKey: sshKeyConfig?.privateKey || '',
+      sshPublicKey: sshKeyConfig?.publicKey || '',
+      sshPassphrase: sshKeyConfig?.passphrase || '',
+      sshKnownHosts: sshKeyConfig?.knownHosts || '',
+      sshStrictHostKeyChecking: sshKeyConfig?.strictHostKeyChecking !== false,
     });
 
     const targetPath = path.posix.join(

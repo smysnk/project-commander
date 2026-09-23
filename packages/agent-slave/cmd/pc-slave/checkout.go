@@ -45,23 +45,33 @@ func cloneQueuedSlaveCommand(command *slavev1.SlaveCommand) *slavev1.SlaveComman
 		return nil
 	}
 	cloned := &slavev1.SlaveCommand{
-		CommandId:         strings.TrimSpace(command.GetCommandId()),
-		CommandType:       strings.TrimSpace(command.GetCommandType()),
-		RepositoryUrl:     strings.TrimSpace(command.GetRepositoryUrl()),
-		BaseDirectory:     strings.TrimSpace(command.GetBaseDirectory()),
-		DestinationFolder: strings.TrimSpace(command.GetDestinationFolder()),
-		TargetPath:        strings.TrimSpace(command.GetTargetPath()),
-		RequestedAt:       strings.TrimSpace(command.GetRequestedAt()),
+		CommandId:                strings.TrimSpace(command.GetCommandId()),
+		CommandType:              strings.TrimSpace(command.GetCommandType()),
+		RepositoryUrl:            strings.TrimSpace(command.GetRepositoryUrl()),
+		BaseDirectory:            strings.TrimSpace(command.GetBaseDirectory()),
+		DestinationFolder:        strings.TrimSpace(command.GetDestinationFolder()),
+		TargetPath:               strings.TrimSpace(command.GetTargetPath()),
+		RequestedAt:              strings.TrimSpace(command.GetRequestedAt()),
+		SshPrivateKey:            strings.TrimSpace(command.GetSshPrivateKey()),
+		SshPublicKey:             strings.TrimSpace(command.GetSshPublicKey()),
+		SshPassphrase:            strings.TrimSpace(command.GetSshPassphrase()),
+		SshKnownHosts:            strings.TrimSpace(command.GetSshKnownHosts()),
+		SshStrictHostKeyChecking: command.GetSshStrictHostKeyChecking(),
 	}
 	switch payload := command.GetPayload().(type) {
 	case *slavev1.SlaveCommand_GitCheckout:
 		if payload != nil && payload.GitCheckout != nil {
 			cloned.Payload = &slavev1.SlaveCommand_GitCheckout{
 				GitCheckout: &slavev1.GitCheckoutCommand{
-					RepositoryUrl:     strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
-					BaseDirectory:     strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
-					DestinationFolder: strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
-					TargetPath:        strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+					RepositoryUrl:            strings.TrimSpace(payload.GitCheckout.GetRepositoryUrl()),
+					BaseDirectory:            strings.TrimSpace(payload.GitCheckout.GetBaseDirectory()),
+					DestinationFolder:        strings.TrimSpace(payload.GitCheckout.GetDestinationFolder()),
+					TargetPath:               strings.TrimSpace(payload.GitCheckout.GetTargetPath()),
+					SshPrivateKey:            strings.TrimSpace(payload.GitCheckout.GetSshPrivateKey()),
+					SshPublicKey:             strings.TrimSpace(payload.GitCheckout.GetSshPublicKey()),
+					SshPassphrase:            strings.TrimSpace(payload.GitCheckout.GetSshPassphrase()),
+					SshKnownHosts:            strings.TrimSpace(payload.GitCheckout.GetSshKnownHosts()),
+					SshStrictHostKeyChecking: payload.GitCheckout.GetSshStrictHostKeyChecking(),
 				},
 			}
 		}
@@ -169,6 +179,73 @@ func validateDestinationFolderName(input string) (string, error) {
 	return normalized, nil
 }
 
+func resolveCheckoutGitSSHCommand(command *slavev1.SlaveCommand) (string, func(), error) {
+	privateKey := strings.TrimSpace(command.GetSshPrivateKey())
+	if privateKey == "" {
+		if payload := command.GetGitCheckout(); payload != nil {
+			privateKey = strings.TrimSpace(payload.GetSshPrivateKey())
+		}
+	}
+	if privateKey == "" {
+		return "", func() {}, nil
+	}
+
+	passphrase := strings.TrimSpace(command.GetSshPassphrase())
+	if passphrase == "" {
+		if payload := command.GetGitCheckout(); payload != nil {
+			passphrase = strings.TrimSpace(payload.GetSshPassphrase())
+		}
+	}
+	if passphrase != "" {
+		return "", func() {}, fmt.Errorf("passphrase-protected SSH keys are not supported for non-interactive checkout")
+	}
+
+	tempDir, tempErr := os.MkdirTemp("", "pc-checkout-ssh-*")
+	if tempErr != nil {
+		return "", func() {}, fmt.Errorf("create temporary ssh key directory: %w", tempErr)
+	}
+	cleanup := func() {
+		_ = os.RemoveAll(tempDir)
+	}
+
+	keyPath := filepath.Join(tempDir, "identity")
+	if writeErr := os.WriteFile(keyPath, []byte(privateKey), 0o600); writeErr != nil {
+		cleanup()
+		return "", func() {}, fmt.Errorf("write temporary ssh private key: %w", writeErr)
+	}
+
+	knownHosts := strings.TrimSpace(command.GetSshKnownHosts())
+	if knownHosts == "" {
+		if payload := command.GetGitCheckout(); payload != nil {
+			knownHosts = strings.TrimSpace(payload.GetSshKnownHosts())
+		}
+	}
+
+	strictHostKeyChecking := command.GetSshStrictHostKeyChecking()
+	if payload := command.GetGitCheckout(); payload != nil {
+		strictHostKeyChecking = payload.GetSshStrictHostKeyChecking()
+	}
+
+	parts := []string{
+		"ssh",
+		"-i", keyPath,
+		"-o", "IdentitiesOnly=yes",
+		"-o", "BatchMode=yes",
+	}
+	if knownHosts != "" {
+		knownHostsPath := filepath.Join(tempDir, "known_hosts")
+		if writeErr := os.WriteFile(knownHostsPath, []byte(knownHosts+"\n"), 0o600); writeErr != nil {
+			cleanup()
+			return "", func() {}, fmt.Errorf("write temporary known_hosts: %w", writeErr)
+		}
+		parts = append(parts, "-o", fmt.Sprintf("UserKnownHostsFile=%s", knownHostsPath))
+	} else if !strictHostKeyChecking {
+		parts = append(parts, "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null")
+	}
+
+	return strings.Join(parts, " "), cleanup, nil
+}
+
 func isDirectoryEmpty(directoryPath string) (bool, error) {
 	handle, openErr := os.Open(directoryPath)
 	if openErr != nil {
@@ -274,6 +351,21 @@ func executeCheckoutCommand(
 	gitCommand := exec.CommandContext(commandCtx, "git", "clone", "--progress", repositoryURL, targetPath)
 	gitCommand.Stdout = &output
 	gitCommand.Stderr = &output
+	gitSSHCommand, cleanupSSH, sshErr := resolveCheckoutGitSSHCommand(command)
+	if cleanupSSH != nil {
+		defer cleanupSSH()
+	}
+	if sshErr != nil {
+		return slaveCommandResult{
+			status:      slaveCommandStatusFailed,
+			message:     sshErr.Error(),
+			outputLines: nil,
+			completedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		}
+	}
+	if gitSSHCommand != "" {
+		gitCommand.Env = append(os.Environ(), "GIT_SSH_COMMAND="+gitSSHCommand)
+	}
 
 	runErr := gitCommand.Run()
 	outputLines := normalizeCheckoutOutputLines(output.String())

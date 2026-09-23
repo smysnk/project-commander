@@ -12,6 +12,7 @@ const { ProcessTemplate } = require('./processTemplate');
 const { AutomationApiToken } = require('./automationApiToken');
 const { RuntimeAuditEvent } = require('./runtimeAuditEvent');
 const { DeploymentInstance } = require('./deploymentInstance');
+const { HostSshKeyConfig } = require('./hostSshKeyConfig');
 
 const initModelAssociations = () => {
   Host.hasMany(Project, {
@@ -46,6 +47,15 @@ const initModelAssociations = () => {
     foreignKey: 'hostId',
   });
   HostPathMapping.belongsTo(Host, {
+    as: 'host',
+    foreignKey: 'hostId',
+  });
+
+  Host.hasMany(HostSshKeyConfig, {
+    as: 'sshKeyConfigs',
+    foreignKey: 'hostId',
+  });
+  HostSshKeyConfig.belongsTo(Host, {
     as: 'host',
     foreignKey: 'hostId',
   });
@@ -203,6 +213,7 @@ module.exports = {
   AutomationApiToken,
   RuntimeAuditEvent,
   DeploymentInstance,
+  HostSshKeyConfig,
   Technology,
   PortRange,
   initModelAssociations,

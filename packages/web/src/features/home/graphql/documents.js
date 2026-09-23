@@ -215,6 +215,24 @@ export const QUERY_HOST_PATH_MAPPINGS = `
   }
 `;
 
+export const QUERY_HOST_SSH_KEY_CONFIG = `
+  query HostSshKeyConfig($hostId: Int!) {
+    hostSshKeyConfig(hostId: $hostId) {
+      id
+      hostId
+      agentUuid
+      keyName
+      publicKey
+      hasPrivateKey
+      hasPassphrase
+      knownHosts
+      strictHostKeyChecking
+      fingerprint
+      updatedAt
+    }
+  }
+`;
+
 export const QUERY_PROJECT_ENVIRONMENT = `
   query ProjectLaunchEnvironment($projectPath: String!) {
     projectLaunchEnvironment(projectPath: $projectPath) {
@@ -754,6 +772,46 @@ export const MUTATION_CHECKOUT_HOST_PROJECT = `
         lastSeenAt
       }
     }
+  }
+`;
+
+export const MUTATION_UPSERT_HOST_SSH_KEY_CONFIG = `
+  mutation UpsertHostSshKeyConfig(
+    $hostId: Int!
+    $keyName: String
+    $privateKey: String!
+    $publicKey: String
+    $passphrase: String
+    $knownHosts: String
+    $strictHostKeyChecking: Boolean
+  ) {
+    upsertHostSshKeyConfig(
+      hostId: $hostId
+      keyName: $keyName
+      privateKey: $privateKey
+      publicKey: $publicKey
+      passphrase: $passphrase
+      knownHosts: $knownHosts
+      strictHostKeyChecking: $strictHostKeyChecking
+    ) {
+      id
+      hostId
+      agentUuid
+      keyName
+      publicKey
+      hasPrivateKey
+      hasPassphrase
+      knownHosts
+      strictHostKeyChecking
+      fingerprint
+      updatedAt
+    }
+  }
+`;
+
+export const MUTATION_DELETE_HOST_SSH_KEY_CONFIG = `
+  mutation DeleteHostSshKeyConfig($hostId: Int!, $keyName: String) {
+    deleteHostSshKeyConfig(hostId: $hostId, keyName: $keyName)
   }
 `;
 

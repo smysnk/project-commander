@@ -659,14 +659,19 @@ func (x *ListRegisteredSlavesResponse) GetSlaves() []*RegisteredSlave {
 }
 
 type CheckoutProjectOnSlaveRequest struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	RequestId         string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
-	SlaveId           string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
-	RepositoryUrl     string                 `protobuf:"bytes,3,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
-	BaseDirectory     string                 `protobuf:"bytes,4,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
-	DestinationFolder string                 `protobuf:"bytes,5,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	RequestId                string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	SlaveId                  string                 `protobuf:"bytes,2,opt,name=slave_id,json=slaveId,proto3" json:"slave_id,omitempty"`
+	RepositoryUrl            string                 `protobuf:"bytes,3,opt,name=repository_url,json=repositoryUrl,proto3" json:"repository_url,omitempty"`
+	BaseDirectory            string                 `protobuf:"bytes,4,opt,name=base_directory,json=baseDirectory,proto3" json:"base_directory,omitempty"`
+	DestinationFolder        string                 `protobuf:"bytes,5,opt,name=destination_folder,json=destinationFolder,proto3" json:"destination_folder,omitempty"`
+	SshPrivateKey            string                 `protobuf:"bytes,6,opt,name=ssh_private_key,json=sshPrivateKey,proto3" json:"ssh_private_key,omitempty"`
+	SshPublicKey             string                 `protobuf:"bytes,7,opt,name=ssh_public_key,json=sshPublicKey,proto3" json:"ssh_public_key,omitempty"`
+	SshPassphrase            string                 `protobuf:"bytes,8,opt,name=ssh_passphrase,json=sshPassphrase,proto3" json:"ssh_passphrase,omitempty"`
+	SshKnownHosts            string                 `protobuf:"bytes,9,opt,name=ssh_known_hosts,json=sshKnownHosts,proto3" json:"ssh_known_hosts,omitempty"`
+	SshStrictHostKeyChecking bool                   `protobuf:"varint,10,opt,name=ssh_strict_host_key_checking,json=sshStrictHostKeyChecking,proto3" json:"ssh_strict_host_key_checking,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *CheckoutProjectOnSlaveRequest) Reset() {
@@ -732,6 +737,41 @@ func (x *CheckoutProjectOnSlaveRequest) GetDestinationFolder() string {
 		return x.DestinationFolder
 	}
 	return ""
+}
+
+func (x *CheckoutProjectOnSlaveRequest) GetSshPrivateKey() string {
+	if x != nil {
+		return x.SshPrivateKey
+	}
+	return ""
+}
+
+func (x *CheckoutProjectOnSlaveRequest) GetSshPublicKey() string {
+	if x != nil {
+		return x.SshPublicKey
+	}
+	return ""
+}
+
+func (x *CheckoutProjectOnSlaveRequest) GetSshPassphrase() string {
+	if x != nil {
+		return x.SshPassphrase
+	}
+	return ""
+}
+
+func (x *CheckoutProjectOnSlaveRequest) GetSshKnownHosts() string {
+	if x != nil {
+		return x.SshKnownHosts
+	}
+	return ""
+}
+
+func (x *CheckoutProjectOnSlaveRequest) GetSshStrictHostKeyChecking() bool {
+	if x != nil {
+		return x.SshStrictHostKeyChecking
+	}
+	return false
 }
 
 type CheckoutProjectOnSlaveResponse struct {
@@ -3313,14 +3353,20 @@ const file_projectcommander_master_v1_master_control_proto_rawDesc = "" +
 	"\x1cListRegisteredSlavesResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12C\n" +
-	"\x06slaves\x18\x02 \x03(\v2+.projectcommander.master.v1.RegisteredSlaveR\x06slaves\"\xd6\x01\n" +
+	"\x06slaves\x18\x02 \x03(\v2+.projectcommander.master.v1.RegisteredSlaveR\x06slaves\"\xb3\x03\n" +
 	"\x1dCheckoutProjectOnSlaveRequest\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x19\n" +
 	"\bslave_id\x18\x02 \x01(\tR\aslaveId\x12%\n" +
 	"\x0erepository_url\x18\x03 \x01(\tR\rrepositoryUrl\x12%\n" +
 	"\x0ebase_directory\x18\x04 \x01(\tR\rbaseDirectory\x12-\n" +
-	"\x12destination_folder\x18\x05 \x01(\tR\x11destinationFolder\"\x90\x01\n" +
+	"\x12destination_folder\x18\x05 \x01(\tR\x11destinationFolder\x12&\n" +
+	"\x0fssh_private_key\x18\x06 \x01(\tR\rsshPrivateKey\x12$\n" +
+	"\x0essh_public_key\x18\a \x01(\tR\fsshPublicKey\x12%\n" +
+	"\x0essh_passphrase\x18\b \x01(\tR\rsshPassphrase\x12&\n" +
+	"\x0fssh_known_hosts\x18\t \x01(\tR\rsshKnownHosts\x12>\n" +
+	"\x1cssh_strict_host_key_checking\x18\n" +
+	" \x01(\bR\x18sshStrictHostKeyChecking\"\x90\x01\n" +
 	"\x1eCheckoutProjectOnSlaveResponse\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x01 \x01(\tR\trequestId\x12\x1d\n" +

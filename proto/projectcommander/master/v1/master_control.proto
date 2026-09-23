@@ -78,6 +78,11 @@ message CheckoutProjectOnSlaveRequest {
   string repository_url = 3;
   string base_directory = 4;
   string destination_folder = 5;
+  string ssh_private_key = 6;
+  string ssh_public_key = 7;
+  string ssh_passphrase = 8;
+  string ssh_known_hosts = 9;
+  bool ssh_strict_host_key_checking = 10;
 }
 
 message CheckoutProjectOnSlaveResponse {

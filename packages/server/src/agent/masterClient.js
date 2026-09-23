@@ -157,6 +157,11 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
     repositoryUrl,
     baseDirectory,
     destinationFolder,
+    sshPrivateKey,
+    sshPublicKey,
+    sshPassphrase,
+    sshKnownHosts,
+    sshStrictHostKeyChecking,
     timeoutMs = 7000,
   } = {}) => {
     const requestId = generateRequestId('checkout-slave-project');
@@ -169,6 +174,11 @@ const createMasterClient = ({ socketPath = DEFAULT_SOCKET_PATH } = {}) => {
         repositoryUrl,
         baseDirectory,
         destinationFolder,
+        sshPrivateKey,
+        sshPublicKey,
+        sshPassphrase,
+        sshKnownHosts,
+        sshStrictHostKeyChecking: sshStrictHostKeyChecking !== false,
       },
       { requestId, timeoutMs },
     );

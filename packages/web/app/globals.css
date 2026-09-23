@@ -2959,3 +2959,189 @@ col.servicesCol {
   color: #b91c1c;
   font-weight: 600;
 }
+
+.configPanel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px 24px 28px;
+  color: var(--text);
+}
+
+.configPanel .panelHeaderBlock {
+  margin-bottom: 18px;
+}
+
+.configPanel .panelHeaderBlock h2 {
+  margin: 4px 0 8px;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.configPanel .panelHeaderBlock p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.panelEyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.configForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.configSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+}
+
+.configSummaryGrid > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.configSummaryGrid strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.configLabel,
+.configField > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.configField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.configField input,
+.configField textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 82%, black 8%);
+  color: var(--text);
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  outline: none;
+  padding: 10px 11px;
+}
+
+.configField textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.configField input:focus,
+.configField textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.configField small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.configCheckboxRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.configActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.primaryActionButton,
+.secondaryActionButton,
+.dangerActionButton {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 8px 13px;
+}
+
+.primaryActionButton {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  background: var(--accent);
+  color: #071016;
+}
+
+.secondaryActionButton {
+  background: transparent;
+  color: var(--text);
+}
+
+.dangerActionButton {
+  border-color: color-mix(in srgb, #ef4444 56%, var(--line));
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  color: #fecaca;
+}
+
+.primaryActionButton:disabled,
+.secondaryActionButton:disabled,
+.dangerActionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.configMessage {
+  margin: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.configMessage.error {
+  border: 1px solid color-mix(in srgb, #ef4444 42%, var(--line));
+  background: color-mix(in srgb, #ef4444 11%, transparent);
+  color: #fecaca;
+}
+
+.configMessage.success {
+  border: 1px solid color-mix(in srgb, #22c55e 42%, var(--line));
+  background: color-mix(in srgb, #22c55e 11%, transparent);
+  color: #bbf7d0;
+}
+
+@media (max-width: 720px) {
+  .configSummaryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

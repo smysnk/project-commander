@@ -1758,6 +1758,11 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
       repositoryUrl,
       baseDirectory,
       destinationFolder,
+      sshPrivateKey,
+      sshPublicKey,
+      sshPassphrase,
+      sshKnownHosts,
+      sshStrictHostKeyChecking,
     }) {
       const normalizedSlaveId = String(slaveId || '').trim();
       const normalizedRepositoryUrl = String(repositoryUrl || '').trim();
@@ -1781,6 +1786,11 @@ const createGoMasterRuntimeBackend = ({ socketPath } = {}) => {
         repositoryUrl: normalizedRepositoryUrl,
         baseDirectory: normalizedBaseDirectory,
         destinationFolder: normalizedDestinationFolder,
+        sshPrivateKey: String(sshPrivateKey || ''),
+        sshPublicKey: String(sshPublicKey || ''),
+        sshPassphrase: String(sshPassphrase || ''),
+        sshKnownHosts: String(sshKnownHosts || ''),
+        sshStrictHostKeyChecking: sshStrictHostKeyChecking !== false,
       });
       return {
         commandId: String(response?.commandId || '').trim() || null,
